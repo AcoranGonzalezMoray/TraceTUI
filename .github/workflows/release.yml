@@ -212,7 +212,9 @@ jobs:
         if: env.SKIP_RELEASE != 'true'
         run: |
           mkdir -p release-assets
-          find artifacts -type f -exec cp {} release-assets/ \;
+          # Buscamos en la carpeta 'artifacts' que ahora forzamos en la descarga
+          find artifacts/ -type f \( -name "*.zip" -o -name "*.tar.gz" \) -exec cp {} release-assets/ \;
+          ls -R release-assets/
 
       - name: Create GitHub Release
         if: env.SKIP_RELEASE != 'true'
