@@ -1,5 +1,8 @@
 # UNRELEASED
 
+
+# RELEASED
+
 ## 2026-05-16  V1.0.0
 ✨: Real-time Network Intelligence
 - Deep Monitoring: Track active TCP/UDP connections with sub-second latency
@@ -71,6 +74,3 @@
 - Firewall Management: Connection blocking and IP allowlist/blocklist
 
 ✨: Landing page terminal mockup now matches Rust TUI exactly
-
-
-# RELEASED
