@@ -1,0 +1,221 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo fmt
+        run: cargo fmt --check
+
+      - name: cargo clippy
+        run: cargo clippy -- -D warnings
+
+      - name: cargo test
+        run: cargo test
+
+  build:
+    needs: check
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: tar.gz
+          - target: x86_64-pc-windows-gnu
+            os: ubuntu-latest
+            archive: zip
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install cross-compile deps (Windows)
+        if: matrix.target == 'x86_64-pc-windows-gnu'
+        run: sudo apt-get update && sudo apt-get install -y mingw-w64
+
+      - name: Build release
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Package Linux
+        if: matrix.archive == 'tar.gz'
+        run: |
+          cp scripts/tracetui.desktop target/${{ matrix.target }}/release/
+          cp src/icon/tracetuiicon.png target/${{ matrix.target }}/release/tracetui.png
+          cp scripts/installOrUpdate.sh target/${{ matrix.target }}/release/
+          cd target/${{ matrix.target }}/release
+          tar czf ../../../tracetui-${{ matrix.target }}.tar.gz \
+            tracetui tracetui.desktop tracetui.png installOrUpdate.sh
+          cd -
+
+      - name: Package Windows
+        if: matrix.archive == 'zip'
+        run: |
+          cp scripts/installOrUpdate.ps1 target/${{ matrix.target }}/release/
+          cd target/${{ matrix.target }}/release
+          zip ../../../tracetui-${{ matrix.target }}.zip tracetui.exe installOrUpdate.ps1
+          cd -
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tracetui-${{ matrix.target }}
+          path: tracetui-${{ matrix.target }}.${{ matrix.archive }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Bump version and prepare release notes
+        shell: python3 {0}
+        run: |
+          import re, datetime, os
+
+          today = datetime.date.today().strftime("%Y-%m-%d")
+          versions_path = "VERSIONS.md"
+
+          with open(versions_path, "r") as f:
+            content = f.read()
+
+          unreleased_match = re.search(
+            r"# UNRELEASED\n(.+?)(?=\n# RELEASED)", content, re.DOTALL
+          )
+          if not unreleased_match:
+            print("No UNRELEASED section found")
+            exit(1)
+
+          unreleased_raw = unreleased_match.group(1).strip()
+          if not unreleased_raw:
+            print("UNRELEASED section is empty, nothing to release")
+            with open(os.environ["GITHUB_ENV"], "a") as env:
+              env.write("SKIP_RELEASE=true\n")
+            exit(0)
+
+          version_blocks = re.findall(
+            r"(## (?:[\d\-]+\s+)?V[\d]+\.[\d]+\.[\d]+\n.+?)(?=\n## |\Z)", unreleased_raw, re.DOTALL
+          )
+          if not version_blocks:
+            print("No version blocks found in UNRELEASED")
+            exit(1)
+
+          version_match = re.search(r"V[\d]+\.[\d]+\.[\d]+", version_blocks[0])
+          latest_version = version_match.group(0) if version_match else ""
+
+          new_released = []
+          release_body_parts = []
+          for block in version_blocks:
+            lines = block.strip().split("\n")
+            body = "\n".join(lines[1:]).strip()
+            dated = f"## {today}  {latest_version}"
+            entry = dated + ("\n" + body if body else "")
+            new_released.append(entry)
+            release_body_parts.append(entry)
+
+          released_header = "# RELEASED\n"
+          ridx = content.find(released_header)
+          existing = content[ridx + len(released_header):].strip()
+
+          all_released = "\n\n".join(new_released)
+          if existing:
+            all_released += "\n\n" + existing
+
+          before = content[:unreleased_match.start()]
+          new_content = f"{before}# UNRELEASED\n\n\n# RELEASED\n\n{all_released}\n"
+          with open(versions_path, "w") as f:
+            f.write(new_content)
+
+          version = latest_version.lstrip("V")
+          cargo_path = "Cargo.toml"
+          with open(cargo_path, "r") as f:
+              cargo = f.read()
+          cargo = re.sub(
+              r'^version\s*=\s*"[^"]+"',
+              f'version = "{version}"',
+              cargo,
+              count=1,
+              flags=re.MULTILINE,
+          )
+          with open(cargo_path, "w") as f:
+              f.write(cargo)
+
+          install_notes = (
+              "## Installation\n"
+              "\n"
+              "> **Already installed?** Just run `tracetui` — it checks for updates automatically on every launch.\n"
+              "> The install script below is only needed for first-time setup.\n"
+              "\n"
+              "**Windows:**\n"
+              "1. Download `tracetui-x86_64-pc-windows-gnu.zip`\n"
+              "2. Extract and run `installOrUpdate.ps1` (adds `tracetui` to your user PATH)\n"
+              "3. Restart your terminal and run `tracetui`\n"
+              "\n"
+              "**Linux:**\n"
+              "1. Download `tracetui-x86_64-unknown-linux-gnu.tar.gz`\n"
+              "2. Extract: `tar xzf tracetui-x86_64-unknown-linux-gnu.tar.gz`\n"
+              "3. Run the install script: `chmod +x installOrUpdate.sh and next sudo sh ./installOrUpdate.sh`\n"
+              "4. Run `tracetui`\n"
+          )
+          import uuid
+          release_body = "\n\n".join(release_body_parts) + "\n\n" + install_notes
+          notes_file = os.path.join(os.environ.get("RUNNER_TEMP", "."), "release_notes.md")
+          with open(notes_file, "w") as f:
+            f.write(release_body)
+          with open(os.environ["GITHUB_ENV"], "a") as env:
+            env.write(f"RELEASE_VERSION={latest_version}\n")
+            env.write(f"RELEASE_NOTES_FILE={notes_file}\n")
+
+      - name: Commit VERSIONS.md
+        if: env.SKIP_RELEASE != 'true'
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add VERSIONS.md Cargo.toml
+          git diff --cached --quiet || git commit -m ":rocket: Deployed ${{ env.RELEASE_VERSION }} for Windows/Linux"
+          git push
+
+      - name: Collect binaries
+        if: env.SKIP_RELEASE != 'true'
+        run: |
+          mkdir -p release-assets
+          find artifacts -type f -exec cp {} release-assets/ \;
+
+      - name: Create GitHub Release
+        if: env.SKIP_RELEASE != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ env.RELEASE_VERSION }}" \
+            --title "${{ env.RELEASE_VERSION }}" \
+            --notes-file "${{ env.RELEASE_NOTES_FILE }}" \
+            --target "${{ github.sha }}" \
+            --draft \
+            release-assets/*

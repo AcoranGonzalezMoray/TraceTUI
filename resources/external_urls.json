@@ -1,0 +1,9 @@
+{
+  "github_api_releases": "https://api.github.com/repos/AcoranGonzalezMoray/TraceTUI/releases/latest",
+  "github_releases_page": "https://github.com/AcoranGonzalezMoray/TraceTUI/releases/latest",
+  "google_search_url": "https://www.google.com/search?q=",
+  "nerd_font_repo_url": "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip",
+  "geoip_api_base": "http://ip-api.com/json",
+  "geoip_api_batch": "http://ip-api.com/batch",
+  "user_agent": "tracetui"
+}

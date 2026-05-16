@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download TraceTUI</title>
+    <meta name="description" content="Download TraceTUI for Windows or Linux">
+    <link rel="icon" type="image/png" href="assets/tracetuiicon.png">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <img src="assets/tracetuiicon.png" alt="TraceTUI" class="logo-img">
+                <span class="logo-text">Trace<span class="accent">TUI</span></span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html#features">Features</a></li>
+                <li><a href="index.html#docs">Docs</a></li>
+                <li><a href="index.html#install">Install</a></li>
+                <li><a href="https://github.com/AcoranGonzalezMoray/TraceTUI" class="btn btn-outline" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="download-hero" id="downloadHero">
+        <div class="download-container">
+            <div class="download-badge" id="platformBadge">
+                <span id="platformIcon">⬇</span>
+                <span id="platformLabel">Downloading...</span>
+            </div>
+
+            <h1 class="download-title" id="dlTitle">Your Download Will Start Shortly</h1>
+            <p class="download-subtitle" id="dlSubtitle">Preparing the latest release for your platform.</p>
+
+            <div class="download-countdown">
+                <div class="countdown-ring"></div>
+                <span class="countdown-text">Download starting in <strong id="countdownNum">3</strong>s</span>
+            </div>
+
+            <p class="download-link-fallback" id="fallbackLink">
+                Not starting? <a href="#" id="directLink">Click here to download manually</a>
+            </p>
+
+            <div class="download-card" id="installSteps">
+                <h3><span class="dl-icon">📥</span> First-time installation</h3>
+                <ol id="stepsList">
+                    <li>Download the archive below</li>
+                    <li>Extract the contents</li>
+                    <li>Run the install script</li>
+                    <li>Restart your terminal and run <code>tracetui</code></li>
+                </ol>
+            </div>
+
+            <div class="download-card">
+                <h3><span class="dl-icon">🔄</span> Updating from a previous version</h3>
+                <ol>
+                    <li>Download the latest archive below</li>
+                    <li>Extract the contents (overwrite existing files)</li>
+                    <li>Run the install script again — it will update your existing installation</li>
+                    <li>Run <code>tracetui</code> to verify the new version</li>
+                </ol>
+            </div>
+
+            <div class="update-note">
+                <span class="note-icon">✓</span>
+                <div class="note-text">
+                    <strong>Already installed?</strong> Just run <code>tracetui</code> in your terminal — it checks for updates automatically on every launch and will notify you when a new version is available. The install script is only needed for first-time setup or manual upgrades.
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="logo">
+                        <img src="assets/tracetuiicon.png" alt="TraceTUI" class="logo-img">
+                        <span class="logo-text">Trace<span class="accent">TUI</span></span>
+                    </div>
+                    <p>Modern terminal-based network investigation tool. Open-source and cross-platform.</p>
+                </div>
+                <div class="footer-links">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="index.html#features">Features</a></li>
+                        <li><a href="index.html#docs">Documentation</a></li>
+                        <li><a href="index.html#install">Download</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h4>Community</h4>
+                    <ul>
+                        <li><a href="https://github.com/AcoranGonzalezMoray/TraceTUI">GitHub</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="#">MIT License</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 TraceTUI. Open-source under MIT License.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Navbar scroll effect
+        (function () {
+            var navbar = document.getElementById('navbar');
+            if (navbar) {
+                window.addEventListener('scroll', function () {
+                    navbar.classList.toggle('scrolled', window.scrollY > 50);
+                });
+            }
+        })();
+
+        (function () {
+            var params = new URLSearchParams(window.location.search);
+            var platform = params.get('platform') || '';
+
+            var DOWNLOADS = {
+                windows: {
+                    label: 'Windows',
+                    icon: '⊞',
+                    url: 'https://github.com/AcoranGonzalezMoray/TraceTUI/releases/latest/download/tracetui-x86_64-pc-windows-gnu.zip',
+                    archive: 'tracetui-x86_64-pc-windows-gnu.zip',
+                    steps: [
+                        'Download <code>tracetui-x86_64-pc-windows-gnu.zip</code>',
+                        'Extract the ZIP file to a folder of your choice',
+                        'Right-click <span class="dl-script">installOrUpdate.ps1</span> and select <strong>Run with PowerShell</strong> (adds <code>tracetui</code> to your user PATH)',
+                        'Restart your terminal and run <code>tracetui</code>'
+                    ],
+                    updateSteps: [
+                        'Download the latest <code>tracetui-x86_64-pc-windows-gnu.zip</code>',
+                        'Extract and overwrite your existing installation files',
+                        'Run <span class="dl-script">installOrUpdate.ps1</span> again to update PATH if needed',
+                        'Run <code>tracetui --version</code> to verify the update'
+                    ]
+                },
+                linux: {
+                    label: 'Linux',
+                    icon: '🐧',
+                    url: 'https://github.com/AcoranGonzalezMoray/TraceTUI/releases/latest/download/tracetui-x86_64-unknown-linux-gnu.tar.gz',
+                    archive: 'tracetui-x86_64-unknown-linux-gnu.tar.gz',
+                    steps: [
+                        'Download <code>tracetui-x86_64-unknown-linux-gnu.tar.gz</code>',
+                        'Extract: <code>tar xzf tracetui-x86_64-unknown-linux-gnu.tar.gz</code>',
+                        'Run the install script: <code>chmod +x installOrUpdate.sh and next sudo sh ./installOrUpdate.sh</code>',
+                        'Run <code>tracetui</code>'
+                    ],
+                    updateSteps: [
+                        'Download the latest <code>tracetui-x86_64-unknown-linux-gnu.tar.gz</code>',
+                        'Extract: <code>tar xzf tracetui-x86_64-unknown-linux-gnu.tar.gz</code>',
+                        'Run the install script again: <code>chmod +x installOrUpdate.sh and next sudo sh ./installOrUpdate.sh</code>',
+                        'Run <code>tracetui --version</code> to verify the update'
+                    ]
+                }
+            };
+
+            var info = DOWNLOADS[platform];
+
+            if (!info) {
+                document.getElementById('platformBadge').style.display = 'none';
+                document.getElementById('dlTitle').textContent = 'Choose Your Platform';
+                document.getElementById('dlSubtitle').textContent = 'Select Windows or Linux to start the download.';
+                document.getElementById('fallbackLink').style.display = 'none';
+                document.querySelector('.download-countdown').style.display = 'none';
+
+                var stepsCard = document.getElementById('installSteps');
+                stepsCard.querySelector('h3').innerHTML = '<span class="dl-icon">⬇</span> Download for your platform';
+                var stepsList = document.getElementById('stepsList');
+                stepsList.innerHTML = '';
+                var platforms = ['windows', 'linux'];
+                platforms.forEach(function (key) {
+                    var p = DOWNLOADS[key];
+                    var li = document.createElement('li');
+                    li.style.listStyle = 'none';
+                    li.style.marginBottom = '1rem';
+                    li.innerHTML = '<a href="?platform=' + key + '" class="btn btn-primary btn-lg" style="display:inline-flex;min-width:200px;justify-content:center;gap:8px">' +
+                        p.icon + ' Download for ' + p.label + '</a>';
+                    stepsList.appendChild(li);
+                });
+                return;
+            }
+
+            var platformIcon = document.getElementById('platformIcon');
+            platformIcon.textContent = info.icon;
+            document.getElementById('platformLabel').textContent = info.label;
+            document.getElementById('dlTitle').textContent = 'Downloading ' + info.label + ' Build';
+            document.getElementById('dlSubtitle').textContent = 'Your download of ' + info.archive + ' will start in a moment.';
+            document.getElementById('directLink').href = info.url;
+
+            var stepsList = document.getElementById('stepsList');
+            stepsList.innerHTML = '';
+            info.steps.forEach(function (s) {
+                var li = document.createElement('li');
+                li.innerHTML = s;
+                stepsList.appendChild(li);
+            });
+
+            var updateCard = document.querySelectorAll('.download-card')[1];
+            if (updateCard) {
+                var updateList = updateCard.querySelector('ol');
+                updateList.innerHTML = '';
+                info.updateSteps.forEach(function (s) {
+                    var li = document.createElement('li');
+                    li.innerHTML = s;
+                    updateList.appendChild(li);
+                });
+            }
+
+            var countdown = 3;
+            var countdownEl = document.getElementById('countdownNum');
+
+            var timer = setInterval(function () {
+                countdown--;
+                if (countdownEl) countdownEl.textContent = countdown;
+                if (countdown <= 0) {
+                    clearInterval(timer);
+                    window.location.href = info.url;
+                }
+            }, 1000);
+        })();
+    </script>
+</body>
+</html>

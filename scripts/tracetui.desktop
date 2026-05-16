@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=TraceTUI
+Comment=Modern Terminal Intelligence for Network & Process Investigation
+Exec=tracetui
+Icon=tracetui
+Terminal=true
+Categories=System;Utility;Network;
+Keywords=network;process;monitor;security;
