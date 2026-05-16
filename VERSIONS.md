@@ -25,6 +25,7 @@
   - ASN and network information
   - Timezone and connection type (mobile/proxy/hosting)
 - DNS Lookup: Forward and reverse DNS resolution (`nslookup`/`dig`)
+
 - Network Diagnostics: 
   - Ping latency measurement
   - Traceroute with geographic hop mapping

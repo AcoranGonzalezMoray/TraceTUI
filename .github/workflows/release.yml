@@ -85,6 +85,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -184,7 +185,6 @@ jobs:
               "3. Run the install script: `chmod +x installOrUpdate.sh and next sudo sh ./installOrUpdate.sh`\n"
               "4. Run `tracetui`\n"
           )
-          import uuid
           release_body = "\n\n".join(release_body_parts) + "\n\n" + install_notes
           notes_file = os.path.join(os.environ.get("RUNNER_TEMP", "."), "release_notes.md")
           with open(notes_file, "w") as f:
@@ -193,14 +193,20 @@ jobs:
             env.write(f"RELEASE_VERSION={latest_version}\n")
             env.write(f"RELEASE_NOTES_FILE={notes_file}\n")
 
-      - name: Commit VERSIONS.md
+      - name: Create Pull Request with Version Bump
         if: env.SKIP_RELEASE != 'true'
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add VERSIONS.md Cargo.toml
-          git diff --cached --quiet || git commit -m ":rocket: Deployed ${{ env.RELEASE_VERSION }} for Windows/Linux"
-          git push
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ github.token }}
+          commit-message: ":rocket: Deployed ${{ env.RELEASE_VERSION }} for Windows/Linux"
+          committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          branch: release-v${{ env.RELEASE_VERSION }}
+          title: "Release ${{ env.RELEASE_VERSION }}"
+          body: |
+            Automated version bump and changelog update for release ${{ env.RELEASE_VERSION }}.
+            Please review and merge to complete the release process.
+          base: main
 
       - name: Collect binaries
         if: env.SKIP_RELEASE != 'true'
