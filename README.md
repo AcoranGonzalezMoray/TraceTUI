@@ -19,7 +19,7 @@
 
 **TraceTUI** is a high-performance terminal user interface (TUI) for deep system forensic and network investigation. Built with **Rust** and **Ratatui**, it provides real-time monitoring of network traffic, process management, and suspicious activity analysis.
 
-<img src="./landing-page/assets/menu.png" alt="TraceTUI Menu">
+<img src="./docs/assets/menu.png" alt="TraceTUI Menu">
 
 
 
