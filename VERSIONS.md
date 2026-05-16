@@ -30,11 +30,13 @@
   - Ping latency measurement
   - Traceroute with geographic hop mapping
   - WHOIS record lookup
+
 - Risk Assessment: Automated risk scoring based on:
   - Domain/process mismatch detection
   - Network anonymity indicators (proxy, VPN, Tor)
   - Latency anomalies
   - Hosting provider and mobile network detection
+  
 - Visual Mapping: Interactive map view of connection routes and endpoints
 
 ✨: Automated Batch Analysis
