@@ -95,22 +95,50 @@ pub(crate) fn config_dir() -> PathBuf {
     base.join("tracetui")
 }
 
-pub fn save_language(locale: &str) {
+#[derive(serde::Serialize, serde::Deserialize, Default)]
+pub struct AppConfig {
+    #[serde(default)]
+    pub locale: String,
+    #[serde(default)]
+    pub last_version: String,
+}
+
+pub fn save_config(config: &AppConfig) {
     let dir = config_dir();
     let path = dir.join("config.json");
     if let Err(e) = std::fs::create_dir_all(&dir) {
         eprintln!("Failed to create config dir: {}", e);
         return;
     }
-    let content = format!("{{\"locale\":\"{}\"}}\n", locale);
-    if let Err(e) = std::fs::write(&path, content) {
-        eprintln!("Failed to save language config: {}", e);
+    if let Ok(content) = serde_json::to_string_pretty(config) {
+        if let Err(e) = std::fs::write(&path, content) {
+            eprintln!("Failed to save config: {}", e);
+        }
     }
 }
 
-pub fn load_language() -> Option<String> {
+pub fn load_config() -> AppConfig {
     let path = config_dir().join("config.json");
-    let content = std::fs::read_to_string(path).ok()?;
-    let parsed: serde_json::Value = serde_json::from_str(&content).ok()?;
-    parsed.get("locale")?.as_str().map(|s| s.to_string())
+    let mut config = AppConfig::default();
+    if let Ok(content) = std::fs::read_to_string(path) {
+        if let Ok(parsed) = serde_json::from_str::<AppConfig>(&content) {
+            config = parsed;
+        }
+    }
+    config
+}
+
+pub fn save_language(locale: &str) {
+    let mut config = load_config();
+    config.locale = locale.to_string();
+    save_config(&config);
+}
+
+pub fn load_language() -> Option<String> {
+    let config = load_config();
+    if config.locale.is_empty() {
+        None
+    } else {
+        Some(config.locale)
+    }
 }

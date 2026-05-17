@@ -52,7 +52,6 @@ mod e2e_export_and_investigation {
         }
     }
 
-    /// E2E: Export with multiple apps and connections, verify full JSON structure, cleanup
     #[test]
     fn e2e_export_multi_app_with_cleanup() {
         let mut app = App::new();
@@ -128,7 +127,6 @@ mod e2e_export_and_investigation {
         let arr = json.as_array().unwrap();
         assert_eq!(arr.len(), 2);
 
-        // Verify first app
         assert_eq!(arr[0]["process_name"], "chrome.exe");
         assert_eq!(arr[0]["pid"], 1);
         assert_eq!(arr[0]["connections"].as_array().unwrap().len(), 2);
@@ -140,13 +138,11 @@ mod e2e_export_and_investigation {
             serde_json::Value::Null
         );
 
-        // Verify second app
         assert_eq!(arr[1]["process_name"], "firefox.exe");
         assert_eq!(arr[1]["pid"], 2);
         assert_eq!(arr[1]["connections"][0]["protocol"], "UDP");
         assert_eq!(arr[1]["connections"][0]["foreign_address"], "224.0.0.251");
 
-        // Cleanup generated file
         let _ = std::fs::remove_file(&path);
         assert!(
             !path.exists(),
@@ -154,7 +150,6 @@ mod e2e_export_and_investigation {
         );
     }
 
-    /// E2E: Investigation report construction and risk score calculation
     #[test]
     fn e2e_investigation_report_structure() {
         use crate::app::investigation_service::InvestigationReport;
@@ -174,7 +169,6 @@ mod e2e_export_and_investigation {
         assert_eq!(parsed["lon"], 0.0);
     }
 
-    /// E2E: Risk scoring integration — suspicious process + many connections
     #[test]
     fn e2e_risk_scoring_integration() {
         use crate::app::process::ProcessInfo;
@@ -209,7 +203,6 @@ mod e2e_export_and_investigation {
         assert_eq!(risk, "CRITICAL");
     }
 
-    /// E2E: ConnectionGrouper integration — build AppConnections from processes and connections
     #[test]
     fn e2e_grouping_integration() {
         use crate::app::grouping::ConnectionGrouper;
@@ -248,17 +241,14 @@ mod e2e_export_and_investigation {
         let result = ConnectionGrouper::group(&procs, &conns, false, |_, _| String::new());
         assert_eq!(result.len(), 2);
 
-        // Sorted by connection count: app1 (3 conns) first, app2 (1 conn) second
         assert_eq!(result[0].pid, 1);
         assert_eq!(result[0].connections.len(), 3);
         assert_eq!(result[1].pid, 2);
         assert_eq!(result[1].connections.len(), 1);
 
-        // Verify risk levels are populated
         assert!(!result[0].risk_level.is_empty());
         assert!(!result[1].risk_level.is_empty());
 
-        // Verify signature status (Unsigned on Windows for non-existent paths, Unknown on Linux)
         assert!(
             result[0].signature_status == crate::utils::signatures::SignatureStatus::Unsigned
                 || result[0].signature_status == crate::utils::signatures::SignatureStatus::Unknown,

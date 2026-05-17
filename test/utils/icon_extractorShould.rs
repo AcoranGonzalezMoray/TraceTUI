@@ -67,4 +67,33 @@ mod icon_extractor_tests {
         let cache = IconCache::new();
         let _debug = format!("{:?}", cache);
     }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_linux_get_icon_no_icon_returns_empty() {
+        let mut cache = IconCache::new();
+        let icon = cache.get_icon("", "nonexistent_process");
+        assert_eq!(icon, "");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_linux_get_icon_after_eviction_returns_empty() {
+        use crate::config;
+        let mut cache = IconCache::new();
+        for i in 0..config::LRU_CACHE_SIZE + 5 {
+            cache.insert_icon(&format!("/path{}.exe", i), format!("icon{}", i));
+        }
+        let evicted = cache.get_icon("/path0.exe", "any");
+        assert_eq!(evicted, "");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_linux_inserted_icon_is_returned() {
+        let mut cache = IconCache::new();
+        cache.insert_icon("/usr/bin/firefox", "firefox-icon-ansi".to_string());
+        let icon = cache.get_icon("/usr/bin/firefox", "firefox");
+        assert_eq!(icon, "firefox-icon-ansi");
+    }
 }

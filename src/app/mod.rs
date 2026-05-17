@@ -101,13 +101,23 @@ pub struct App {
     pub show_update_dialog: bool,
     pub latest_remote_version: String,
     pub update_rx: Option<std::sync::mpsc::Receiver<String>>,
+    pub update_task_rx:
+        Option<tokio::sync::mpsc::UnboundedReceiver<crate::app::types::UpdateEvent>>,
+    pub is_updating: bool,
+    pub update_done: bool,
+    pub update_success: bool,
+    pub update_message: String,
+    pub update_progress: f64,
+    pub show_welcome_dialog: bool,
+    pub welcome_index: usize,
 }
 impl App {
     pub fn new() -> Self {
         let (tx, rx) = mpsc::unbounded_channel();
         let (itx, irx) = mpsc::unbounded_channel();
         let (utx, urx) = mpsc::unbounded_channel();
-        Self {
+        #[allow(unused_mut)]
+        let mut app = Self {
             should_quit: false,
             current_state: AppState::Dashboard,
             sidebar_focus: SidebarFocus::Left,
@@ -185,7 +195,34 @@ impl App {
             show_update_dialog: false,
             latest_remote_version: String::new(),
             update_rx: None,
+            update_task_rx: None,
+            is_updating: false,
+            update_done: false,
+            update_success: false,
+            update_message: String::new(),
+            update_progress: 0.0,
+            show_welcome_dialog: false,
+            welcome_index: 0,
+        };
+
+        #[cfg(not(test))]
+        {
+            let config_path = crate::config::config_dir().join("config.json");
+            let config_exists = config_path.exists();
+            let mut config = crate::config::load_config();
+            let current_version = env!("CARGO_PKG_VERSION").to_string();
+
+            if config_exists
+                && (config.last_version.is_empty() || config.last_version != current_version)
+            {
+                app.show_welcome_dialog = true;
+            }
+
+            config.last_version = current_version;
+            crate::config::save_config(&config);
         }
+
+        app
     }
     pub fn get_filtered_apps(&self) -> Vec<&AppConnection> {
         self.app_connections

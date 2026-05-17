@@ -1,4 +1,5 @@
 use crate::resources;
+use self_update;
 pub fn make_failed_output(msg: &[u8]) -> std::process::Output {
     let status = std::process::Command::new("sh")
         .arg("-c")
@@ -127,4 +128,203 @@ fn run_nerdfont_script() -> std::io::Result<std::process::Output> {
         .arg("-c")
         .arg(&script)
         .output()
+}
+pub fn spawn_self_update(
+    tx: tokio::sync::mpsc::UnboundedSender<crate::app::types::UpdateEvent>,
+    target_version: String,
+) {
+    tokio::spawn(async move {
+        let handle = tokio::task::spawn_blocking(move || {
+            let relay = "AcoranGonzalezMoray/TraceTUI";
+            let parts: Vec<&str> = relay.split('/').collect();
+            let user = parts[0];
+            let repo = parts[1];
+
+            let releases = self_update::backends::github::ReleaseList::configure()
+                .repo_owner(user)
+                .repo_name(repo)
+                .build()
+                .map_err(|e| e.to_string())?
+                .fetch()
+                .map_err(|e| e.to_string())?;
+
+            let version = target_version.trim_start_matches(['v', 'V']);
+            let release = releases
+                .iter()
+                .find(|r| {
+                    let r_v = r.version.trim_start_matches(['v', 'V']);
+                    r_v == version
+                })
+                .ok_or_else(|| format!("Release {} not found", target_version))?;
+
+            let _bin_name = "tracetui";
+            let current_target = self_update::get_target();
+
+            let target = if current_target.contains("windows") {
+                "x86_64-pc-windows-gnu"
+            } else if current_target.contains("linux") {
+                "x86_64-unknown-linux-gnu"
+            } else {
+                current_target
+            };
+
+            let asset = release
+                .assets
+                .iter()
+                .find(|a| a.name.contains(target))
+                .ok_or_else(|| format!("No asset found for target {}", target))?;
+
+            Ok::<(String, String), String>((asset.download_url.clone(), asset.name.clone()))
+        });
+
+        let (url, name) = match handle.await {
+            Ok(Ok(res)) => res,
+            Ok(Err(e)) => {
+                let _ = tx.send(crate::app::types::UpdateEvent::Finished(false, e));
+                return;
+            }
+            Err(e) => {
+                let _ = tx.send(crate::app::types::UpdateEvent::Finished(
+                    false,
+                    e.to_string(),
+                ));
+                return;
+            }
+        };
+
+        let client = reqwest::Client::builder()
+            .user_agent("TraceTUI-Updater")
+            .build()
+            .unwrap_or_default();
+
+        let response = match client
+            .get(&url)
+            .header("Accept", "application/octet-stream")
+            .send()
+            .await
+        {
+            Ok(res) if res.status().is_success() => res,
+            Ok(res) => {
+                let _ = tx.send(crate::app::types::UpdateEvent::Finished(
+                    false,
+                    format!("Download failed: HTTP {}", res.status()),
+                ));
+                return;
+            }
+            Err(e) => {
+                let _ = tx.send(crate::app::types::UpdateEvent::Finished(
+                    false,
+                    format!("Network error: {}", e),
+                ));
+                return;
+            }
+        };
+
+        let total_size = response.content_length().unwrap_or(0);
+        let mut downloaded: u64 = 0;
+        let mut stream = response.bytes_stream();
+        let mut buffer = Vec::new();
+
+        use futures_util::StreamExt;
+        while let Some(item) = stream.next().await {
+            let chunk = match item {
+                Ok(c) => c,
+                Err(e) => {
+                    let _ = tx.send(crate::app::types::UpdateEvent::Finished(
+                        false,
+                        format!("Stream error: {}", e),
+                    ));
+                    return;
+                }
+            };
+            downloaded += chunk.len() as u64;
+            buffer.extend_from_slice(&chunk);
+
+            if total_size > 0 {
+                let progress = (downloaded as f64 / total_size as f64) * 100.0;
+                let _ = tx.send(crate::app::types::UpdateEvent::Progress(progress));
+            }
+        }
+
+        let status = tokio::task::spawn_blocking(move || {
+            let bin_path = std::env::current_exe().map_err(|e| e.to_string())?;
+            let tmp_dir = bin_path.parent().unwrap().join(".tracetui_update_tmp");
+
+            std::fs::create_dir_all(&tmp_dir).map_err(|e| e.to_string())?;
+            let tmp_path = tmp_dir.join(&name);
+            std::fs::write(&tmp_path, buffer).map_err(|e| e.to_string())?;
+
+            let bin_name = if cfg!(target_os = "windows") {
+                "tracetui.exe"
+            } else {
+                "tracetui"
+            };
+            let extracted_bin = tmp_dir.join(bin_name);
+
+            if name.ends_with(".zip") {
+                let file = std::fs::File::open(&tmp_path).map_err(|e| e.to_string())?;
+                let mut archive = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
+                for i in 0..archive.len() {
+                    let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
+                    if file.name() == bin_name {
+                        let mut out =
+                            std::fs::File::create(&extracted_bin).map_err(|e| e.to_string())?;
+                        std::io::copy(&mut file, &mut out).map_err(|e| e.to_string())?;
+                        break;
+                    }
+                }
+            } else if name.ends_with(".tar.gz") || name.ends_with(".tgz") {
+                let tar_gz = std::fs::File::open(&tmp_path).map_err(|e| e.to_string())?;
+                let tar = flate2::read::GzDecoder::new(tar_gz);
+                let mut archive = tar::Archive::new(tar);
+                for entry in archive.entries().map_err(|e| e.to_string())? {
+                    let mut entry = entry.map_err(|e| e.to_string())?;
+                    let path = entry.path().map_err(|e| e.to_string())?;
+                    if path.to_str() == Some(bin_name) {
+                        entry.unpack(&extracted_bin).map_err(|e| e.to_string())?;
+                        break;
+                    }
+                }
+            } else {
+                std::fs::rename(&tmp_path, &extracted_bin).map_err(|e| e.to_string())?;
+            }
+
+            if !extracted_bin.exists() {
+                return Err(format!(
+                    "Could not find binary {} in the update package",
+                    bin_name
+                ));
+            }
+
+            self_update::Move::from_source(&extracted_bin)
+                .replace_using_temp(&bin_path)
+                .to_dest(&bin_path)
+                .map_err(|e| e.to_string())?;
+
+            let _ = std::fs::remove_dir_all(&tmp_dir);
+            Ok::<(), String>(())
+        })
+        .await;
+
+        match status {
+            Ok(Ok(_)) => {
+                let _ = tx.send(crate::app::types::UpdateEvent::Finished(
+                    true,
+                    "Update successful! Restart the application to apply changes.".to_string(),
+                ));
+            }
+            Ok(Err(e)) => {
+                let _ = tx.send(crate::app::types::UpdateEvent::Finished(
+                    false,
+                    format!("Update process failed: {}", e),
+                ));
+            }
+            Err(e) => {
+                let _ = tx.send(crate::app::types::UpdateEvent::Finished(
+                    false,
+                    format!("Update task panicked: {}", e),
+                ));
+            }
+        }
+    });
 }

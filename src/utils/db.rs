@@ -4,8 +4,15 @@ pub struct Database {
     conn: Connection,
 }
 impl Database {
+    fn data_dir() -> std::path::PathBuf {
+        let dir = crate::config::config_dir();
+        std::fs::create_dir_all(&dir).ok();
+        dir
+    }
+
     pub fn new() -> Result<Self> {
-        let conn = Connection::open(config::DB_FILENAME)?;
+        let db_path = Self::data_dir().join(config::DB_FILENAME);
+        let conn = Connection::open(&db_path)?;
         conn.execute(
             "CREATE TABLE IF NOT EXISTS investigations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -4,10 +4,10 @@ use crate::config;
 use crate::i18n::Translator;
 use crate::tr;
 use ratatui::{
-    layout::{Alignment, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, Clear, Paragraph},
+    widgets::{Block, BorderType, Borders, Clear, Gauge, Paragraph},
 };
 pub fn render_install_dialog(f: &mut ratatui::Frame, app: &App) {
     let popup_area = Rect {
@@ -630,85 +630,253 @@ pub fn render_language_modal(f: &mut ratatui::Frame, app: &App) {
 }
 
 pub fn render_update_dialog(f: &mut ratatui::Frame, app: &App) {
+    let popup_height = 10;
     let popup_area = Rect {
         x: (f.area().width / 6),
-        y: (f.area().height / 3),
+        y: (f.area().height.saturating_sub(popup_height)) / 2,
         width: f.area().width * 2 / 3,
-        height: 10,
+        height: popup_height.min(f.area().height),
     };
-    let dialog_text = vec![
-        Line::from(""),
-        Line::from(vec![Span::styled(
-            format!("  {} ", tr!(app.translator, "dialog.update_available")),
-            Style::default()
-                .fg(THEME.warning)
-                .add_modifier(Modifier::BOLD),
-        )]),
-        Line::from(""),
-        Line::from(vec![
-            Span::styled("  ", Style::default()),
-            Span::styled(
+
+    if app.is_updating && !app.update_done {
+        let spinner = match app.frame_count % 4 {
+            0 => "/",
+            1 => "-",
+            2 => "\\",
+            _ => "|",
+        };
+
+        let progress_chunks = ratatui::layout::Layout::default()
+            .direction(ratatui::layout::Direction::Vertical)
+            .constraints([
+                Constraint::Length(4),
+                Constraint::Length(3),
+                Constraint::Min(0),
+            ])
+            .split(popup_area);
+
+        let dialog_text = vec![
+            Line::from(""),
+            Line::from(vec![Span::styled(
                 format!(
-                    "{} v{} → v{}",
-                    tr!(app.translator, "dialog.update_current"),
-                    env!("CARGO_PKG_VERSION"),
-                    app.latest_remote_version,
+                    "  {}  {} ",
+                    spinner,
+                    tr!(app.translator, "dialog.update_downloading")
                 ),
-                Style::default().fg(THEME.text_main),
-            ),
-        ]),
-        Line::from(""),
-        Line::from(vec![
-            Span::styled("  ", Style::default()),
-            Span::styled(
-                tr!(app.translator, "dialog.update_prompt"),
+                Style::default()
+                    .fg(THEME.warning)
+                    .add_modifier(Modifier::BOLD),
+            )]),
+            Line::from(""),
+            Line::from(vec![Span::styled(
+                format!("  {} ", tr!(app.translator, "dialog.nerdfont_wait1")),
                 Style::default().fg(THEME.text_dim),
-            ),
-        ]),
-        Line::from(""),
-        Line::from(vec![
-            Span::styled("   Press ", Style::default().fg(THEME.text_dim)),
-            Span::styled(
-                " Enter ",
+            )]),
+        ];
+
+        let gauge = Gauge::default()
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(THEME.primary)),
+            )
+            .gauge_style(
                 Style::default()
-                    .fg(THEME.background)
-                    .bg(THEME.success)
+                    .fg(THEME.success)
+                    .bg(THEME.background)
                     .add_modifier(Modifier::BOLD),
-            ),
-            Span::styled(
-                format!(" {}   ", tr!(app.translator, "dialog.download")),
-                Style::default().fg(THEME.text_main),
-            ),
-            Span::styled(
-                " Esc ",
-                Style::default()
-                    .fg(THEME.background)
-                    .bg(THEME.danger)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::styled(
-                format!(" {}", tr!(app.translator, "dialog.to_dismiss")),
-                Style::default().fg(THEME.text_main),
-            ),
-        ]),
-    ];
-    let dialog = Paragraph::new(dialog_text)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(format!(" {} ", tr!(app.translator, "dialog.update_title")))
-                .title_style(
+            )
+            .percent(app.update_progress as u16)
+            .label(format!("{:.1}%", app.update_progress));
+
+        let dialog = Paragraph::new(dialog_text)
+            .block(
+                Block::default()
+                    .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+                    .title(format!(" {} ", tr!(app.translator, "dialog.update_title")))
+                    .title_style(
+                        Style::default()
+                            .fg(THEME.warning)
+                            .add_modifier(Modifier::BOLD),
+                    )
+                    .border_style(Style::default().fg(THEME.warning))
+                    .border_type(BorderType::Thick),
+            )
+            .style(Style::default().bg(THEME.background));
+
+        f.render_widget(Clear, popup_area);
+        f.render_widget(dialog, progress_chunks[0]);
+
+        let gauge_area = ratatui::layout::Layout::default()
+            .direction(ratatui::layout::Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage(5),
+                Constraint::Percentage(90),
+                Constraint::Percentage(5),
+            ])
+            .split(progress_chunks[1])[1];
+
+        f.render_widget(gauge, gauge_area);
+
+        let footer_text = vec![
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("   Press ", Style::default().fg(THEME.text_dim)),
+                Span::styled(
+                    " Esc ",
                     Style::default()
-                        .fg(THEME.warning)
+                        .fg(THEME.background)
+                        .bg(THEME.danger)
                         .add_modifier(Modifier::BOLD),
-                )
+                ),
+                Span::styled(
+                    format!(" {}", tr!(app.translator, "dialog.to_cancel")),
+                    Style::default().fg(THEME.text_main),
+                ),
+            ]),
+        ];
+        let footer = Paragraph::new(footer_text).block(
+            Block::default()
+                .borders(Borders::BOTTOM | Borders::LEFT | Borders::RIGHT)
                 .border_style(Style::default().fg(THEME.warning))
                 .border_type(BorderType::Thick),
-        )
-        .style(Style::default().bg(THEME.background))
-        .alignment(Alignment::Left);
-    f.render_widget(Clear, popup_area);
-    f.render_widget(dialog, popup_area);
+        );
+        f.render_widget(footer, progress_chunks[2]);
+    } else if app.update_done {
+        let (icon, border_color, title) = if app.update_success {
+            (
+                "[OK]",
+                THEME.success,
+                tr!(app.translator, "dialog.update_success"),
+            )
+        } else {
+            (
+                "[FAIL]",
+                THEME.danger,
+                tr!(app.translator, "dialog.update_failed"),
+            )
+        };
+        let dialog_text = vec![
+            Line::from(""),
+            Line::from(vec![Span::styled(
+                format!("  {} ", icon),
+                Style::default()
+                    .fg(THEME.background)
+                    .bg(border_color)
+                    .add_modifier(Modifier::BOLD),
+            )]),
+            Line::from(""),
+            Line::from(vec![Span::styled(
+                format!("  {} ", app.update_message),
+                Style::default().fg(THEME.text_main),
+            )]),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("   Press ", Style::default().fg(THEME.text_dim)),
+                Span::styled(
+                    " Enter ",
+                    Style::default()
+                        .fg(THEME.background)
+                        .bg(THEME.success)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    format!(" {}", tr!(app.translator, "dialog.to_dismiss")),
+                    Style::default().fg(THEME.text_main),
+                ),
+            ]),
+        ];
+        let dialog = Paragraph::new(dialog_text)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(format!(" {} ", title))
+                    .title_style(
+                        Style::default()
+                            .fg(border_color)
+                            .add_modifier(Modifier::BOLD),
+                    )
+                    .border_style(Style::default().fg(border_color))
+                    .border_type(BorderType::Thick),
+            )
+            .style(Style::default().bg(THEME.background))
+            .alignment(Alignment::Left);
+        f.render_widget(Clear, popup_area);
+        f.render_widget(dialog, popup_area);
+    } else {
+        let dialog_text = vec![
+            Line::from(""),
+            Line::from(vec![Span::styled(
+                format!("  {} ", tr!(app.translator, "dialog.update_available")),
+                Style::default()
+                    .fg(THEME.warning)
+                    .add_modifier(Modifier::BOLD),
+            )]),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("  ", Style::default()),
+                Span::styled(
+                    format!(
+                        "v{} → v{}",
+                        env!("CARGO_PKG_VERSION"),
+                        app.latest_remote_version,
+                    ),
+                    Style::default().fg(THEME.text_main),
+                ),
+            ]),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("  ", Style::default()),
+                Span::styled(
+                    tr!(app.translator, "dialog.update_prompt"),
+                    Style::default().fg(THEME.text_dim),
+                ),
+            ]),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("   Press ", Style::default().fg(THEME.text_dim)),
+                Span::styled(
+                    " Enter ",
+                    Style::default()
+                        .fg(THEME.background)
+                        .bg(THEME.success)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    format!(" {}   ", tr!(app.translator, "dialog.download")),
+                    Style::default().fg(THEME.text_main),
+                ),
+                Span::styled(
+                    " Esc ",
+                    Style::default()
+                        .fg(THEME.background)
+                        .bg(THEME.danger)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    format!(" {}", tr!(app.translator, "dialog.to_dismiss")),
+                    Style::default().fg(THEME.text_main),
+                ),
+            ]),
+        ];
+        let dialog = Paragraph::new(dialog_text)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(format!(" {} ", tr!(app.translator, "dialog.update_title")))
+                    .title_style(
+                        Style::default()
+                            .fg(THEME.warning)
+                            .add_modifier(Modifier::BOLD),
+                    )
+                    .border_style(Style::default().fg(THEME.warning))
+                    .border_type(BorderType::Thick),
+            )
+            .style(Style::default().bg(THEME.background))
+            .alignment(Alignment::Left);
+        f.render_widget(Clear, popup_area);
+        f.render_widget(dialog, popup_area);
+    }
 }
 
 pub fn render_confirmation_dialog(f: &mut ratatui::Frame, app: &App) {
@@ -787,4 +955,121 @@ pub fn render_confirmation_dialog(f: &mut ratatui::Frame, app: &App) {
         .alignment(ratatui::layout::Alignment::Left);
     f.render_widget(Clear, popup_area);
     f.render_widget(dialog, popup_area);
+}
+
+pub fn render_welcome_dialog(f: &mut ratatui::Frame, app: &App) {
+    let popup_height = 10;
+    let popup_width = 70;
+    let area = Rect {
+        x: (f.area().width.saturating_sub(popup_width)) / 2,
+        y: (f.area().height.saturating_sub(popup_height)) / 2,
+        width: popup_width.min(f.area().width),
+        height: popup_height.min(f.area().height),
+    };
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Thick)
+        .border_style(Style::default().fg(THEME.success))
+        .title(format!(
+            " 🎉 {} 🎉 ",
+            tr!(app.translator, "dialog.welcome_title")
+        ))
+        .title_alignment(Alignment::Center)
+        .style(Style::default().bg(THEME.background));
+
+    let inner_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Length(3),
+            Constraint::Min(0),
+        ])
+        .margin(1)
+        .split(area);
+
+    let current_version = env!("CARGO_PKG_VERSION");
+    let content = vec![Line::from(vec![
+        Span::styled(
+            format!("{} ", tr!(app.translator, "dialog.welcome_message")),
+            Style::default().fg(THEME.text_main),
+        ),
+        Span::styled(
+            format!("v{}", current_version),
+            Style::default()
+                .fg(THEME.success)
+                .add_modifier(Modifier::BOLD),
+        ),
+    ])
+    .alignment(Alignment::Center)];
+
+    let content_para = Paragraph::new(content)
+        .alignment(Alignment::Center)
+        .wrap(ratatui::widgets::Wrap { trim: true });
+
+    let button_area = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage(10),
+            Constraint::Percentage(35),
+            Constraint::Percentage(10),
+            Constraint::Percentage(35),
+            Constraint::Percentage(10),
+        ])
+        .split(inner_chunks[1]);
+
+    let btn_continue_style = if app.welcome_index == 0 {
+        Style::default()
+            .fg(THEME.background)
+            .bg(THEME.success)
+            .add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(THEME.text_dim).bg(THEME.background)
+    };
+
+    let btn_changes_style = if app.welcome_index == 1 {
+        Style::default()
+            .fg(THEME.background)
+            .bg(THEME.primary)
+            .add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(THEME.text_dim).bg(THEME.background)
+    };
+
+    let btn_continue = Paragraph::new(tr!(app.translator, "dialog.confirm"))
+        .alignment(Alignment::Center)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(if app.welcome_index == 0 {
+                    THEME.success
+                } else {
+                    THEME.text_dim
+                })),
+        );
+
+    let btn_changes = Paragraph::new(tr!(app.translator, "dialog.view_changes"))
+        .alignment(Alignment::Center)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(if app.welcome_index == 1 {
+                    THEME.primary
+                } else {
+                    THEME.text_dim
+                })),
+        );
+
+    f.render_widget(Clear, area);
+    f.render_widget(block, area);
+    f.render_widget(content_para, inner_chunks[0]);
+
+    if app.welcome_index == 0 {
+        f.render_widget(Block::default().style(btn_continue_style), button_area[1]);
+    } else {
+        f.render_widget(Block::default().style(btn_changes_style), button_area[3]);
+    }
+
+    f.render_widget(btn_continue, button_area[1]);
+    f.render_widget(btn_changes, button_area[3]);
 }
