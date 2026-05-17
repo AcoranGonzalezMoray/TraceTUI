@@ -1,4 +1,4 @@
-﻿use crate::config;
+use crate::config;
 use lru::LruCache;
 use std::num::NonZeroUsize;
 use std::path::Path;
@@ -52,17 +52,33 @@ impl IconCache {
         self.cache.put(exe_path.to_string(), IconData::Text(icon));
     }
     #[cfg(windows)]
+    const EMBEDDED_SCRIPT: &str = include_str!("../../scripts/icon_extractor.ps1");
+
+    #[cfg(windows)]
     fn script_path() -> String {
         let relative = config::ICON_EXTRACTOR_SCRIPT;
+
         if let Ok(exe) = std::env::current_exe() {
-            if let Some(dir) = exe.parent() {
-                let p = dir.join(relative);
-                if p.exists() {
-                    return p.to_string_lossy().to_string();
+            let mut current = exe.parent();
+            for _ in 0..4 {
+                if let Some(dir) = current {
+                    let p = dir.join(relative);
+                    if p.exists() {
+                        return p.to_string_lossy().to_string();
+                    }
+                    current = dir.parent();
+                } else {
+                    break;
                 }
             }
         }
-        relative.to_string()
+
+        let temp_dir = std::env::temp_dir();
+        let temp_script = temp_dir.join("tracetui_icon_extractor.ps1");
+
+        let _ = std::fs::write(&temp_script, Self::EMBEDDED_SCRIPT);
+
+        temp_script.to_string_lossy().to_string()
     }
     #[cfg(windows)]
     fn extract_icon_windows(&self, exe_path: &str) -> Option<IconData> {
@@ -101,12 +117,83 @@ impl IconCache {
         let icon_name = get_desktop_icon_name(&name_lower);
         if let Some(ref icon_name) = icon_name {
             if let Some(path) = find_icon_path_linux(icon_name, 24) {
-                if let Some(ansi) = convert_icon_to_ansi(&path, 24) {
+                if let Some(ansi) = self.convert_icon_to_ansi(&path, 24) {
                     return Some(IconData::Text(ansi));
                 }
             }
         }
         None
+    }
+    #[cfg(target_os = "linux")]
+    fn try_convert_svg(&self, svg_path: &str, width: u32) -> Option<String> {
+        let tmp_dir = std::env::temp_dir();
+        let output_png = tmp_dir.join(format!("tracetui_icon_{}.png", std::process::id()));
+        let status = Command::new("rsvg-convert")
+            .args([
+                "-w",
+                &width.to_string(),
+                svg_path,
+                "-o",
+                &output_png.to_string_lossy(),
+            ])
+            .status();
+        if let Ok(status) = status {
+            if status.success() && output_png.exists() {
+                let result = self.convert_png_to_ansi(&output_png.to_string_lossy(), width);
+                let _ = std::fs::remove_file(&output_png);
+                return result;
+            }
+        }
+        let status = Command::new("convert")
+            .args([
+                svg_path,
+                "-resize",
+                &format!("{}x{}", width, width),
+                &output_png.to_string_lossy(),
+            ])
+            .status();
+        if let Ok(status) = status {
+            if status.success() && output_png.exists() {
+                let result = self.convert_png_to_ansi(&output_png.to_string_lossy(), width);
+                let _ = std::fs::remove_file(&output_png);
+                return result;
+            }
+        }
+        let _ = std::fs::remove_file(&output_png);
+        None
+    }
+    #[cfg(target_os = "linux")]
+    fn convert_png_to_ansi(&self, png_path: &str, width: u32) -> Option<String> {
+        use std::io::Write;
+        let tmp_dir = std::env::temp_dir();
+        let script_path = tmp_dir.join(format!("tracetui_png2ansi_{}.py", std::process::id()));
+        let mut file = std::fs::File::create(&script_path).ok()?;
+        file.write_all(PYTHON_PNG_TO_ANSI.as_bytes()).ok()?;
+        drop(file);
+        let output = Command::new("python3")
+            .args([&script_path.to_string_lossy(), png_path, &width.to_string()])
+            .output();
+        let _ = std::fs::remove_file(&script_path);
+        if let Ok(output) = output {
+            if output.status.success() {
+                let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !stdout.is_empty() {
+                    return Some(stdout);
+                }
+            }
+        }
+        None
+    }
+    #[cfg(target_os = "linux")]
+    fn convert_icon_to_ansi(&self, icon_path: &str, width: u32) -> Option<String> {
+        let lower = icon_path.to_lowercase();
+        if lower.ends_with(".svg") {
+            return self.try_convert_svg(icon_path, width);
+        }
+        if lower.ends_with(".png") {
+            return self.convert_png_to_ansi(icon_path, width);
+        }
+        self.convert_png_to_ansi(icon_path, width)
     }
 }
 #[cfg(target_os = "linux")]
@@ -219,77 +306,6 @@ fn find_icon_path_linux(icon_name: &str, desired_size: u32) -> Option<String> {
         }
     }
     None
-}
-#[cfg(target_os = "linux")]
-fn try_convert_svg(svg_path: &str, width: u32) -> Option<String> {
-    let tmp_dir = std::env::temp_dir();
-    let output_png = tmp_dir.join(format!("tracetui_icon_{}.png", std::process::id()));
-    let status = Command::new("rsvg-convert")
-        .args([
-            "-w",
-            &width.to_string(),
-            svg_path,
-            "-o",
-            &output_png.to_string_lossy(),
-        ])
-        .status();
-    if let Ok(status) = status {
-        if status.success() && output_png.exists() {
-            let result = convert_png_to_ansi(&output_png.to_string_lossy(), width);
-            let _ = std::fs::remove_file(&output_png);
-            return result;
-        }
-    }
-    let status = Command::new("convert")
-        .args([
-            svg_path,
-            "-resize",
-            &format!("{}x{}", width, width),
-            &output_png.to_string_lossy(),
-        ])
-        .status();
-    if let Ok(status) = status {
-        if status.success() && output_png.exists() {
-            let result = convert_png_to_ansi(&output_png.to_string_lossy(), width);
-            let _ = std::fs::remove_file(&output_png);
-            return result;
-        }
-    }
-    let _ = std::fs::remove_file(&output_png);
-    None
-}
-#[cfg(target_os = "linux")]
-fn convert_png_to_ansi(png_path: &str, width: u32) -> Option<String> {
-    use std::io::Write;
-    let tmp_dir = std::env::temp_dir();
-    let script_path = tmp_dir.join(format!("tracetui_png2ansi_{}.py", std::process::id()));
-    let mut file = std::fs::File::create(&script_path).ok()?;
-    file.write_all(PYTHON_PNG_TO_ANSI.as_bytes()).ok()?;
-    drop(file);
-    let output = Command::new("python3")
-        .args([&script_path.to_string_lossy(), png_path, &width.to_string()])
-        .output();
-    let _ = std::fs::remove_file(&script_path);
-    if let Ok(output) = output {
-        if output.status.success() {
-            let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            if !stdout.is_empty() {
-                return Some(stdout);
-            }
-        }
-    }
-    None
-}
-#[cfg(target_os = "linux")]
-fn convert_icon_to_ansi(icon_path: &str, width: u32) -> Option<String> {
-    let lower = icon_path.to_lowercase();
-    if lower.ends_with(".svg") {
-        return try_convert_svg(icon_path, width);
-    }
-    if lower.ends_with(".png") {
-        return convert_png_to_ansi(icon_path, width);
-    }
-    convert_png_to_ansi(icon_path, width)
 }
 #[cfg(target_os = "linux")]
 const PYTHON_PNG_TO_ANSI: &str = r##"import struct, zlib, sys
