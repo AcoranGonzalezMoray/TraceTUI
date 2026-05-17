@@ -1,11 +1,16 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 # Install or update TraceTUI on Linux.
 # Run from the directory where tracetui binary is located.
 # If already installed, running tracetui will check for updates automatically.
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# If run via sudo, use the original user's home
+if [ -n "${SUDO_USER:-}" ]; then
+    HOME="$(getent passwd "$SUDO_USER" | cut -d: -f6)"
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BINARY="$SCRIPT_DIR/tracetui"
 ICON="$SCRIPT_DIR/tracetui.png"
 DESKTOP="$SCRIPT_DIR/tracetui.desktop"
