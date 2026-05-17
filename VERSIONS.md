@@ -1,5 +1,8 @@
 # UNRELEASED
 
+
+# RELEASED
+
 ## 2026-05-17  V1.1.1
 🐛: Fix self-update failing on Windows (running exe lock) and Linux (permissions)
 🐛: Store database in OS app data directory to avoid admin rights requirement
@@ -10,8 +13,6 @@
 🔧: Force LF line endings for .sh/.desktop files via .gitattributes
 🧪: Add Linux icon extractor tests and fix flaky CI tests due to welcome dialog
 💚: Fix clippy warnings in test builds (unused-mut, unused-variable)
-
-# RELEASED
 
 ## 2026-05-17  V1.1.0
 ✨: Added installation module with self-update detection and auto-update dialogs
