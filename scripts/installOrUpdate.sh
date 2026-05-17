@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # Install or update TraceTUI on Linux.
 # Run from the directory where tracetui binary is located.
 # If already installed, running tracetui will check for updates automatically.
