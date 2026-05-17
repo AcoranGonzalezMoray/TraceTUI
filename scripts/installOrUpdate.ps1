@@ -8,7 +8,7 @@
     .\installOrUpdate.ps1
 #>
 
-$AppDir = Join-Path $env:ProgramFiles "TraceTUI"
+$AppDir = Join-Path $env:LOCALAPPDATA "TraceTUI"
 $ExeName = "tracetui.exe"
 $SourceExe = Join-Path $PSScriptRoot $ExeName
 
