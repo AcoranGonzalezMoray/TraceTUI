@@ -209,6 +209,7 @@ impl App {
         let mut config = crate::config::load_config();
         let current_version = env!("CARGO_PKG_VERSION").to_string();
 
+        #[cfg(not(test))]
         if config_exists
             && (config.last_version.is_empty() || config.last_version != current_version)
         {
