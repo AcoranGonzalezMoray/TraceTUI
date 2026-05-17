@@ -139,7 +139,7 @@ fn try_replace_binary(source: &std::path::Path, dest: &std::path::Path) -> Resul
             if std::process::Command::new("sudo")
                 .args(["cp", &source.to_string_lossy(), &dest.to_string_lossy()])
                 .status()
-                .map_or(false, |s| s.success())
+                .is_ok_and(|s| s.success())
             {
                 let _ = std::fs::remove_file(source);
                 return Ok(());
