@@ -116,6 +116,7 @@ impl App {
         let (tx, rx) = mpsc::unbounded_channel();
         let (itx, irx) = mpsc::unbounded_channel();
         let (utx, urx) = mpsc::unbounded_channel();
+        #[allow(unused_mut)]
         let mut app = Self {
             should_quit: false,
             current_state: AppState::Dashboard,
@@ -204,20 +205,22 @@ impl App {
             welcome_index: 0,
         };
 
-        let config_path = crate::config::config_dir().join("config.json");
-        let config_exists = config_path.exists();
-        let mut config = crate::config::load_config();
-        let current_version = env!("CARGO_PKG_VERSION").to_string();
-
         #[cfg(not(test))]
-        if config_exists
-            && (config.last_version.is_empty() || config.last_version != current_version)
         {
-            app.show_welcome_dialog = true;
-        }
+            let config_path = crate::config::config_dir().join("config.json");
+            let config_exists = config_path.exists();
+            let mut config = crate::config::load_config();
+            let current_version = env!("CARGO_PKG_VERSION").to_string();
 
-        config.last_version = current_version;
-        crate::config::save_config(&config);
+            if config_exists
+                && (config.last_version.is_empty() || config.last_version != current_version)
+            {
+                app.show_welcome_dialog = true;
+            }
+
+            config.last_version = current_version;
+            crate::config::save_config(&config);
+        }
 
         app
     }
