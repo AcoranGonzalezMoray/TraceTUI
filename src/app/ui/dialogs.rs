@@ -745,13 +745,13 @@ pub fn render_update_dialog(f: &mut ratatui::Frame, app: &App) {
     } else if app.update_done {
         let (icon, border_color, title) = if app.update_success {
             (
-                "[OK]",
+                "\u{2705}",
                 THEME.success,
                 tr!(app.translator, "dialog.update_success"),
             )
         } else {
             (
-                "[FAIL]",
+                "\u{274C}",
                 THEME.danger,
                 tr!(app.translator, "dialog.update_failed"),
             )
