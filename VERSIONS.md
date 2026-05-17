@@ -1,6 +1,7 @@
 # UNRELEASED
 
 ## 2026-05-17  V1.1.0
+✨: Added installation module with self-update detection and auto-update dialogs
 🌐: Update and sync translations across all 11 supported languages
 🐛: Fix config bug that reset user locale on every application startup
 🐛: Resolve UI freeze issue during initial network analysis by optimizing event polling

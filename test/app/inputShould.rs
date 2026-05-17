@@ -60,9 +60,16 @@ mod input_tests {
         assert!(!app.is_initial_loading);
     }
 
+    fn dismiss_welcome_dialog(app: &mut App) {
+        if app.show_welcome_dialog {
+            app.handle_key_event(press(KeyCode::Esc));
+        }
+    }
+
     #[test]
     fn test_tab_cycles_focus() {
         let mut app = App::new();
+        dismiss_welcome_dialog(&mut app);
         use crate::app::types::SidebarFocus;
 
         assert_eq!(app.sidebar_focus, SidebarFocus::Left);
@@ -77,6 +84,7 @@ mod input_tests {
     #[test]
     fn test_backtab_cycles_focus_reverse() {
         let mut app = App::new();
+        dismiss_welcome_dialog(&mut app);
         use crate::app::types::SidebarFocus;
 
         app.handle_key_event(press(KeyCode::BackTab));
