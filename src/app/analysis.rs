@@ -5,18 +5,16 @@ use crate::app::App;
 use crate::config;
 use crate::resources;
 use crate::tr;
+use semver;
 use std::collections::HashMap;
 
-fn parse_semver(v: &str) -> Vec<u32> {
-    v.trim()
-        .trim_start_matches('v')
-        .split('.')
-        .filter_map(|p| p.parse::<u32>().ok())
-        .collect()
-}
-
 fn is_newer(local: &str, remote: &str) -> bool {
-    parse_semver(remote) > parse_semver(local)
+    let local_v = semver::Version::parse(local.trim_start_matches(['v', 'V']));
+    let remote_v = semver::Version::parse(remote.trim_start_matches(['v', 'V']));
+    match (local_v, remote_v) {
+        (Ok(l), Ok(r)) => r > l,
+        _ => false,
+    }
 }
 impl App {
     pub fn on_tick(&mut self) {
@@ -48,6 +46,7 @@ impl App {
         self.process_investigation_results();
         self.process_user_location();
         self.process_update_result();
+        self.process_update_task();
         if self.auto_analysis_complete && !self.analysis_paused {
             self.continuous_refresh_counter = self.continuous_refresh_counter.wrapping_add(1);
             if self.continuous_refresh_counter >= config::REFRESH_COUNTER_THRESHOLD {
@@ -357,39 +356,106 @@ impl App {
         let (tx, rx) = std::sync::mpsc::channel::<String>();
         self.update_rx = Some(rx);
         let local = env!("CARGO_PKG_VERSION").to_string();
+        self.status_message = tr!(self.translator, "status.checking_updates").to_string();
+
         tokio::spawn(async move {
             let url = &resources::URLS.github_api_releases;
             let client = reqwest::Client::builder()
                 .user_agent(&resources::URLS.user_agent)
                 .build()
                 .ok();
-            let version = match client {
+
+            let result = match client {
                 Some(c) => match c.get(url).send().await {
-                    Ok(r) if r.status().is_success() => r
-                        .json::<serde_json::Value>()
-                        .await
-                        .ok()
-                        .and_then(|v| {
-                            v["tag_name"]
+                    Ok(r) if r.status().is_success() => match r.json::<serde_json::Value>().await {
+                        Ok(v) => {
+                            let version = v["tag_name"]
                                 .as_str()
-                                .map(|s| s.trim_start_matches('v').to_string())
-                        })
-                        .unwrap_or_default(),
-                    _ => String::new(),
+                                .map(|s| s.trim_start_matches(['v', 'V']).to_string())
+                                .unwrap_or_default();
+                            if version.is_empty() {
+                                Err("No release tags found in GitHub".to_string())
+                            } else {
+                                Ok(version)
+                            }
+                        }
+                        Err(e) => Err(format!("API error: {}", e)),
+                    },
+                    Ok(r) if r.status() == 404 => {
+                        Err("No GitHub releases published yet".to_string())
+                    }
+                    Ok(r) => Err(format!("GitHub API: HTTP {}", r.status())),
+                    Err(e) => Err(format!("Connection error: {}", e)),
                 },
-                None => String::new(),
+                None => Err("Failed to start update client".to_string()),
             };
-            if !version.is_empty() && is_newer(&local, &version) {
-                let _ = tx.send(version);
+
+            match result {
+                Ok(version) => {
+                    if is_newer(&local, &version) {
+                        let _ = tx.send(version);
+                    }
+                }
+                Err(e) => {
+                    let _ = tx.send(format!("ERROR:{}", e));
+                }
             }
         });
     }
     fn process_update_result(&mut self) {
         if let Some(rx) = &self.update_rx {
-            if let Ok(version) = rx.try_recv() {
-                self.latest_remote_version = version;
-                self.show_update_dialog = true;
-                self.status_message = tr!(self.translator, "status.update_available").to_string();
+            while let Ok(version) = rx.try_recv() {
+                if version.starts_with("ERROR:") {
+                    let err_msg = version.trim_start_matches("ERROR:").to_string();
+                    self.status_message = format!("[-] Update Check: {}", err_msg);
+                } else if !version.is_empty() {
+                    self.latest_remote_version = version;
+                    self.show_update_dialog = true;
+                    self.status_message =
+                        tr!(self.translator, "status.update_available").to_string();
+                }
+            }
+        }
+    }
+    pub fn start_self_update(&mut self) {
+        if self.latest_remote_version.is_empty() || self.is_updating {
+            return;
+        }
+        self.is_updating = true;
+        self.update_done = false;
+        self.update_success = false;
+        self.update_progress = 0.0;
+        self.status_message = tr!(self.translator, "status.updating").to_string();
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<crate::app::types::UpdateEvent>();
+        self.update_task_rx = Some(rx);
+        crate::app::installation::spawn_self_update(tx, self.latest_remote_version.clone());
+    }
+    fn process_update_task(&mut self) {
+        if let Some(rx) = &mut self.update_task_rx {
+            while let Ok(event) = rx.try_recv() {
+                match event {
+                    crate::app::types::UpdateEvent::Progress(p) => {
+                        self.update_progress = p;
+                    }
+                    crate::app::types::UpdateEvent::Finished(success, msg) => {
+                        self.is_updating = false;
+                        self.update_done = true;
+                        self.update_success = success;
+                        if success {
+                            self.update_message =
+                                tr!(self.translator, "dialog.update_success_msg").to_string();
+                            self.status_message =
+                                tr!(self.translator, "status.update_done").to_string();
+                        } else {
+                            self.update_message = format!(
+                                "{}: {}",
+                                tr!(self.translator, "dialog.update_failed_msg"),
+                                msg
+                            );
+                            self.status_message = tr!(self.translator, "status.update_fail", msg);
+                        }
+                    }
+                }
             }
         }
     }

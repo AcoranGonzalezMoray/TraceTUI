@@ -1,4 +1,4 @@
-﻿use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum AppState {
     Dashboard,
@@ -26,4 +26,9 @@ pub struct AppConnection {
     pub memory_usage: u64,
     pub risk_level: String,
     pub signature_status: crate::utils::signatures::SignatureStatus,
+}
+#[derive(Debug, Clone)]
+pub enum UpdateEvent {
+    Progress(f64),
+    Finished(bool, String),
 }

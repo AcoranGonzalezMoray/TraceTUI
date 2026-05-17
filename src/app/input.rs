@@ -12,6 +12,10 @@ impl App {
         if key.kind != KeyEventKind::Press {
             return;
         }
+        if self.show_welcome_dialog {
+            self.handle_welcome_keys(key);
+            return;
+        }
         if self.show_language_modal {
             self.handle_language_keys(key);
             return;
@@ -512,11 +516,24 @@ impl App {
         }
     }
     fn handle_update_dialog_keys(&mut self, key: KeyEvent) {
+        if self.is_updating {
+            if key.code == KeyCode::Esc {
+                self.show_update_dialog = false;
+            }
+            return;
+        }
+        if self.update_done {
+            match key.code {
+                KeyCode::Enter | KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('Q') => {
+                    self.show_update_dialog = false;
+                }
+                _ => {}
+            }
+            return;
+        }
         match key.code {
             KeyCode::Enter => {
-                let _ = open::that(&resources::URLS.github_releases_page);
-                self.show_update_dialog = false;
-                self.status_message = tr!(self.translator, "status.update_opened").to_string();
+                self.start_self_update();
             }
             KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('Q') => {
                 self.show_update_dialog = false;
@@ -1027,6 +1044,24 @@ impl App {
     }
     pub fn any_blocked_checked(&self) -> bool {
         self.firewall_blocked_checked.iter().any(|&c| c)
+    }
+
+    fn handle_welcome_keys(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Left | KeyCode::Right => {
+                self.welcome_index = if self.welcome_index == 0 { 1 } else { 0 };
+            }
+            KeyCode::Enter => {
+                if self.welcome_index == 1 {
+                    let _ = open::that(&resources::URLS.github_releases_page);
+                }
+                self.show_welcome_dialog = false;
+            }
+            KeyCode::Esc => {
+                self.show_welcome_dialog = false;
+            }
+            _ => {}
+        }
     }
 }
 fn apply_scroll(current: usize, delta: i32, max: usize) -> usize {

@@ -23,6 +23,7 @@ pub use dialogs::render_language_modal;
 pub use dialogs::render_nerdfont_dialog;
 pub use dialogs::render_password_modal;
 pub use dialogs::render_update_dialog;
+pub use dialogs::render_welcome_dialog;
 pub use firewall::render_firewall_mode;
 pub use footer::render_footer;
 pub use header::render_header;
@@ -181,7 +182,9 @@ pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
     let help_hint = Paragraph::new(Line::from(hint_spans)).alignment(Alignment::Center);
     f.render_widget(help_hint, main_chunks[3]);
     render_footer(f, app, main_chunks[4]);
-    if app.show_language_modal {
+    if app.show_welcome_dialog {
+        render_welcome_dialog(f, app);
+    } else if app.show_language_modal {
         render_language_modal(f, app);
     } else if app.show_password_modal {
         render_password_modal(f, app);
