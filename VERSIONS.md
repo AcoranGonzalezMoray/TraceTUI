@@ -1,5 +1,8 @@
 # UNRELEASED
 
+
+# RELEASED
+
 ## 2026-05-17  V1.1.0
 ✨: Added installation module with self-update detection and auto-update dialogs
 🌐: Update and sync translations across all 11 supported languages
@@ -10,9 +13,6 @@
 🔧: Enhance icon extraction path discovery for both development and production environments
 🐛: Fix update notification flow to ensure welcome modal appears after successful update
 ♻️: Refactor startup logic to handle system locale detection more efficiently
-
-
-# RELEASED
 
 ## 2026-05-16  V1.0.0
 ✨: Real-time Network Intelligence
