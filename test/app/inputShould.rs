@@ -520,12 +520,15 @@ mod input_tests {
         assert!(!app.show_update_dialog);
     }
 
-    #[test]
-    fn test_update_dialog_enter_dismisses() {
+    #[tokio::test]
+    async fn test_update_dialog_enter_starts_update() {
         let mut app = App::new();
+        app.show_welcome_dialog = false;
         app.show_update_dialog = true;
+        app.latest_remote_version = "1.1.0".to_string();
         app.handle_key_event(press(KeyCode::Enter));
-        assert!(!app.show_update_dialog);
+        assert!(app.is_updating);
+        assert!(app.show_update_dialog);
     }
 
     #[test]

@@ -45,7 +45,6 @@ mod e2e_firewall_flow {
         }
     }
 
-    /// E2E: Enter firewall mode from a selected app, navigate panels, toggle checkboxes
     #[test]
     fn e2e_firewall_enter_navigate_exit() {
         use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -63,7 +62,6 @@ mod e2e_firewall_flow {
             KeyEvent::new(key, KeyModifiers::empty())
         }
 
-        // Enter firewall mode via action index 7
         app.selected_action_index = 7;
         app.execute_action();
         assert!(app.firewall_mode);
@@ -71,36 +69,29 @@ mod e2e_firewall_flow {
         assert_eq!(app.firewall_connections.len(), 3);
         assert_eq!(app.firewall_conn_checked.len(), 3);
 
-        // Navigate connections with Down key
         app.handle_key_event(press(KeyCode::Down));
         assert_eq!(app.firewall_conn_index, 1);
         app.handle_key_event(press(KeyCode::Down));
         assert_eq!(app.firewall_conn_index, 2);
 
-        // Up goes back
         app.handle_key_event(press(KeyCode::Up));
         assert_eq!(app.firewall_conn_index, 1);
 
-        // Tab to BlockedList panel
         app.handle_key_event(press(KeyCode::Tab));
         assert_eq!(app.firewall_focus, FirewallPanel::BlockedList);
 
-        // Tab to Actions panel
         app.handle_key_event(press(KeyCode::Tab));
         assert_eq!(app.firewall_focus, FirewallPanel::Actions);
 
-        // BackTab reverses
         app.handle_key_event(press(KeyCode::BackTab));
         assert_eq!(app.firewall_focus, FirewallPanel::BlockedList);
 
-        // Exit firewall mode via Q
         app.handle_key_event(press(KeyCode::Char('q')));
         assert!(!app.firewall_mode);
         assert!(app.firewall_connections.is_empty());
         assert!(app.firewall_process_name.is_empty());
     }
 
-    /// E2E: Toggle connection checkboxes and verify checked state
     #[test]
     fn e2e_firewall_toggle_checkboxes() {
         use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -118,35 +109,29 @@ mod e2e_firewall_flow {
         app.execute_action();
         assert!(app.firewall_mode);
 
-        // Initially none checked
         assert!(!app.any_conn_checked());
 
-        // Space toggles checkbox at current index
         app.handle_key_event(press(KeyCode::Char(' ')));
         assert!(app.firewall_conn_checked[0]);
 
-        // Down + Space toggles second checkbox
         app.handle_key_event(press(KeyCode::Down));
         app.handle_key_event(press(KeyCode::Char(' ')));
         assert!(app.firewall_conn_checked[1]);
         assert!(app.any_conn_checked());
 
-        // Space again untoggles
         app.handle_key_event(press(KeyCode::Char(' ')));
         assert!(!app.firewall_conn_checked[1]);
     }
 
-    /// E2E: Firewall mode with no connections selected from an app
     #[test]
     fn e2e_firewall_no_selection() {
         let mut app = App::new();
         app.auto_analysis_complete = true;
         app.is_initial_loading = false;
 
-        // No apps selected
         app.selected_action_index = 7;
         app.execute_action();
-        // Should not enter firewall mode without a selected app
+
         assert!(!app.firewall_mode);
     }
 }

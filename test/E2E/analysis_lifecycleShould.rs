@@ -55,34 +55,29 @@ mod e2e_analysis_lifecycle {
         }
     }
 
-    /// E2E: Full analysis lifecycle — populate data, simulate pause/resume,
-    /// verify background refresh counter behavior.
     #[test]
     fn e2e_analysis_pause_resume_cycle() {
         let mut app = App::new();
 
-        // Simulate auto-analysis completing
         app.auto_analysis_complete = true;
         app.is_initial_loading = false;
+        app.show_welcome_dialog = false;
+        app.show_update_dialog = false;
         assert!(!app.analysis_paused);
         assert_eq!(app.continuous_refresh_counter, 0);
 
-        // on_tick should increment counter (analysis not paused, auto_analysis_complete)
         app.on_tick();
         assert_eq!(app.continuous_refresh_counter, 1);
 
-        // Pause: counter should not increment
         app.analysis_paused = true;
         let before = app.continuous_refresh_counter;
         app.on_tick();
         assert_eq!(app.continuous_refresh_counter, before);
 
-        // Resume: counter should increment again
         app.analysis_paused = false;
         app.on_tick();
         assert_eq!(app.continuous_refresh_counter, before + 1);
 
-        // Toggle via R key
         app.handle_key_event(crossterm::event::KeyEvent::new(
             crossterm::event::KeyCode::Char('r'),
             crossterm::event::KeyModifiers::empty(),
@@ -91,7 +86,6 @@ mod e2e_analysis_lifecycle {
         assert_eq!(app.continuous_refresh_counter, 0);
     }
 
-    /// E2E: Frame counter wrapping and history tracking with sample data
     #[test]
     fn e2e_frame_count_and_history() {
         let mut app = App::new();
@@ -110,7 +104,6 @@ mod e2e_analysis_lifecycle {
         assert_eq!(app.cpu_history.len(), 2);
     }
 
-    /// E2E: App filtering with search + risk filter + hunter mode
     #[test]
     fn e2e_combined_filtering() {
         let mut app = App::new();
@@ -140,20 +133,16 @@ mod e2e_analysis_lifecycle {
         app.auto_analysis_complete = true;
         app.is_initial_loading = false;
 
-        // No filter: all 3 apps visible
         assert_eq!(app.get_filtered_apps().len(), 3);
 
-        // Search for "power": 1 match
         app.search_query = "power".to_string();
         assert_eq!(app.get_filtered_apps().len(), 1);
         assert_eq!(app.get_filtered_apps()[0].process_name, "powershell.exe");
 
-        // Search for IP "8.8.8.8": 1 match (chrome)
         app.search_query = "8.8.8.8".to_string();
         assert_eq!(app.get_filtered_apps().len(), 1);
         assert_eq!(app.get_filtered_apps()[0].process_name, "chrome.exe");
 
-        // Clear search, filter high risk only
         app.search_query.clear();
         app.filter_high_risk_only = true;
         let filtered = app.get_filtered_apps();
@@ -165,12 +154,10 @@ mod e2e_analysis_lifecycle {
             );
         }
 
-        // Remove filter
         app.filter_high_risk_only = false;
         assert_eq!(app.get_filtered_apps().len(), 3);
     }
 
-    /// E2E: Geo lookup — skip IPs with cached location
     #[test]
     fn e2e_geo_preserves_existing_locations() {
         let rt = tokio::runtime::Runtime::new().unwrap();
@@ -214,15 +201,12 @@ mod e2e_analysis_lifecycle {
         app.selected_app_index = 0;
         app.sidebar_focus = crate::app::types::SidebarFocus::Left;
 
-        // trigger_geo_lookup_for_selected_app should skip 8.8.8.8 (has location)
-        // and only look up 1.1.1.1 (no location)
         let before = app.pending_geo_lookups;
         app.trigger_geo_lookup_for_selected_app();
-        // Only 1 lookup (for 1.1.1.1), 8.8.8.8 skipped
+
         assert_eq!(app.pending_geo_lookups, before + 1);
     }
 
-    /// E2E: Batch analysis refreshes processes and connections
     #[test]
     fn e2e_start_batch_analysis() {
         let mut app = App::new();
@@ -235,7 +219,6 @@ mod e2e_analysis_lifecycle {
         assert!(app.auto_analysis_complete);
     }
 
-    /// E2E: Icon cache preserves entries across operations
     #[test]
     fn e2e_icon_cache_persistence() {
         let mut app = App::new();
@@ -244,12 +227,10 @@ mod e2e_analysis_lifecycle {
         let icon = app.icon_cache.get_icon("C:\\test.exe", "test");
         assert_eq!(icon, "test_icon");
 
-        // Simulate background refresh preserving icon from cache
         let icon2 = app.icon_cache.get_icon("C:\\test.exe", "test");
         assert_eq!(icon2, "test_icon");
     }
 
-    /// E2E: Keyboard navigation with populated data — select app, view connections, actions
     #[test]
     fn e2e_keyboard_navigation_with_apps() {
         let rt = tokio::runtime::Runtime::new().unwrap();
@@ -281,33 +262,26 @@ mod e2e_analysis_lifecycle {
             KeyEvent::new(key, KeyModifiers::empty())
         }
 
-        // Start at Left panel, first app selected
         assert_eq!(app.sidebar_focus, SidebarFocus::Left);
         assert_eq!(app.selected_app_index, 0);
 
-        // Down to select second app
         app.handle_key_event(press(KeyCode::Down));
         assert_eq!(app.selected_app_index, 1);
         assert_eq!(app.get_selected_app().unwrap().process_name, "firefox.exe");
 
-        // Up back to first app
         app.handle_key_event(press(KeyCode::Up));
         assert_eq!(app.selected_app_index, 0);
 
-        // Enter moves focus to Center panel
         app.handle_key_event(press(KeyCode::Enter));
         assert_eq!(app.sidebar_focus, SidebarFocus::Center);
         assert_eq!(app.selected_connection_index, 0);
 
-        // Navigate connections
         app.handle_key_event(press(KeyCode::Down));
         assert_eq!(app.selected_connection_index, 1);
 
-        // Tab to Right panel
         app.handle_key_event(press(KeyCode::Tab));
         assert_eq!(app.sidebar_focus, SidebarFocus::Right);
 
-        // Tab again cycles back to Left
         app.handle_key_event(press(KeyCode::Tab));
         assert_eq!(app.sidebar_focus, SidebarFocus::Left);
     }
