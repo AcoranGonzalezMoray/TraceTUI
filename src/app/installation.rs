@@ -129,6 +129,28 @@ fn run_nerdfont_script() -> std::io::Result<std::process::Output> {
         .arg(&script)
         .output()
 }
+fn try_replace_binary(source: &std::path::Path, dest: &std::path::Path) -> Result<(), String> {
+    if std::fs::rename(source, dest).is_ok() {
+        return Ok(());
+    }
+    #[cfg(not(windows))]
+    {
+        if let Ok(false) = std::fs::metadata(dest).map(|m| m.permissions().readonly()) {
+            if std::process::Command::new("sudo")
+                .args(["cp", &source.to_string_lossy(), &dest.to_string_lossy()])
+                .status()
+                .is_ok_and(|s| s.success())
+            {
+                let _ = std::fs::remove_file(source);
+                return Ok(());
+            }
+        }
+    }
+    std::fs::copy(source, dest).map_err(|e| e.to_string())?;
+    let _ = std::fs::remove_file(source);
+    Ok(())
+}
+
 pub fn spawn_self_update(
     tx: tokio::sync::mpsc::UnboundedSender<crate::app::types::UpdateEvent>,
     target_version: String,
@@ -296,10 +318,19 @@ pub fn spawn_self_update(
                 ));
             }
 
-            self_update::Move::from_source(&extracted_bin)
-                .replace_using_temp(&bin_path)
-                .to_dest(&bin_path)
-                .map_err(|e| e.to_string())?;
+            #[cfg(windows)]
+            {
+                // Windows: rename running exe -> .old (works while process is running),
+                // then place the new binary in its place
+                let old_path = bin_path.with_extension("exe.old");
+                let _ = std::fs::rename(&bin_path, &old_path);
+                try_replace_binary(&extracted_bin, &bin_path)?;
+            }
+            #[cfg(not(windows))]
+            {
+                // Linux/macOS: try direct, fallback to sudo if permission denied
+                try_replace_binary(&extracted_bin, &bin_path)?;
+            }
 
             let _ = std::fs::remove_dir_all(&tmp_dir);
             Ok::<(), String>(())

@@ -116,6 +116,8 @@ impl App {
         let (tx, rx) = mpsc::unbounded_channel();
         let (itx, irx) = mpsc::unbounded_channel();
         let (utx, urx) = mpsc::unbounded_channel();
+        let detected_locale = config::load_language().unwrap_or_else(i18n::detect_system_locale);
+
         #[allow(unused_mut)]
         let mut app = Self {
             should_quit: false,
@@ -180,9 +182,7 @@ impl App {
             firewall_action_index: 0,
             firewall_conn_checked: Vec::new(),
             firewall_blocked_checked: Vec::new(),
-            translator: Translator::new(
-                &config::load_language().unwrap_or_else(i18n::detect_system_locale),
-            ),
+            translator: Translator::new(&detected_locale),
             show_language_modal: false,
             language_selection_index: 0,
             language_scroll_offset: 0,
@@ -218,6 +218,9 @@ impl App {
                 app.show_welcome_dialog = true;
             }
 
+            if config.locale.is_empty() {
+                config.locale = detected_locale;
+            }
             config.last_version = current_version;
             crate::config::save_config(&config);
         }

@@ -1,5 +1,15 @@
 # UNRELEASED
 
+## 2026-05-17  V1.1.1
+🐛: Fix self-update failing on Windows (running exe lock) and Linux (permissions)
+🐛: Store database in OS app data directory to avoid admin rights requirement
+🐛: Fix locale not persisting on first launch — now detects and saves system language
+🐛: Fix install script CRLF/BOM issues causing "not found" errors on Linux
+🐛: Fix Linux install script Bad substitution and sudo HOME path detection
+♻️: Change install paths to user-writable directories (~/.local/bin, %LOCALAPPDATA%)
+🔧: Force LF line endings for .sh/.desktop files via .gitattributes
+🧪: Add Linux icon extractor tests and fix flaky CI tests due to welcome dialog
+💚: Fix clippy warnings in test builds (unused-mut, unused-variable)
 
 # RELEASED
 
