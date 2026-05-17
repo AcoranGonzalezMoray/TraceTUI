@@ -20,6 +20,14 @@ jobs:
             exit 1
           fi
 
+          BASE_VSN=$(git show origin/${{ github.event.pull_request.base.ref }}:Cargo.toml | sed -n 's/^version = "\(.*\)"/\1/p')
+          HEAD_VSN=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml)
+          if [ "$BASE_VSN" = "$HEAD_VSN" ]; then
+            echo "::error::Cargo.toml version must be bumped (currently $HEAD_VSN, same as base branch)"
+            exit 1
+          fi
+          echo "Cargo.toml version bumped: $BASE_VSN -> $HEAD_VSN"
+
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:

@@ -1,5 +1,8 @@
 # UNRELEASED
 
+## 2026-05-17  V1.1.2
+🔧: PR workflow now also checks that Cargo.toml version is bumped (compared to base branch)
+✨: Update success/failure modal now shows ✅/❌ emojis instead of [OK]/[FAIL]
 
 # RELEASED
 
