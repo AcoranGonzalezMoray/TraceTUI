@@ -97,14 +97,14 @@ function initScrollAnimations() {
 }
 
 function initPulsingDot() {
-    // Handled by CSS animation on .header-dot
+    
 }
 
 function initHeaderToggles() {
     var header = document.getElementById('tuiHeader');
     if (!header) return;
 
-    // Toggle hunter mode on H key press (only when not in guide mode)
+    
     document.addEventListener('keydown', function (e) {
         if (e.key === 'h' || e.key === 'H') {
             if (document.querySelector('.guide-overlay.guide-visible')) return;
@@ -118,7 +118,7 @@ function initHeaderToggles() {
         }
     });
 
-    // Toggle paused state on P key press (only when not in guide mode)
+    
     document.addEventListener('keydown', function (e) {
         if (e.key === 'p' || e.key === 'P') {
             if (document.querySelector('.guide-overlay.guide-visible')) return;
@@ -164,7 +164,7 @@ function initScrollGuide() {
     var stepLabelEl = document.getElementById('stepLabel');
     var stepDotsEl = document.getElementById('stepDots');
 
-    // Create step dots
+    
     if (stepDotsEl) {
         for (var i = 0; i < 10; i++) {
             var dot = document.createElement('span');
@@ -321,20 +321,20 @@ function initScrollGuide() {
             card.classList.toggle('active', i === stepIndex);
         });
 
-        // Update sidebar items: active + completed states
+        
         var sidebarItems = document.querySelectorAll('.guide-step-item');
         sidebarItems.forEach(function (item, i) {
             item.classList.toggle('active-step', i === stepIndex);
             item.classList.toggle('completed-step', i < stepIndex);
         });
 
-        // Set term state for overlay switching
+        
         delete tuiApp.dataset.termState;
         if (stepIndex >= 0 && stepIndex < termStates.length && termStates[stepIndex]) {
             tuiApp.dataset.termState = termStates[stepIndex];
         }
 
-        // Toggle center tabs: step 2 → tab 1 (connections), step 3 → tab 2 (risk), step 4 → tab 3 (timeline)
+        
         var centerTabs = document.getElementById('centerTabs');
         if (centerTabs) {
             var tabs = centerTabs.querySelectorAll('.tab');
@@ -344,7 +344,7 @@ function initScrollGuide() {
             if (tabIdx !== undefined && tabs[tabIdx]) {
                 tabs[tabIdx].classList.add('tab-active');
             } else {
-                // Default: tab 1 active
+                
                 tabs[0].classList.add('tab-active');
             }
         }
@@ -360,7 +360,7 @@ function initScrollGuide() {
             if (targetEl) {
                 targetEl.classList.add('highlighted');
                 var parent = targetEl.parentElement;
-                // Use the correct container based on current state
+                
                 var scope = parent;
                 if (termStates[stepIndex] === 'firewall') {
                     scope = document.getElementById('firewallLayout');
@@ -382,7 +382,7 @@ function initScrollGuide() {
             }
         }
 
-        // Update step indicator
+        
         if (stepNumEl && stepLabelEl) {
             if (stepIndex >= 0) {
                 var num = (stepIndex + 1).toString().padStart(2, '0');
@@ -411,7 +411,7 @@ function initScrollGuide() {
         var transitionStart = Math.max(0, heroH - winH * 0.4);
         var transitionEnd = heroH + 100;
 
-        // Phase 1: Above transition zone (terminal in natural flow)
+        
         if (scrollY < transitionStart) {
             if (isFixed) {
                 guideOverlay.style.display = 'none';
@@ -425,7 +425,7 @@ function initScrollGuide() {
             return;
         }
 
-        // Phase 2: Transition zone (snap to fixed, animate to center)
+        
         if (scrollY < transitionEnd) {
             guideOverlay.style.display = 'none';
             guideOverlay.classList.remove('guide-visible');
@@ -442,7 +442,7 @@ function initScrollGuide() {
             return;
         }
 
-        // Phase 3: Guide zone (terminal fixed at center, 11 guide steps active)
+        
         if (scrollY < tourEnd - winH * 0.6) {
             guideOverlay.style.display = 'block';
             guideOverlay.classList.add('guide-visible');
@@ -474,7 +474,7 @@ function initScrollGuide() {
             return;
         }
 
-        // Phase 4: Past guide zone — terminal returns to natural flow in its section
+        
         guideOverlay.style.display = 'none';
         guideOverlay.classList.remove('guide-visible');
         updateGuide(-1);
@@ -508,7 +508,7 @@ function initScrollGuide() {
     handleScroll();
 }
 
-// Konami code easter egg
+
 (function () {
     var code = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
     var idx = 0;

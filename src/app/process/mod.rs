@@ -77,7 +77,6 @@ impl ProcessManager {
             if output.status.success() {
                 Ok(true)
             } else {
-                // Check for common errors
                 let combined = format!("{}{}", stdout_msg, stderr_msg);
                 if combined.contains("Access is denied") || combined.contains("Access denied") {
                     Err("Access denied. Run TraceTUI as Administrator".into())
@@ -121,11 +120,6 @@ impl ProcessManager {
     pub fn kill_connections(&self, pid: u32) -> Result<usize, Box<dyn std::error::Error>> {
         #[cfg(target_os = "windows")]
         {
-            // IMPORTANT: Windows often protects connections and Remove-NetTCPConnection
-            // may not work for many applications (UWP apps, browsers, etc.)
-            // The most reliable way to "kill connections" is actually to suspend/resume
-            // the process or kill it entirely.
-
             let check_script = format!(
                 "$ErrorActionPreference = 'Stop'; \
                  try {{ \
