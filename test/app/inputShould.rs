@@ -78,6 +78,8 @@ mod input_tests {
         app.handle_key_event(press(KeyCode::Tab));
         assert_eq!(app.sidebar_focus, SidebarFocus::Right);
         app.handle_key_event(press(KeyCode::Tab));
+        assert_eq!(app.sidebar_focus, SidebarFocus::Nav);
+        app.handle_key_event(press(KeyCode::Tab));
         assert_eq!(app.sidebar_focus, SidebarFocus::Left);
     }
 
@@ -87,6 +89,8 @@ mod input_tests {
         dismiss_welcome_dialog(&mut app);
         use crate::app::types::SidebarFocus;
 
+        app.handle_key_event(press(KeyCode::BackTab));
+        assert_eq!(app.sidebar_focus, SidebarFocus::Nav);
         app.handle_key_event(press(KeyCode::BackTab));
         assert_eq!(app.sidebar_focus, SidebarFocus::Right);
         app.handle_key_event(press(KeyCode::BackTab));
@@ -120,6 +124,31 @@ mod input_tests {
         assert!(app.hunter_mode);
         app.handle_key_event(press(KeyCode::Char('h')));
         assert!(!app.hunter_mode);
+    }
+
+    #[test]
+    fn test_nav_sidebar_toggle_via_m() {
+        let mut app = App::new();
+        assert!(!app.nav_sidebar_expanded);
+        app.handle_key_event(press(KeyCode::Char('m')));
+        assert!(app.nav_sidebar_expanded);
+        app.handle_key_event(press(KeyCode::Char('m')));
+        assert!(!app.nav_sidebar_expanded);
+    }
+
+    #[test]
+    fn test_nav_view_switching_via_arrows() {
+        let mut app = App::new();
+        use crate::app::types::{NavView, SidebarFocus};
+        app.sidebar_focus = SidebarFocus::Nav;
+        
+        assert_eq!(app.current_nav_view, NavView::Main);
+        app.handle_key_event(press(KeyCode::Down));
+        assert_eq!(app.current_nav_view, NavView::TrendGraphs);
+        app.handle_key_event(press(KeyCode::Down));
+        assert_eq!(app.current_nav_view, NavView::DgaDetector);
+        app.handle_key_event(press(KeyCode::Up));
+        assert_eq!(app.current_nav_view, NavView::TrendGraphs);
     }
 
     #[test]
@@ -226,7 +255,7 @@ mod input_tests {
             row: 5,
             modifiers: KeyModifiers::empty(),
         });
-        assert_eq!(app.sidebar_focus as u8, 0);
+        assert_eq!(app.sidebar_focus as u8, 1);
     }
 
     #[test]
@@ -501,7 +530,7 @@ mod input_tests {
             row: 10,
             modifiers: KeyModifiers::empty(),
         });
-        assert_eq!(app.sidebar_focus as u8, 0);
+        assert_eq!(app.sidebar_focus as u8, 1);
     }
 
     #[test]
@@ -550,7 +579,7 @@ mod input_tests {
             row: 10,
             modifiers: KeyModifiers::empty(),
         });
-        assert_eq!(app.sidebar_focus as u8, 0);
+        assert_eq!(app.sidebar_focus as u8, 1);
     }
 
     fn sample_app_conn(pid: u32, name: &str, num_conns: u8) -> crate::app::types::AppConnection {

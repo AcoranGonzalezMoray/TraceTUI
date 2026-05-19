@@ -62,6 +62,9 @@ mod app_ui_header_should;
 #[path = "app/ui/modShould.rs"]
 mod app_ui_mod_should;
 #[cfg(test)]
+#[path = "app/ui/nav_sidebarShould.rs"]
+mod app_ui_nav_sidebar_should;
+#[cfg(test)]
 #[path = "app/ui/sidebar_leftShould.rs"]
 mod app_ui_sidebar_left_should;
 #[cfg(test)]

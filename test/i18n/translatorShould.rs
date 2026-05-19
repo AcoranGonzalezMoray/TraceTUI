@@ -101,4 +101,10 @@ mod translator_tests {
         let result = t.get_fmt("app.title", &["extra1".to_string(), "extra2".to_string()]);
         assert_eq!(result, "TRACE");
     }
+    #[test]
+    fn test_new_nav_keys() {
+        let t = Translator::new("en");
+        assert_eq!(t.get("nav.main"), "Main");
+        assert_eq!(t.get("nav.menu"), "Menu");
+    }
 }

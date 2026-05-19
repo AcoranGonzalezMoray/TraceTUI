@@ -27,6 +27,8 @@ mod app_mod_tests {
         assert!(!app.show_update_dialog);
         assert!(app.latest_remote_version.is_empty());
         assert!(app.update_rx.is_none());
+        assert_eq!(app.current_nav_view, crate::app::types::NavView::Main);
+        assert!(!app.nav_sidebar_expanded);
     }
 
     #[test]

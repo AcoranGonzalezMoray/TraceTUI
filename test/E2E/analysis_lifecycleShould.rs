@@ -283,6 +283,9 @@ mod e2e_analysis_lifecycle {
         assert_eq!(app.sidebar_focus, SidebarFocus::Right);
 
         app.handle_key_event(press(KeyCode::Tab));
+        assert_eq!(app.sidebar_focus, SidebarFocus::Nav);
+
+        app.handle_key_event(press(KeyCode::Tab));
         assert_eq!(app.sidebar_focus, SidebarFocus::Left);
     }
 }
