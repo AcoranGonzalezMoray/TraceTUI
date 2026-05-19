@@ -9,7 +9,6 @@
   "app.mode_hunter": "未署名をフィルタ",
   "app.apps_count": "{} アプリ",
   "app.conns_count": "{} 接続",
-
   "status.ready": "[+] 準備完了 - Tabでパネル切替",
   "status.refresh": "[*] 分析を更新中...",
   "status.search_closed": "[*] 検索を閉じました",
@@ -74,7 +73,6 @@
   "status.tools_missing": "[?] ネットワークツールが不足しています。インストールしますか？",
   "status.analysis_paused": "[*] 分析を一時停止しました",
   "status.analysis_resumed": "[*] 分析を再開しました",
-
   "sidebar.processes": "プロセス ({})",
   "sidebar.no_conns": "アクティブな接続なし",
   "sidebar.press_r": "押す",
@@ -82,7 +80,6 @@
   "sidebar.items": "{} 項目",
   "sidebar.risk_level": "{}",
   "sidebar.select_hint": "プロセスを選択",
-
   "center.process_info": "プロセス情報",
   "center.connections": "接続 ({})",
   "center.no_conns": "アクティブな接続なし",
@@ -112,7 +109,6 @@
   "center.corrupt": "破損",
   "center.unsigned": "未署名",
   "center.unknown_sig": "不明",
-
   "center.loading_title": "詳細調査",
   "center.loading_diag": "診断を実行中...",
   "center.loading_nslookup": "> NSLOOKUP",
@@ -121,7 +117,6 @@
   "center.loading_wait": "お待ちください。数秒かかる場合があります...",
   "center.initial_loading": "ネットワーク接続を分析中...",
   "center.initial_wait": "お待ちください。数秒かかる場合があります。",
-
   "investigation.title": "レポート: {}:{} ",
   "investigation.trust_score": "信頼スコア（高いほど危険）",
   "investigation.risk_low": "低リスク",
@@ -155,8 +150,6 @@
   "investigation.remarks": "セキュリティ所見",
   "investigation.no_threats": "不審なアクティビティは検出されませんでした",
   "map.title": "ネットワーク経路マップ",
-
-
   "actions.title": "アクション",
   "actions.refresh": "分析を更新",
   "actions.kill": "プロセスを強制終了",
@@ -173,22 +166,17 @@
   "actions.language": "言語",
   "actions.pause": "分析を一時停止",
   "actions.resume": "分析を再開",
- 
   "icon.title": "アプリアイコン",
-
   "search.label": "検索",
   "search.matches": "({} 一致)",
-
   "hint.quit": "終了",
   "hint.exit": "終了",
   "hint.switch_panel": "パネル切替",
   "hint.execute": "アクション実行",
   "hint.search": "検索",
-  "hint.rate_limit": "[ API: 制限中 ]",
   "hint.close_search": "検索を閉じる",
   "hint.confirm_filter": "フィルタ確認",
   "hint.delete_char": "文字削除",
-
   "dialog.net_tools": "ネットワークツール",
   "dialog.net_tools_title": "必要なツール",
   "dialog.net_tools_installing": "ネットワークツールをインストール中",
@@ -215,7 +203,6 @@
   "dialog.dismiss": "閉じる",
   "dialog.to_cancel": "キャンセルするには",
   "dialog.to_dismiss": "閉じるには",
-
   "dialog.update_title": "アップデート利用可能",
   "dialog.update_available": "新しいバージョンが利用可能です",
   "dialog.update_current": "現在: v{} → v{}",
@@ -234,7 +221,6 @@
   "status.update_done": "[+] アップデートに成功しました！再起動して適用してください",
   "status.update_fail": "[-] アップデート失敗: {}",
   "status.checking_updates": "[*] アップデートを確認中...",
-
   "dialog.nerdfont_title": "Nerd Font",
   "dialog.nerdfont_required": "フォントアイコンが必要",
   "dialog.nerdfont_installing": "Nerd Fontをインストール中",
@@ -253,13 +239,11 @@
   "dialog.nerdfont_uncertain": "インストールされましたが、確認が不確かです:\n{}",
   "dialog.nerdfont_script_fail": "インストールに失敗しました。\n{}\n{}",
   "dialog.nerdfont_spawn_fail": "インストーラの実行に失敗しました:\n{}",
-
   "dialog.confirm_title": "確認",
   "dialog.confirm_attention": "注意が必要",
   "dialog.kill_process": "[!] プロセス {} (PID: {}) を強制終了しますか？[Y/N]",
   "dialog.kill_conns": "[!] {} の全 {} 接続を切断しますか？[Y/N]",
   "dialog.admin_required": "(管理者権限が必要)",
-
   "firewall.conns": "{} 接続 ({})",
   "firewall.blocked": "ブロック済みIP ({})",
   "firewall.no_conns": "接続なし",
@@ -274,12 +258,10 @@
   "firewall.key_block": "B",
   "firewall.key_unblock": "U",
   "firewall.key_exit": "Esc",
-
   "language.title": "言語選択",
   "language.prompt": "希望の言語を選んでください:",
   "language.current": "現在: {}",
   "language.applied": "[+] 言語が {} に変更されました",
-
   "status.language_changed": "[+] 言語が {} に変更されました",
   "footer.status": "ステータス",
   "locale.en": "English",
@@ -290,8 +272,11 @@
   "locale.it": "Italiano",
   "locale.ja": "日本語",
   "locale.zh": "中文",
-  "locale.ru": "Русский"
+  "locale.ru": "Русский",
+  "nav.main": "メイン",
+  "nav.trends": "トレンド",
+  "nav.dga": "DGA",
+  "nav.libs": "ライブラリ",
+  "nav.containers": "コンテナ",
+  "nav.menu": "メニュー"
 }
-
-
-

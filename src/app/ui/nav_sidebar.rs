@@ -1,0 +1,86 @@
+use crate::app::{App, NavView, SidebarFocus};
+use crate::app::ui::theme::THEME;
+use crate::tr;
+use ratatui::{
+    layout::{Constraint, Direction, Layout, Rect},
+    style::{Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, BorderType, Borders, Paragraph},
+};
+
+pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
+    let is_focused = app.sidebar_focus == SidebarFocus::Nav;
+    let border_color = if is_focused {
+        THEME.primary
+    } else {
+        THEME.secondary
+    };
+    let border_type = if is_focused {
+        BorderType::Thick
+    } else {
+        BorderType::Rounded
+    };
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(border_color))
+        .border_type(border_type);
+
+    f.render_widget(block.clone(), area);
+    let inner_area = block.inner(area);
+
+    let nav_items = vec![
+        (NavView::Main, "󰲚", tr!(app.translator, "nav.main")),
+        (NavView::TrendGraphs, "󰄪", tr!(app.translator, "nav.trends")),
+        (NavView::DgaDetector, "󰒙", tr!(app.translator, "nav.dga")),
+        (NavView::LibraryInspection, "󰅩", tr!(app.translator, "nav.libs")),
+        (NavView::Containers, "󰡨", tr!(app.translator, "nav.containers")),
+    ];
+
+    // Split inner area into slots for each item
+    // Each item gets 3 lines of height + 1 space
+    let constraints: Vec<Constraint> = nav_items.iter()
+        .flat_map(|_| vec![Constraint::Length(3), Constraint::Length(1)])
+        .collect();
+    
+    let item_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(constraints)
+        .split(inner_area);
+
+    for (i, (view, icon, name)) in nav_items.into_iter().enumerate() {
+        let is_selected = app.current_nav_view == view;
+        let area = item_chunks[i * 2];
+        
+        let style = if is_selected {
+            Style::default()
+                .fg(THEME.primary)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(THEME.text_dim)
+        };
+
+        let block = if is_selected {
+            Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
+                .border_style(Style::default().fg(THEME.primary))
+        } else {
+            Block::default()
+                .padding(ratatui::widgets::Padding::new(1, 1, 1, 1))
+        };
+
+        let content = if app.nav_sidebar_expanded {
+            Paragraph::new(Line::from(vec![
+                Span::styled(format!(" {} ", icon), style),
+                Span::styled(name, style),
+            ]))
+        } else {
+            Paragraph::new(Line::from(vec![
+                Span::styled(icon, style),
+            ])).alignment(ratatui::layout::Alignment::Center)
+        };
+
+        f.render_widget(content.block(block), area);
+    }
+}

@@ -19,7 +19,7 @@ use crate::utils::icon_extractor::IconCache;
 pub use investigation_service::InvestigationReport;
 pub use io::{restore_terminal, setup_terminal};
 use tokio::sync::mpsc;
-pub use types::{AppConnection, AppState, FirewallPanel, SidebarFocus};
+pub use types::{AppConnection, AppState, FirewallPanel, NavView, SidebarFocus};
 pub struct App {
     pub should_quit: bool,
     pub current_state: AppState,
@@ -110,6 +110,8 @@ pub struct App {
     pub update_progress: f64,
     pub show_welcome_dialog: bool,
     pub welcome_index: usize,
+    pub current_nav_view: NavView,
+    pub nav_sidebar_expanded: bool,
 }
 impl App {
     pub fn new() -> Self {
@@ -203,6 +205,8 @@ impl App {
             update_progress: 0.0,
             show_welcome_dialog: false,
             welcome_index: 0,
+            current_nav_view: NavView::Main,
+            nav_sidebar_expanded: false,
         };
 
         #[cfg(not(test))]

@@ -9,7 +9,6 @@
   "app.mode_hunter": "Filtrer Non Signés",
   "app.apps_count": "{} Apps",
   "app.conns_count": "{} Connex.",
-
   "status.ready": "[+] Prêt - Tab pour changer de panneau",
   "status.refresh": "[*] Actualisation de l'analyse...",
   "status.search_closed": "[*] Recherche fermée",
@@ -74,7 +73,6 @@
   "status.tools_missing": "[?] Outils réseau manquants. Installer ?",
   "status.analysis_paused": "[*] Analyse en pause",
   "status.analysis_resumed": "[*] Analyse reprise",
-
   "sidebar.processes": "PROCESSUS ({})",
   "sidebar.no_conns": "Aucune connexion active",
   "sidebar.press_r": "Appuyez",
@@ -82,7 +80,6 @@
   "sidebar.items": "{} éléments",
   "sidebar.risk_level": "{}",
   "sidebar.select_hint": "Sélectionnez un processus",
-
   "center.process_info": "INFOS PROCESSUS",
   "center.connections": "CONNEXIONS ({})",
   "center.no_conns": "Aucune connexion active",
@@ -112,7 +109,6 @@
   "center.corrupt": "CORROMPU",
   "center.unsigned": "NON SIGNÉ",
   "center.unknown_sig": "INCONNU",
-
   "center.loading_title": "ENQUÊTE APPROFONDIE",
   "center.loading_diag": "Exécution des diagnostics...",
   "center.loading_nslookup": "> NSLOOKUP",
@@ -121,7 +117,6 @@
   "center.loading_wait": "Veuillez patienter, cela peut prendre quelques secondes...",
   "center.initial_loading": "Analyse des connexions réseau...",
   "center.initial_wait": "Veuillez patienter, cela peut prendre quelques secondes.",
-
   "investigation.title": "RAPPORT : {}:{} ",
   "investigation.trust_score": "SCORE DE CONFIANCE (PLUS ÉLEVÉ = PLUS RISQUÉ)",
   "investigation.risk_low": "RISQUE FAIBLE",
@@ -155,8 +150,6 @@
   "investigation.remarks": "OBSERVATIONS DE SÉCURITÉ",
   "investigation.no_threats": "Aucune activité suspecte détectée",
   "map.title": "CARTE DE ROUTE RÉSEAU",
-
-
   "actions.title": "ACTIONS",
   "actions.refresh": "Actualiser l'Analyse",
   "actions.kill": "Tuer le Processus",
@@ -173,22 +166,17 @@
   "actions.language": "Langue",
   "actions.pause": "Pause Analyse",
   "actions.resume": "Reprendre Analyse",
- 
   "icon.title": "ICÔNE",
-
   "search.label": "RECHERCHER",
   "search.matches": "({} correspondances)",
-
   "hint.quit": "Quitter",
   "hint.exit": "Quitter",
   "hint.switch_panel": "Changer de Panneau",
   "hint.execute": "Exécuter l'Action",
   "hint.search": "Chercher",
-  "hint.rate_limit": "[ API : Limité ]",
   "hint.close_search": "Fermer la Recherche",
   "hint.confirm_filter": "Confirmer le Filtre",
   "hint.delete_char": "Supprimer le caractère",
-
   "dialog.net_tools": "OUTILS RÉSEAU",
   "dialog.net_tools_title": "OUTILS REQUIS",
   "dialog.net_tools_installing": "INSTALLATION DES OUTILS RÉSEAU",
@@ -215,7 +203,6 @@
   "dialog.dismiss": "fermer",
   "dialog.to_cancel": "pour annuler",
   "dialog.to_dismiss": "pour fermer",
-
   "dialog.update_title": "MISE À JOUR DISPONIBLE",
   "dialog.update_available": "UNE NOUVELLE VERSION EST DISPONIBLE",
   "dialog.update_current": "Actuelle : v{} → v{}",
@@ -234,7 +221,6 @@
   "status.update_done": "[+] Mise à jour réussie ! Redémarrez pour appliquer les changements",
   "status.update_fail": "[-] Échec de la mise à jour : {}",
   "status.checking_updates": "[*] Vérification des mises à jour...",
-
   "dialog.nerdfont_title": "NERD FONT",
   "dialog.nerdfont_required": "ICÔNES DE POLICE REQUISES",
   "dialog.nerdfont_installing": "INSTALLATION DE NERD FONT",
@@ -253,13 +239,11 @@
   "dialog.nerdfont_uncertain": "Installé, mais vérification incertaine :\n{}",
   "dialog.nerdfont_script_fail": "Échec de l'installation.\n{}\n{}",
   "dialog.nerdfont_spawn_fail": "Échec d'exécution de l'installateur :\n{}",
-
   "dialog.confirm_title": "CONFIRMATION",
   "dialog.confirm_attention": "ATTENTION REQUISE",
   "dialog.kill_process": "[!] Tuer le processus {} (PID : {}) ? [O/N]",
   "dialog.kill_conns": "[!] Tuer les {} connexions de {} ? [O/N]",
   "dialog.admin_required": "(Nécessite des privilèges Administrateur)",
-
   "firewall.conns": "{} CONNEX. ({})",
   "firewall.blocked": "IPS BLOQUÉS ({})",
   "firewall.no_conns": "Aucune connexion",
@@ -274,12 +258,10 @@
   "firewall.key_block": "B",
   "firewall.key_unblock": "U",
   "firewall.key_exit": "Esc",
-
   "language.title": "CHOISIR LA LANGUE",
   "language.prompt": "Choisissez votre langue préférée :",
   "language.current": "Actuelle : {}",
   "language.applied": "[+] Langue changée en {}",
-
   "status.language_changed": "[+] Langue changée en {}",
   "footer.status": "STATUT",
   "locale.en": "English",
@@ -290,8 +272,11 @@
   "locale.it": "Italiano",
   "locale.ja": "日本語",
   "locale.zh": "中文",
-  "locale.ru": "Русский"
+  "locale.ru": "Русский",
+  "nav.main": "Principal",
+  "nav.trends": "Tendances",
+  "nav.dga": "DGA",
+  "nav.libs": "Bibliothèques",
+  "nav.containers": "Conteneurs",
+  "nav.menu": "Menu"
 }
-
-
-

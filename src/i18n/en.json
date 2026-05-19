@@ -9,7 +9,6 @@
   "app.mode_hunter": "Filter Unsigned",
   "app.apps_count": "{} Apps",
   "app.conns_count": "{} Conns",
-
   "status.ready": "[+] Ready - Press Tab to switch panels",
   "status.refresh": "[*] Refreshing analysis...",
   "status.search_closed": "[*] Search closed",
@@ -74,7 +73,6 @@
   "status.tools_missing": "[?] Network tools missing. Install?",
   "status.analysis_paused": "[*] Analysis paused",
   "status.analysis_resumed": "[*] Analysis resumed",
-
   "sidebar.processes": "PROCESSES ({})",
   "sidebar.no_conns": "No active connections",
   "sidebar.press_r": "Press",
@@ -82,7 +80,6 @@
   "sidebar.items": "{} items",
   "sidebar.risk_level": "{}",
   "sidebar.select_hint": "Select a process",
-
   "center.process_info": "PROCESS INFO",
   "center.connections": "CONNECTIONS ({})",
   "center.no_conns": "No active connections",
@@ -112,7 +109,6 @@
   "center.corrupt": "CORRUPT",
   "center.unsigned": "UNSIGNED",
   "center.unknown_sig": "UNKNOWN",
-
   "center.loading_title": "DEEP INVESTIGATION",
   "center.loading_diag": "Running Diagnostics...",
   "center.loading_nslookup": "> NSLOOKUP",
@@ -121,7 +117,6 @@
   "center.loading_wait": "Please wait, this may take a few seconds...",
   "center.initial_loading": "Analyzing network connections...",
   "center.initial_wait": "Please wait, this may take a few seconds.",
-
   "investigation.title": "INTEL REPORT: {}:{} ",
   "investigation.trust_score": "TRUST SCORE (HIGHER IS RISKIER)",
   "investigation.risk_low": "LOW RISK",
@@ -155,7 +150,6 @@
   "investigation.remarks": "SECURITY REMARKS",
   "investigation.no_threats": "No suspicious activity detected",
   "map.title": "NETWORK ROUTE MAP",
-
   "actions.title": "ACTIONS",
   "actions.refresh": "Refresh Analysis",
   "actions.kill": "Kill Process",
@@ -172,22 +166,17 @@
   "actions.language": "Language",
   "actions.pause": "Pause Analysis",
   "actions.resume": "Resume Analysis",
-
   "icon.title": "APP ICON",
-
   "search.label": "SEARCH",
   "search.matches": "({} matches)",
-
   "hint.quit": "Quit",
   "hint.exit": "Exit",
   "hint.switch_panel": "Switch Panel",
   "hint.execute": "Execute Action",
   "hint.search": "Search",
-  "hint.rate_limit": "[ API: Rate Limited ]",
   "hint.close_search": "Close Search",
   "hint.confirm_filter": "Confirm Filter",
   "hint.delete_char": "Delete char",
-
   "dialog.net_tools": "NETWORK TOOLS",
   "dialog.net_tools_title": "TOOLS REQUIRED",
   "dialog.net_tools_installing": "INSTALLING NETWORK TOOLS",
@@ -214,7 +203,6 @@
   "dialog.dismiss": "dismiss",
   "dialog.to_cancel": "to cancel",
   "dialog.to_dismiss": "to dismiss",
-
   "dialog.update_title": "UPDATE AVAILABLE",
   "dialog.update_available": "A NEW VERSION IS AVAILABLE",
   "dialog.update_current": "Current: v{} → v{}",
@@ -233,7 +221,6 @@
   "status.update_done": "[+] Update successful! Restart to apply changes",
   "status.update_fail": "[-] Update failed: {}",
   "status.checking_updates": "[*] Checking for updates...",
-
   "dialog.nerdfont_title": "NERD FONT",
   "dialog.nerdfont_required": "FONT ICONS REQUIRED",
   "dialog.nerdfont_installing": "INSTALLING NERD FONT",
@@ -252,13 +239,11 @@
   "dialog.nerdfont_uncertain": "Installed, but verification uncertain:\n{}",
   "dialog.nerdfont_script_fail": "Installation failed.\n{}\n{}",
   "dialog.nerdfont_spawn_fail": "Failed to run installer:\n{}",
-
   "dialog.confirm_title": "CONFIRMATION",
   "dialog.confirm_attention": "ATTENTION REQUIRED",
   "dialog.kill_process": "[!] Kill process {} (PID: {})? [Y/N]",
   "dialog.kill_conns": "[!] Kill all {} connections for {}? [Y/N]",
   "dialog.admin_required": "(Requires Administrator privileges)",
-
   "firewall.conns": "{} CONNS ({})",
   "firewall.blocked": "BLOCKED IPS ({})",
   "firewall.no_conns": "No connections",
@@ -273,12 +258,10 @@
   "firewall.key_block": "B",
   "firewall.key_unblock": "U",
   "firewall.key_exit": "Esc",
-
   "language.title": "SELECT LANGUAGE",
   "language.prompt": "Choose your preferred language:",
   "language.current": "Current: {}",
   "language.applied": "[+] Language changed to {}",
-
   "status.language_changed": "[+] Language changed to {}",
   "footer.status": "STATUS",
   "locale.en": "English",
@@ -289,5 +272,11 @@
   "locale.it": "Italiano",
   "locale.ja": "日本語",
   "locale.zh": "中文",
-  "locale.ru": "Русский"
+  "locale.ru": "Русский",
+  "nav.main": "Main",
+  "nav.trends": "Trends",
+  "nav.dga": "DGA",
+  "nav.libs": "Libraries",
+  "nav.containers": "Containers",
+  "nav.menu": "Menu"
 }

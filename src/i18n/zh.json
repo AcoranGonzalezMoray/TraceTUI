@@ -9,7 +9,6 @@
   "app.mode_hunter": "过滤未签名",
   "app.apps_count": "{} 应用",
   "app.conns_count": "{} 连接",
-
   "status.ready": "[+] 就绪 - Tab切换面板",
   "status.refresh": "[*] 正在刷新分析...",
   "status.search_closed": "[*] 搜索已关闭",
@@ -74,7 +73,6 @@
   "status.tools_missing": "[?] 缺少网络工具。是否安装？",
   "status.analysis_paused": "[*] 分析已暂停",
   "status.analysis_resumed": "[*] 分析已恢复",
-
   "sidebar.processes": "进程 ({})",
   "sidebar.no_conns": "无活动连接",
   "sidebar.press_r": "按",
@@ -82,7 +80,6 @@
   "sidebar.items": "{} 项",
   "sidebar.risk_level": "{}",
   "sidebar.select_hint": "选择一个进程",
-
   "center.process_info": "进程信息",
   "center.connections": "连接 ({})",
   "center.no_conns": "无活动连接",
@@ -112,7 +109,6 @@
   "center.corrupt": "损坏",
   "center.unsigned": "未签名",
   "center.unknown_sig": "未知",
-
   "center.loading_title": "深入调查",
   "center.loading_diag": "正在运行诊断...",
   "center.loading_nslookup": "> NSLOOKUP",
@@ -121,7 +117,6 @@
   "center.loading_wait": "请稍候，这可能需要几秒钟...",
   "center.initial_loading": "正在分析网络连接...",
   "center.initial_wait": "请稍候，这可能需要几秒钟。",
-
   "investigation.title": "报告：{}:{} ",
   "investigation.trust_score": "信任评分（越高越危险）",
   "investigation.risk_low": "低风险",
@@ -155,8 +150,6 @@
   "investigation.remarks": "安全备注",
   "investigation.no_threats": "未检测到可疑活动",
   "map.title": "网络路由地图",
-
-
   "actions.title": "操作",
   "actions.refresh": "刷新分析",
   "actions.kill": "终止进程",
@@ -173,22 +166,17 @@
   "actions.language": "语言",
   "actions.pause": "暂停分析",
   "actions.resume": "恢复分析",
- 
   "icon.title": "应用图标",
-
   "search.label": "搜索",
   "search.matches": "({} 匹配)",
-
   "hint.quit": "退出",
   "hint.exit": "退出",
   "hint.switch_panel": "切换面板",
   "hint.execute": "执行操作",
   "hint.search": "搜索",
-  "hint.rate_limit": "[ API：受限 ]",
   "hint.close_search": "关闭搜索",
   "hint.confirm_filter": "确认过滤",
   "hint.delete_char": "删除字符",
-
   "dialog.net_tools": "网络工具",
   "dialog.net_tools_title": "需要工具",
   "dialog.net_tools_installing": "正在安装网络工具",
@@ -215,7 +203,6 @@
   "dialog.dismiss": "关闭",
   "dialog.to_cancel": "取消",
   "dialog.to_dismiss": "关闭",
-
   "dialog.update_title": "更新可用",
   "dialog.update_available": "新版本可用",
   "dialog.update_current": "当前：v{} → v{}",
@@ -234,7 +221,6 @@
   "status.update_done": "[+] 更新成功！重启以应用更改",
   "status.update_fail": "[-] 更新失败: {}",
   "status.checking_updates": "[*] 正在检查更新...",
-
   "dialog.nerdfont_title": "Nerd Font",
   "dialog.nerdfont_required": "需要字体图标",
   "dialog.nerdfont_installing": "正在安装Nerd Font",
@@ -253,13 +239,11 @@
   "dialog.nerdfont_uncertain": "已安装，但验证不确定：\n{}",
   "dialog.nerdfont_script_fail": "安装失败。\n{}\n{}",
   "dialog.nerdfont_spawn_fail": "运行安装程序失败：\n{}",
-
   "dialog.confirm_title": "确认",
   "dialog.confirm_attention": "需要注意",
   "dialog.kill_process": "[!] 终止进程 {} (PID: {})？[Y/N]",
   "dialog.kill_conns": "[!] 终止 {} 的所有 {} 个连接？[Y/N]",
   "dialog.admin_required": "(需要管理员权限)",
-
   "firewall.conns": "{} 连接 ({})",
   "firewall.blocked": "已阻止IP ({})",
   "firewall.no_conns": "无连接",
@@ -274,12 +258,10 @@
   "firewall.key_block": "B",
   "firewall.key_unblock": "U",
   "firewall.key_exit": "Esc",
-
   "language.title": "选择语言",
   "language.prompt": "请选择您的首选语言：",
   "language.current": "当前：{}",
   "language.applied": "[+] 语言已更改为 {}",
-
   "status.language_changed": "[+] 语言已更改为 {}",
   "footer.status": "状态",
   "locale.en": "English",
@@ -290,8 +272,11 @@
   "locale.it": "Italiano",
   "locale.ja": "日本語",
   "locale.zh": "中文",
-  "locale.ru": "Русский"
+  "locale.ru": "Русский",
+  "nav.main": "主视图",
+  "nav.trends": "趋势",
+  "nav.dga": "DGA",
+  "nav.libs": "库",
+  "nav.containers": "容器",
+  "nav.menu": "菜单"
 }
-
-
-

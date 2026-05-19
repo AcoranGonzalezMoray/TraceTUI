@@ -3,8 +3,17 @@ use serde::{Deserialize, Serialize};
 pub enum AppState {
     Dashboard,
 }
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NavView {
+    Main,
+    TrendGraphs,
+    DgaDetector,
+    LibraryInspection,
+    Containers,
+}
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SidebarFocus {
+    Nav,
     Left,
     Center,
     Right,

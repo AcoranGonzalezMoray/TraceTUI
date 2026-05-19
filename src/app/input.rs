@@ -1,5 +1,5 @@
 use crate::app::firewall_service::FirewallManager;
-use crate::app::types::{FirewallPanel, SidebarFocus};
+use crate::app::types::{FirewallPanel, NavView, SidebarFocus};
 use crate::app::App;
 use crate::config;
 use crate::resources;
@@ -64,9 +64,10 @@ impl App {
         match key.code {
             KeyCode::Tab => {
                 self.sidebar_focus = match self.sidebar_focus {
+                    SidebarFocus::Nav => SidebarFocus::Left,
                     SidebarFocus::Left => SidebarFocus::Center,
                     SidebarFocus::Center => SidebarFocus::Right,
-                    SidebarFocus::Right => SidebarFocus::Left,
+                    SidebarFocus::Right => SidebarFocus::Nav,
                 };
                 self.status_message = tr!(
                     self.translator,
@@ -77,7 +78,8 @@ impl App {
             }
             KeyCode::BackTab => {
                 self.sidebar_focus = match self.sidebar_focus {
-                    SidebarFocus::Left => SidebarFocus::Right,
+                    SidebarFocus::Nav => SidebarFocus::Right,
+                    SidebarFocus::Left => SidebarFocus::Nav,
                     SidebarFocus::Center => SidebarFocus::Left,
                     SidebarFocus::Right => SidebarFocus::Center,
                 };
@@ -91,6 +93,15 @@ impl App {
             KeyCode::Up => {
                 let in_investigation = self.investigation_report.is_some() || self.is_investigating;
                 match self.sidebar_focus {
+                    SidebarFocus::Nav => {
+                        self.current_nav_view = match self.current_nav_view {
+                            NavView::Main => NavView::Containers,
+                            NavView::TrendGraphs => NavView::Main,
+                            NavView::DgaDetector => NavView::TrendGraphs,
+                            NavView::LibraryInspection => NavView::DgaDetector,
+                            NavView::Containers => NavView::LibraryInspection,
+                        };
+                    }
                     SidebarFocus::Left if !in_investigation && self.selected_app_index > 0 => {
                         self.selected_app_index -= 1;
                         self.selected_connection_index = 0;
@@ -110,6 +121,15 @@ impl App {
             KeyCode::Down => {
                 let in_investigation = self.investigation_report.is_some() || self.is_investigating;
                 match self.sidebar_focus {
+                    SidebarFocus::Nav => {
+                        self.current_nav_view = match self.current_nav_view {
+                            NavView::Main => NavView::TrendGraphs,
+                            NavView::TrendGraphs => NavView::DgaDetector,
+                            NavView::DgaDetector => NavView::LibraryInspection,
+                            NavView::LibraryInspection => NavView::Containers,
+                            NavView::Containers => NavView::Main,
+                        };
+                    }
                     SidebarFocus::Left if !in_investigation => {
                         let filtered_count = self.get_filtered_apps().len();
                         if self.selected_app_index < filtered_count.saturating_sub(1) {
@@ -136,6 +156,11 @@ impl App {
             KeyCode::Enter => {
                 let in_investigation = self.investigation_report.is_some() || self.is_investigating;
                 match self.sidebar_focus {
+                    SidebarFocus::Nav => {
+                        // Enter on Nav simply reflects that the view is already changed by Up/Down
+                        // or we could expand/collapse
+                        self.nav_sidebar_expanded = !self.nav_sidebar_expanded;
+                    }
                     SidebarFocus::Right => self.execute_action(),
                     SidebarFocus::Center if !in_investigation => self.start_investigation(),
                     SidebarFocus::Left => {
@@ -163,6 +188,9 @@ impl App {
             }
             KeyCode::Char('b') | KeyCode::Char('B') => {
                 self.enter_firewall_mode();
+            }
+            KeyCode::Char('m') | KeyCode::Char('M') => {
+                self.nav_sidebar_expanded = !self.nav_sidebar_expanded;
             }
             KeyCode::Char('l') | KeyCode::Char('L') => {
                 self.show_language_modal = true;
@@ -696,8 +724,18 @@ impl App {
     fn handle_dashboard_mouse_click(&mut self, x: u16, _y: u16) {
         let (term_width, _) = crossterm::terminal::size()
             .unwrap_or((config::DEFAULT_TERM_WIDTH, config::DEFAULT_TERM_HEIGHT));
-        let left = (term_width as f32 * config::SIDEBAR_LEFT_PCT as f32 / 100.0) as u16;
-        let center = left + (term_width as f32 * config::CENTER_PANEL_PCT as f32 / 100.0) as u16;
+        
+        let nav_width = if self.nav_sidebar_expanded { 20 } else { 7 };
+        
+        if x < nav_width {
+            self.sidebar_focus = SidebarFocus::Nav;
+            return;
+        }
+
+        let remaining_width = term_width.saturating_sub(nav_width);
+        let left = nav_width + (remaining_width as f32 * config::SIDEBAR_LEFT_PCT as f32 / 100.0) as u16;
+        let center = left + (remaining_width as f32 * config::CENTER_PANEL_PCT as f32 / 100.0) as u16;
+        
         if x < left {
             self.sidebar_focus = SidebarFocus::Left;
         } else if x < center {
@@ -708,6 +746,26 @@ impl App {
     }
     fn handle_mouse_scroll(&mut self, delta: i32) {
         match self.sidebar_focus {
+            SidebarFocus::Nav => {
+                // Scroll through nav views
+                if delta > 0 {
+                    self.current_nav_view = match self.current_nav_view {
+                        NavView::Main => NavView::TrendGraphs,
+                        NavView::TrendGraphs => NavView::DgaDetector,
+                        NavView::DgaDetector => NavView::LibraryInspection,
+                        NavView::LibraryInspection => NavView::Containers,
+                        NavView::Containers => NavView::Main,
+                    };
+                } else {
+                    self.current_nav_view = match self.current_nav_view {
+                        NavView::Main => NavView::Containers,
+                        NavView::TrendGraphs => NavView::Main,
+                        NavView::DgaDetector => NavView::TrendGraphs,
+                        NavView::LibraryInspection => NavView::DgaDetector,
+                        NavView::Containers => NavView::LibraryInspection,
+                    };
+                }
+            }
             SidebarFocus::Left => {
                 if self.investigation_report.is_none() && !self.is_investigating {
                     let max = self.get_filtered_apps().len().saturating_sub(1);

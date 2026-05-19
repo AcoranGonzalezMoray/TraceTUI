@@ -9,7 +9,6 @@
   "app.mode_hunter": "Фильтр Неподписанных",
   "app.apps_count": "{} Прил.",
   "app.conns_count": "{} Соед.",
-
   "status.ready": "[+] Готово - Tab для переключения панелей",
   "status.refresh": "[*] Обновление анализа...",
   "status.search_closed": "[*] Поиск закрыт",
@@ -74,7 +73,6 @@
   "status.tools_missing": "[?] Отсутствуют сетевые инструменты. Установить?",
   "status.analysis_paused": "[*] Анализ приостановлен",
   "status.analysis_resumed": "[*] Анализ возобновлен",
-
   "sidebar.processes": "ПРОЦЕССЫ ({})",
   "sidebar.no_conns": "Нет активных соединений",
   "sidebar.press_r": "Нажмите",
@@ -82,7 +80,6 @@
   "sidebar.items": "{} элементов",
   "sidebar.risk_level": "{}",
   "sidebar.select_hint": "Выберите процесс",
-
   "center.process_info": "ИНФОРМАЦИЯ О ПРОЦЕССЕ",
   "center.connections": "СОЕДИНЕНИЯ ({})",
   "center.no_conns": "Нет активных соединений",
@@ -112,7 +109,6 @@
   "center.corrupt": "ПОВРЕЖДЕН",
   "center.unsigned": "НЕ ПОДПИСАН",
   "center.unknown_sig": "НЕИЗВЕСТНО",
-
   "center.loading_title": "ГЛУБОКОЕ РАССЛЕДОВАНИЕ",
   "center.loading_diag": "Выполнение диагностики...",
   "center.loading_nslookup": "> NSLOOKUP",
@@ -121,7 +117,6 @@
   "center.loading_wait": "Пожалуйста, подождите, это может занять несколько секунд...",
   "center.initial_loading": "Анализ сетевых соединений...",
   "center.initial_wait": "Пожалуйста, подождите, это может занять несколько секунд.",
-
   "investigation.title": "ОТЧЕТ: {}:{} ",
   "investigation.trust_score": "ОЦЕНКА ДОВЕРИЯ (ВЫШЕ = РИСКОВАННЕЕ)",
   "investigation.risk_low": "НИЗКИЙ РИСК",
@@ -155,8 +150,6 @@
   "investigation.remarks": "ЗАМЕЧАНИЯ ПО БЕЗОПАСНОСТИ",
   "investigation.no_threats": "Подозрительная активность не обнаружена",
   "map.title": "КАРТА СЕТЕВОГО МАРШРУТА",
-
-
   "actions.title": "ДЕЙСТВИЯ",
   "actions.refresh": "Обновить Анализ",
   "actions.kill": "Завершить Процесс",
@@ -173,22 +166,17 @@
   "actions.language": "Язык",
   "actions.pause": "Приостановить Анализ",
   "actions.resume": "Возобновить Анализ",
- 
   "icon.title": "ЗНАЧОК ПРИЛ.",
-
   "search.label": "ПОИСК",
   "search.matches": "({} совпад.)",
-
   "hint.quit": "Выйти",
   "hint.exit": "Выйти",
   "hint.switch_panel": "Переключить Панель",
   "hint.execute": "Выполнить Действие",
   "hint.search": "Поиск",
-  "hint.rate_limit": "[ API: Ограничено ]",
   "hint.close_search": "Закрыть Поиск",
   "hint.confirm_filter": "Подтвердить Фильтр",
   "hint.delete_char": "Удалить символ",
-
   "dialog.net_tools": "СЕТЕВЫЕ ИНСТРУМЕНТЫ",
   "dialog.net_tools_title": "ТРЕБУЮТСЯ ИНСТРУМЕНТЫ",
   "dialog.net_tools_installing": "УСТАНОВКА СЕТЕВЫХ ИНСТРУМЕНТОВ",
@@ -215,7 +203,6 @@
   "dialog.dismiss": "закрыть",
   "dialog.to_cancel": "для отмены",
   "dialog.to_dismiss": "для закрытия",
-
   "dialog.update_title": "ОБНОВЛЕНИЕ ДОСТУПНО",
   "dialog.update_available": "ДОСТУПНА НОВАЯ ВЕРСИЯ",
   "dialog.update_current": "Текущая: v{} → v{}",
@@ -234,7 +221,6 @@
   "status.update_done": "[+] Обновление успешно! Перезапустите для применения изменений",
   "status.update_fail": "[-] Обновление не удалось: {}",
   "status.checking_updates": "[*] Проверка обновлений...",
-
   "dialog.nerdfont_title": "NERD FONT",
   "dialog.nerdfont_required": "ТРЕБУЮТСЯ ЗНАЧКИ ШРИФТА",
   "dialog.nerdfont_installing": "УСТАНОВКА NERD FONT",
@@ -253,13 +239,11 @@
   "dialog.nerdfont_uncertain": "Установлено, но проверка неопределена:\n{}",
   "dialog.nerdfont_script_fail": "Установка не удалась.\n{}\n{}",
   "dialog.nerdfont_spawn_fail": "Не удалось запустить установщик:\n{}",
-
   "dialog.confirm_title": "ПОДТВЕРЖДЕНИЕ",
   "dialog.confirm_attention": "ТРЕБУЕТСЯ ВНИМАНИЕ",
   "dialog.kill_process": "[!] Завершить процесс {} (PID: {})? [Д/Н]",
   "dialog.kill_conns": "[!] Завершить все {} соединений {}? [Д/Н]",
   "dialog.admin_required": "(Требуются права Администратора)",
-
   "firewall.conns": "{} СОЕД. ({})",
   "firewall.blocked": "ЗАБЛОКИРОВАННЫЕ IP ({})",
   "firewall.no_conns": "Нет соединений",
@@ -274,12 +258,10 @@
   "firewall.key_block": "B",
   "firewall.key_unblock": "U",
   "firewall.key_exit": "Esc",
-
   "language.title": "ВЫБОР ЯЗЫКА",
   "language.prompt": "Выберите предпочитаемый язык:",
   "language.current": "Текущий: {}",
   "language.applied": "[+] Язык изменен на {}",
-
   "status.language_changed": "[+] Язык изменен на {}",
   "footer.status": "СТАТУС",
   "locale.en": "English",
@@ -290,8 +272,11 @@
   "locale.it": "Italiano",
   "locale.ja": "日本語",
   "locale.zh": "中文",
-  "locale.ru": "Русский"
+  "locale.ru": "Русский",
+  "nav.main": "Главная",
+  "nav.trends": "Тренды",
+  "nav.dga": "DGA",
+  "nav.libs": "Библиотеки",
+  "nav.containers": "Контейнеры",
+  "nav.menu": "Меню"
 }
-
-
-
