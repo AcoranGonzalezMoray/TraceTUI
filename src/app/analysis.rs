@@ -47,6 +47,13 @@ impl App {
         self.process_user_location();
         self.process_update_result();
         self.process_update_task();
+        self.process_container_results();
+        if self.current_nav_view == crate::app::NavView::Containers
+            && !self.containers_loaded_once
+            && !self.containers_loading
+        {
+            self.refresh_containers_async();
+        }
         if self.auto_analysis_complete && !self.analysis_paused {
             self.continuous_refresh_counter = self.continuous_refresh_counter.wrapping_add(1);
             if self.continuous_refresh_counter >= config::REFRESH_COUNTER_THRESHOLD {

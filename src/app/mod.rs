@@ -1,4 +1,5 @@
 pub mod analysis;
+pub mod containers;
 pub mod firewall_service;
 pub mod grouping;
 pub mod input;
@@ -112,6 +113,19 @@ pub struct App {
     pub welcome_index: usize,
     pub current_nav_view: NavView,
     pub nav_sidebar_expanded: bool,
+    pub containers: Vec<crate::app::containers::ContainerInfo>,
+    pub selected_container_index: usize,
+    pub selected_container_action_index: usize,
+    pub container_detail_scroll: usize,
+    pub containers_loading: bool,
+    pub containers_loaded_once: bool,
+    pub containers_error: Option<String>,
+    pub container_rx: Option<
+        std::sync::mpsc::Receiver<Result<Vec<crate::app::containers::ContainerInfo>, String>>,
+    >,
+    pub container_logs: Vec<String>,
+    pub container_logs_loading: bool,
+    pub container_logs_rx: Option<std::sync::mpsc::Receiver<Result<Vec<String>, String>>>,
 }
 impl App {
     pub fn new() -> Self {
@@ -207,6 +221,17 @@ impl App {
             welcome_index: 0,
             current_nav_view: NavView::Main,
             nav_sidebar_expanded: false,
+            containers: Vec::new(),
+            selected_container_index: 0,
+            selected_container_action_index: 0,
+            container_detail_scroll: 0,
+            containers_loading: false,
+            containers_loaded_once: false,
+            containers_error: None,
+            container_rx: None,
+            container_logs: Vec::new(),
+            container_logs_loading: false,
+            container_logs_rx: None,
         };
 
         #[cfg(not(test))]
@@ -258,5 +283,8 @@ impl App {
     pub fn get_selected_app(&self) -> Option<&AppConnection> {
         let filtered = self.get_filtered_apps();
         filtered.get(self.selected_app_index).copied()
+    }
+    pub fn get_selected_container(&self) -> Option<&crate::app::containers::ContainerInfo> {
+        self.containers.get(self.selected_container_index)
     }
 }

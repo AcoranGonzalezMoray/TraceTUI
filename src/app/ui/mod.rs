@@ -8,16 +8,18 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Paragraph},
 };
 pub mod center_panel;
+pub mod containers;
 pub mod dialogs;
 pub mod firewall;
 pub mod footer;
 pub mod header;
-pub mod sidebar_left;
 pub mod nav_sidebar;
+pub mod sidebar_left;
 pub mod sidebar_right;
 pub mod theme;
 pub mod widgets;
 pub use center_panel::render_center_panel;
+pub use containers::render_containers_view;
 pub use dialogs::render_confirmation_dialog;
 pub use dialogs::render_install_dialog;
 pub use dialogs::render_language_modal;
@@ -28,8 +30,8 @@ pub use dialogs::render_welcome_dialog;
 pub use firewall::render_firewall_mode;
 pub use footer::render_footer;
 pub use header::render_header;
-pub use sidebar_left::render_left_sidebar;
 pub use nav_sidebar::render_nav_sidebar;
+pub use sidebar_left::render_left_sidebar;
 pub use sidebar_right::render_right_sidebar;
 pub use theme::THEME;
 pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
@@ -161,7 +163,6 @@ pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
                 format!(" {}  ", tr!(t, "hint.search")),
                 Style::default().fg(THEME.text_dim),
             ),
-
             Span::styled(
                 " L ",
                 Style::default()
@@ -257,27 +258,24 @@ fn render_search_bar(f: &mut ratatui::Frame, app: &App, area: Rect) {
 }
 fn render_main_layout_with_nav(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let nav_width = if app.nav_sidebar_expanded { 22 } else { 7 };
-    
+
     let main_layout = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Length(nav_width),
-            Constraint::Min(0),
-        ])
+        .constraints([Constraint::Length(nav_width), Constraint::Min(0)])
         .split(area);
 
     render_nav_sidebar(f, app, main_layout[0]);
-    
+
     match app.current_nav_view {
-        NavView::Main => {
-            match app.current_state {
-                AppState::Dashboard => render_ide_layout(f, app, main_layout[1]),
-            }
+        NavView::Main => match app.current_state {
+            AppState::Dashboard => render_ide_layout(f, app, main_layout[1]),
         },
         NavView::TrendGraphs => render_placeholder_view(f, "Gráficos de Tendencia", main_layout[1]),
         NavView::DgaDetector => render_placeholder_view(f, "Detector DGA", main_layout[1]),
-        NavView::LibraryInspection => render_placeholder_view(f, "Inspección de Librerías", main_layout[1]),
-        NavView::Containers => render_placeholder_view(f, "Reconocimiento de Contenedores", main_layout[1]),
+        NavView::LibraryInspection => {
+            render_placeholder_view(f, "Inspección de Librerías", main_layout[1])
+        }
+        NavView::Containers => render_containers_view(f, app, main_layout[1]),
     }
 }
 
@@ -287,18 +285,24 @@ fn render_placeholder_view(f: &mut ratatui::Frame, title: &str, area: Rect) {
         .border_type(BorderType::Rounded)
         .title(format!(" {} ", title))
         .border_style(Style::default().fg(THEME.primary));
-    
+
     let paragraph = Paragraph::new(vec![
         Line::from(""),
         Line::from("  Próximamente..."),
         Line::from(""),
         Line::from(vec![
             Span::raw("  Esta funcionalidad ("),
-            Span::styled(title, Style::default().fg(THEME.secondary).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                title,
+                Style::default()
+                    .fg(THEME.secondary)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(") será implementada pronto."),
         ]),
-    ]).block(block);
-    
+    ])
+    .block(block);
+
     f.render_widget(paragraph, area);
 }
 

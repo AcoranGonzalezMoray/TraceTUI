@@ -48,6 +48,10 @@ impl App {
             self.handle_search_keys(key);
             return;
         }
+        if self.current_nav_view == NavView::Containers {
+            self.handle_container_keys(key);
+            return;
+        }
         if self.show_map {
             if key.code == KeyCode::Esc
                 || key.code == KeyCode::Char('q')
@@ -326,6 +330,106 @@ impl App {
                 } else {
                     self.should_quit = true;
                 }
+            }
+            _ => {}
+        }
+    }
+    fn handle_container_keys(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Tab => {
+                self.sidebar_focus = match self.sidebar_focus {
+                    SidebarFocus::Nav => SidebarFocus::Left,
+                    SidebarFocus::Left => SidebarFocus::Center,
+                    SidebarFocus::Center => SidebarFocus::Right,
+                    SidebarFocus::Right => SidebarFocus::Nav,
+                };
+                self.status_message = tr!(
+                    self.translator,
+                    "status.focus",
+                    format!("{:?}", self.sidebar_focus)
+                )
+                .to_string();
+            }
+            KeyCode::BackTab => {
+                self.sidebar_focus = match self.sidebar_focus {
+                    SidebarFocus::Nav => SidebarFocus::Right,
+                    SidebarFocus::Left => SidebarFocus::Nav,
+                    SidebarFocus::Center => SidebarFocus::Left,
+                    SidebarFocus::Right => SidebarFocus::Center,
+                };
+            }
+            KeyCode::Up => match self.sidebar_focus {
+                SidebarFocus::Nav => {
+                    self.current_nav_view = NavView::LibraryInspection;
+                }
+                SidebarFocus::Left if self.selected_container_index > 0 => {
+                    self.selected_container_index -= 1;
+                    self.container_detail_scroll = 0;
+                    self.container_logs.clear();
+                }
+                SidebarFocus::Center if self.container_detail_scroll > 0 => {
+                    self.container_detail_scroll -= 1;
+                }
+                SidebarFocus::Right if self.selected_container_action_index > 0 => {
+                    self.selected_container_action_index -= 1;
+                }
+                _ => {}
+            },
+            KeyCode::Down => match self.sidebar_focus {
+                SidebarFocus::Nav => {
+                    self.current_nav_view = NavView::Main;
+                }
+                SidebarFocus::Left => {
+                    let max = self.containers.len().saturating_sub(1);
+                    if self.selected_container_index < max {
+                        self.selected_container_index += 1;
+                        self.container_detail_scroll = 0;
+                        self.container_logs.clear();
+                    }
+                }
+                SidebarFocus::Center => {
+                    let max = self.container_logs.len().saturating_sub(1);
+                    if self.container_detail_scroll < max {
+                        self.container_detail_scroll += 1;
+                    }
+                }
+                SidebarFocus::Right => {
+                    let max = crate::app::containers::ContainerAction::COUNT.saturating_sub(1);
+                    if self.selected_container_action_index < max {
+                        self.selected_container_action_index += 1;
+                    }
+                }
+            },
+            KeyCode::Enter => match self.sidebar_focus {
+                SidebarFocus::Nav => self.nav_sidebar_expanded = !self.nav_sidebar_expanded,
+                SidebarFocus::Left => self.sidebar_focus = SidebarFocus::Center,
+                SidebarFocus::Right => self.execute_container_action(),
+                _ => self.refresh_selected_container_logs_async(),
+            },
+            KeyCode::Char('r') | KeyCode::Char('R') => self.refresh_containers_async(),
+            KeyCode::Char('l') | KeyCode::Char('L') => self.refresh_selected_container_logs_async(),
+            KeyCode::Char('s') | KeyCode::Char('S') => {
+                self.selected_container_action_index = 2;
+                self.execute_container_action();
+            }
+            KeyCode::Char('t') | KeyCode::Char('T') => {
+                self.selected_container_action_index = 3;
+                self.execute_container_action();
+            }
+            KeyCode::Char('e') | KeyCode::Char('E') => {
+                self.selected_container_action_index = 4;
+                self.execute_container_action();
+            }
+            KeyCode::Char('p') | KeyCode::Char('P') => {
+                self.selected_container_action_index = 5;
+                self.execute_container_action();
+            }
+            KeyCode::Char('m') | KeyCode::Char('M') => {
+                self.nav_sidebar_expanded = !self.nav_sidebar_expanded;
+            }
+            KeyCode::Char('q') | KeyCode::Char('Q') | KeyCode::Esc => {
+                self.current_nav_view = NavView::Main;
+                self.sidebar_focus = SidebarFocus::Nav;
             }
             _ => {}
         }
@@ -724,18 +828,20 @@ impl App {
     fn handle_dashboard_mouse_click(&mut self, x: u16, _y: u16) {
         let (term_width, _) = crossterm::terminal::size()
             .unwrap_or((config::DEFAULT_TERM_WIDTH, config::DEFAULT_TERM_HEIGHT));
-        
+
         let nav_width = if self.nav_sidebar_expanded { 20 } else { 7 };
-        
+
         if x < nav_width {
             self.sidebar_focus = SidebarFocus::Nav;
             return;
         }
 
         let remaining_width = term_width.saturating_sub(nav_width);
-        let left = nav_width + (remaining_width as f32 * config::SIDEBAR_LEFT_PCT as f32 / 100.0) as u16;
-        let center = left + (remaining_width as f32 * config::CENTER_PANEL_PCT as f32 / 100.0) as u16;
-        
+        let left =
+            nav_width + (remaining_width as f32 * config::SIDEBAR_LEFT_PCT as f32 / 100.0) as u16;
+        let center =
+            left + (remaining_width as f32 * config::CENTER_PANEL_PCT as f32 / 100.0) as u16;
+
         if x < left {
             self.sidebar_focus = SidebarFocus::Left;
         } else if x < center {
