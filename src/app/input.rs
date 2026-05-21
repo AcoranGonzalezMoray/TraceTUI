@@ -185,8 +185,6 @@ impl App {
                 let in_investigation = self.investigation_report.is_some() || self.is_investigating;
                 match self.sidebar_focus {
                     SidebarFocus::Nav => {
-                        // Enter on Nav simply reflects that the view is already changed by Up/Down
-                        // or we could expand/collapse
                         self.nav_sidebar_expanded = !self.nav_sidebar_expanded;
                         self.sidebar_focus = SidebarFocus::Nav;
                     }
@@ -556,7 +554,6 @@ impl App {
                 };
             }
             KeyCode::Up | KeyCode::Down if self.docker_hub_search.focused_field == 0 => {
-                // In results list
                 if !self.docker_hub_search.results.is_empty() {
                     match key.code {
                         KeyCode::Up => {
@@ -615,7 +612,6 @@ impl App {
                 self.docker_hub_search.env_vars.pop();
             }
             KeyCode::Enter if self.docker_hub_search.focused_field == 4 => {
-                // Create container
                 if !self.docker_hub_search.results.is_empty()
                     && self.docker_hub_search.selected_result_index
                         < self.docker_hub_search.results.len()
@@ -638,7 +634,6 @@ impl App {
                 }
             }
             KeyCode::Enter if self.docker_hub_search.focused_field == 5 => {
-                // Cancel
                 self.show_docker_hub_modal = false;
                 self.docker_hub_search = crate::app::containers::DockerHubSearchState::default();
             }
@@ -1117,7 +1112,6 @@ impl App {
     fn handle_mouse_scroll(&mut self, delta: i32) {
         match self.sidebar_focus {
             SidebarFocus::Nav => {
-                // Scroll through nav views
                 if delta > 0 {
                     let next = match self.current_nav_view {
                         NavView::Main => NavView::TrendGraphs,

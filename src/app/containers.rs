@@ -95,7 +95,7 @@ pub struct DockerHubSearchState {
     pub container_name: String,
     pub ports: String,
     pub env_vars: String,
-    pub focused_field: usize, // 0: search, 1: container_name, 2: ports, 3: env_vars, 4: create button, 5: cancel button
+    pub focused_field: usize,
 }
 
 pub const DOCKER_ACTION_OFFSET: usize = ContainerAction::COUNT;
@@ -684,13 +684,11 @@ impl ContainerManager {
     ) -> Result<String, String> {
         let mut args = vec!["run", "-d"];
 
-        // Add name if provided
         if !name.is_empty() {
             args.push("--name");
             args.push(name);
         }
 
-        // Add port mappings if provided
         let port_list: Vec<&str> = if !ports.is_empty() {
             ports.split(',').map(|p| p.trim()).collect()
         } else {
@@ -704,7 +702,6 @@ impl ContainerManager {
             }
         }
 
-        // Add environment variables if provided
         let env_list: Vec<&str> = if !env_vars.is_empty() {
             env_vars.split(',').map(|e| e.trim()).collect()
         } else {
@@ -718,7 +715,6 @@ impl ContainerManager {
             }
         }
 
-        // Finally, add image name
         args.push(image);
 
         let output = Command::new("docker")

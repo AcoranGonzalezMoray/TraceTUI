@@ -12,9 +12,9 @@ pub fn render_trends_view(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let sections = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(6),      // Summary cards
-            Constraint::Percentage(50), // Charts
-            Constraint::Min(0),         // Distribution tables
+            Constraint::Length(6),
+            Constraint::Percentage(50),
+            Constraint::Min(0),
         ])
         .split(area);
 
@@ -342,7 +342,6 @@ fn render_country_distribution(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     for app_conn in &app.app_connections {
         for conn in &app_conn.connections {
-            // Extract country from foreign address if available
             if let Some(addr_parts) = conn.foreign_address.split_whitespace().next() {
                 let country = format!("Country: {}", addr_parts);
                 *country_counts.entry(country).or_insert(0) += 1;

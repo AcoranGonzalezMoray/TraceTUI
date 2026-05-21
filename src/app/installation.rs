@@ -320,15 +320,12 @@ pub fn spawn_self_update(
 
             #[cfg(windows)]
             {
-                // Windows: rename running exe -> .old (works while process is running),
-                // then place the new binary in its place
                 let old_path = bin_path.with_extension("exe.old");
                 let _ = std::fs::rename(&bin_path, &old_path);
                 try_replace_binary(&extracted_bin, &bin_path)?;
             }
             #[cfg(not(windows))]
             {
-                // Linux/macOS: try direct, fallback to sudo if permission denied
                 try_replace_binary(&extracted_bin, &bin_path)?;
             }
 

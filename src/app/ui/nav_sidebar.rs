@@ -45,8 +45,6 @@ pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
         ),
     ];
 
-    // Split inner area into slots for each item
-    // Each item gets 3 lines of height + 1 space
     let constraints: Vec<Constraint> = nav_items
         .iter()
         .flat_map(|_| vec![Constraint::Length(3), Constraint::Length(1)])

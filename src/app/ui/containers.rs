@@ -92,7 +92,6 @@ pub fn render_container_logs_modal(f: &mut ratatui::Frame, app: &App) {
         .collect();
     f.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), chunks[0]);
 
-    // Scroll indicator
     let scroll_bar = Paragraph::new(Span::styled(
         scroll_info,
         Style::default()
@@ -128,7 +127,6 @@ pub fn render_container_console_modal(f: &mut ratatui::Frame, app: &App) {
         .constraints([Constraint::Min(0), Constraint::Length(4)])
         .split(inner);
 
-    // Output section
     let visible = chunks[0].height as usize;
     let lines: Vec<Line> = app
         .container_console_output
@@ -148,7 +146,6 @@ pub fn render_container_console_modal(f: &mut ratatui::Frame, app: &App) {
         .collect();
     f.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), chunks[0]);
 
-    // Input section
     let prompt = if app.container_console_loading {
         tr!(app.translator, "containers.console_running")
     } else {
@@ -914,9 +911,9 @@ pub fn render_docker_hub_modal(f: &mut ratatui::Frame, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3), // Search input
-            Constraint::Min(10),   // Results and form
-            Constraint::Length(3), // Buttons
+            Constraint::Length(3),
+            Constraint::Min(10),
+            Constraint::Length(3),
         ])
         .split(inner);
 
@@ -1055,7 +1052,6 @@ fn render_docker_hub_form(f: &mut ratatui::Frame, app: &App, area: Rect) {
         ])
         .split(inner);
 
-    // Container name field
     render_form_field(
         f,
         app,
@@ -1065,7 +1061,6 @@ fn render_docker_hub_form(f: &mut ratatui::Frame, app: &App, area: Rect) {
         &app.docker_hub_search.container_name,
     );
 
-    // Ports field
     render_form_field(
         f,
         app,
@@ -1075,7 +1070,6 @@ fn render_docker_hub_form(f: &mut ratatui::Frame, app: &App, area: Rect) {
         &app.docker_hub_search.ports,
     );
 
-    // Environment variables field
     render_form_field(
         f,
         app,
@@ -1148,7 +1142,6 @@ fn render_docker_hub_buttons(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(area);
 
-    // Create button
     let create_focused = app.docker_hub_search.focused_field == 4;
     let create_style = if create_focused {
         Style::default()
@@ -1165,7 +1158,6 @@ fn render_docker_hub_buttons(f: &mut ratatui::Frame, app: &App, area: Rect) {
         button_chunks[0],
     );
 
-    // Cancel button
     let cancel_focused = app.docker_hub_search.focused_field == 5;
     let cancel_style = if cancel_focused {
         Style::default()
