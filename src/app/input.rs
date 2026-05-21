@@ -66,6 +66,10 @@ impl App {
             self.handle_search_keys(key);
             return;
         }
+        if self.current_nav_view == NavView::Containers && self.show_docker_hub_modal {
+            self.handle_docker_hub_keys(key);
+            return;
+        }
         if self.current_nav_view == NavView::Containers {
             self.handle_container_keys(key);
             return;
@@ -532,6 +536,160 @@ impl App {
             _ => {}
         }
     }
+
+    fn handle_docker_hub_keys(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc => {
+                self.show_docker_hub_modal = false;
+                self.docker_hub_search = crate::app::containers::DockerHubSearchState::default();
+            }
+            KeyCode::Tab => {
+                self.docker_hub_search.focused_field =
+                    (self.docker_hub_search.focused_field + 1) % 6;
+            }
+            KeyCode::BackTab => {
+                self.docker_hub_search.focused_field = if self.docker_hub_search.focused_field == 0
+                {
+                    5
+                } else {
+                    self.docker_hub_search.focused_field - 1
+                };
+            }
+            KeyCode::Up | KeyCode::Down if self.docker_hub_search.focused_field == 0 => {
+                // In results list
+                if !self.docker_hub_search.results.is_empty() {
+                    match key.code {
+                        KeyCode::Up => {
+                            self.docker_hub_search.selected_result_index = self
+                                .docker_hub_search
+                                .selected_result_index
+                                .saturating_sub(1);
+                        }
+                        KeyCode::Down => {
+                            let max = self.docker_hub_search.results.len().saturating_sub(1);
+                            if self.docker_hub_search.selected_result_index < max {
+                                self.docker_hub_search.selected_result_index += 1;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            KeyCode::Char(c)
+                if self.docker_hub_search.focused_field == 0
+                    && !key.modifiers.contains(KeyModifiers::CONTROL) =>
+            {
+                self.docker_hub_search.search_query.push(c);
+            }
+            KeyCode::Backspace if self.docker_hub_search.focused_field == 0 => {
+                self.docker_hub_search.search_query.pop();
+            }
+            KeyCode::Enter if self.docker_hub_search.focused_field == 0 => {
+                self.start_docker_hub_search_async();
+            }
+            KeyCode::Char(c)
+                if self.docker_hub_search.focused_field == 1
+                    && !key.modifiers.contains(KeyModifiers::CONTROL) =>
+            {
+                self.docker_hub_search.container_name.push(c);
+            }
+            KeyCode::Backspace if self.docker_hub_search.focused_field == 1 => {
+                self.docker_hub_search.container_name.pop();
+            }
+            KeyCode::Char(c)
+                if self.docker_hub_search.focused_field == 2
+                    && !key.modifiers.contains(KeyModifiers::CONTROL) =>
+            {
+                self.docker_hub_search.ports.push(c);
+            }
+            KeyCode::Backspace if self.docker_hub_search.focused_field == 2 => {
+                self.docker_hub_search.ports.pop();
+            }
+            KeyCode::Char(c)
+                if self.docker_hub_search.focused_field == 3
+                    && !key.modifiers.contains(KeyModifiers::CONTROL) =>
+            {
+                self.docker_hub_search.env_vars.push(c);
+            }
+            KeyCode::Backspace if self.docker_hub_search.focused_field == 3 => {
+                self.docker_hub_search.env_vars.pop();
+            }
+            KeyCode::Enter if self.docker_hub_search.focused_field == 4 => {
+                // Create container
+                if !self.docker_hub_search.results.is_empty()
+                    && self.docker_hub_search.selected_result_index
+                        < self.docker_hub_search.results.len()
+                {
+                    let image = self.docker_hub_search.results
+                        [self.docker_hub_search.selected_result_index]
+                        .name
+                        .clone();
+                    let name = if self.docker_hub_search.container_name.is_empty() {
+                        image.clone()
+                    } else {
+                        self.docker_hub_search.container_name.clone()
+                    };
+                    let ports = self.docker_hub_search.ports.clone();
+                    let env_vars = self.docker_hub_search.env_vars.clone();
+                    self.start_create_container_async(&image, &name, &ports, &env_vars);
+                } else {
+                    self.status_message =
+                        tr!(self.translator, "containers.docker_hub_no_results").to_string();
+                }
+            }
+            KeyCode::Enter if self.docker_hub_search.focused_field == 5 => {
+                // Cancel
+                self.show_docker_hub_modal = false;
+                self.docker_hub_search = crate::app::containers::DockerHubSearchState::default();
+            }
+            _ => {}
+        }
+    }
+
+    fn start_docker_hub_search_async(&mut self) {
+        if self.docker_hub_search.search_query.is_empty() {
+            self.status_message =
+                tr!(self.translator, "containers.docker_hub_search_placeholder").to_string();
+            return;
+        }
+
+        let query = self.docker_hub_search.search_query.clone();
+        let (tx, rx) = std::sync::mpsc::channel();
+        self.status_message = tr!(self.translator, "containers.docker_hub_searching").to_string();
+
+        std::thread::spawn(move || {
+            let _ = tx.send(crate::app::containers::ContainerManager::search_docker_hub(
+                &query,
+            ));
+        });
+
+        self.docker_hub_search_rx = Some(rx);
+    }
+
+    fn start_create_container_async(
+        &mut self,
+        image: &str,
+        name: &str,
+        ports: &str,
+        env_vars: &str,
+    ) {
+        let image = image.to_string();
+        let name = name.to_string();
+        let ports = ports.to_string();
+        let env_vars = env_vars.to_string();
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        self.status_message = tr!(self.translator, "containers.docker_hub_creating").to_string();
+
+        std::thread::spawn(move || {
+            let _ = tx.send(crate::app::containers::ContainerManager::create_and_run(
+                &image, &name, &ports, &env_vars,
+            ));
+        });
+
+        self.docker_hub_create_rx = Some(rx);
+    }
+
     fn handle_language_keys(&mut self, key: KeyEvent) {
         let locales = crate::i18n::Translator::available_locales();
         let locale_count = locales.len();

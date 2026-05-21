@@ -79,6 +79,25 @@ impl DockerAction {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct DockerHubImage {
+    pub name: String,
+    pub description: String,
+    pub official: bool,
+    pub automated: bool,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct DockerHubSearchState {
+    pub search_query: String,
+    pub results: Vec<DockerHubImage>,
+    pub selected_result_index: usize,
+    pub container_name: String,
+    pub ports: String,
+    pub env_vars: String,
+    pub focused_field: usize, // 0: search, 1: container_name, 2: ports, 3: env_vars, 4: create button, 5: cancel button
+}
+
 pub const DOCKER_ACTION_OFFSET: usize = ContainerAction::COUNT;
 pub const CONTAINER_RIGHT_ACTION_COUNT: usize = ContainerAction::COUNT + DockerAction::COUNT;
 
@@ -244,6 +263,51 @@ impl App {
                 }
             }
         }
+
+        if let Some(rx) = &self.docker_hub_search_rx {
+            if let Ok(result) = rx.try_recv() {
+                self.docker_hub_search_rx = None;
+                match result {
+                    Ok(images) => {
+                        self.docker_hub_search.results = images;
+                        self.docker_hub_search.selected_result_index = 0;
+                        let count = self.docker_hub_search.results.len();
+                        self.status_message = tr!(
+                            self.translator,
+                            "containers.docker_hub_results_found",
+                            count
+                        );
+                    }
+                    Err(err) => {
+                        self.docker_hub_search.results.clear();
+                        self.status_message =
+                            tr!(self.translator, "containers.docker_hub_error", err);
+                    }
+                }
+            }
+        }
+
+        if let Some(rx) = &self.docker_hub_create_rx {
+            if let Ok(result) = rx.try_recv() {
+                self.docker_hub_create_rx = None;
+                match result {
+                    Ok(container_id) => {
+                        self.status_message = tr!(
+                            self.translator,
+                            "containers.docker_hub_created",
+                            container_id
+                        );
+                        self.show_docker_hub_modal = false;
+                        self.docker_hub_search = DockerHubSearchState::default();
+                        self.refresh_containers_async();
+                    }
+                    Err(err) => {
+                        self.status_message =
+                            tr!(self.translator, "containers.docker_hub_error", err);
+                    }
+                }
+            }
+        }
     }
 
     pub fn execute_container_right_action(&mut self) {
@@ -260,13 +324,15 @@ impl App {
                 DockerAction::StartDocker => {
                     self.pending_docker_action = Some(DockerAction::StartDocker);
                     self.pending_container_action = None;
-                    self.confirmation_message = tr!(self.translator, "dialog.start_docker_confirm").to_string();
+                    self.confirmation_message =
+                        tr!(self.translator, "dialog.start_docker_confirm").to_string();
                     self.show_confirmation = true;
                 }
                 DockerAction::StopDocker => {
                     self.pending_docker_action = Some(DockerAction::StopDocker);
                     self.pending_container_action = None;
-                    self.confirmation_message = tr!(self.translator, "dialog.stop_docker_confirm").to_string();
+                    self.confirmation_message =
+                        tr!(self.translator, "dialog.stop_docker_confirm").to_string();
                     self.show_confirmation = true;
                 }
             }
@@ -279,44 +345,74 @@ impl App {
             ContainerAction::Console => self.open_selected_container_console(),
             ContainerAction::Start => {
                 if let Some(c) = self.get_selected_container() {
+                    let container_name = c.name.clone();
                     self.pending_docker_action = None;
                     self.pending_container_action = Some(ContainerAction::Start);
-                    self.confirmation_message = tr!(self.translator, "dialog.start_container_confirm", &c.name).to_string();
+                    self.confirmation_message = tr!(
+                        self.translator,
+                        "dialog.start_container_confirm",
+                        &container_name
+                    )
+                    .to_string();
                     self.show_confirmation = true;
                 } else {
-                    self.status_message = tr!(self.translator, "containers.status.no_selection").to_string();
+                    self.status_message =
+                        tr!(self.translator, "containers.status.no_selection").to_string();
                 }
             }
             ContainerAction::Stop => {
                 if let Some(c) = self.get_selected_container() {
+                    let container_name = c.name.clone();
                     self.pending_docker_action = None;
                     self.pending_container_action = Some(ContainerAction::Stop);
-                    self.confirmation_message = tr!(self.translator, "dialog.stop_container_confirm", &c.name).to_string();
+                    self.confirmation_message = tr!(
+                        self.translator,
+                        "dialog.stop_container_confirm",
+                        &container_name
+                    )
+                    .to_string();
                     self.show_confirmation = true;
                 } else {
-                    self.status_message = tr!(self.translator, "containers.status.no_selection").to_string();
+                    self.status_message =
+                        tr!(self.translator, "containers.status.no_selection").to_string();
                 }
             }
             ContainerAction::Restart => {
                 if let Some(c) = self.get_selected_container() {
+                    let container_name = c.name.clone();
                     self.pending_docker_action = None;
                     self.pending_container_action = Some(ContainerAction::Restart);
-                    self.confirmation_message = tr!(self.translator, "dialog.restart_container_confirm", &c.name).to_string();
+                    self.confirmation_message = tr!(
+                        self.translator,
+                        "dialog.restart_container_confirm",
+                        &container_name
+                    )
+                    .to_string();
                     self.show_confirmation = true;
                 } else {
-                    self.status_message = tr!(self.translator, "containers.status.no_selection").to_string();
+                    self.status_message =
+                        tr!(self.translator, "containers.status.no_selection").to_string();
                 }
             }
             ContainerAction::PauseToggle => {
                 if let Some(c) = self.get_selected_container() {
+                    let container_name = c.name.clone();
+                    let is_paused = c.state.eq_ignore_ascii_case("paused");
                     self.pending_docker_action = None;
                     self.pending_container_action = Some(ContainerAction::PauseToggle);
-                    let is_paused = c.state.eq_ignore_ascii_case("paused");
-                    let key = if is_paused { "dialog.unpause_container_confirm" } else { "dialog.pause_container_confirm" };
-                    self.confirmation_message = tr!(self.translator, key, &c.name).to_string();
+                    let key = if is_paused {
+                        "dialog.unpause_container_confirm"
+                    } else {
+                        "dialog.pause_container_confirm"
+                    };
+                    self.confirmation_message = self
+                        .translator
+                        .get_fmt(key, &[format!("{}", container_name)])
+                        .to_string();
                     self.show_confirmation = true;
                 } else {
-                    self.status_message = tr!(self.translator, "containers.status.no_selection").to_string();
+                    self.status_message =
+                        tr!(self.translator, "containers.status.no_selection").to_string();
                 }
             }
         }
@@ -545,6 +641,97 @@ impl ContainerManager {
             stats.insert(stat.name.clone(), stat);
         }
         Ok(stats)
+    }
+
+    pub fn search_docker_hub(
+        query: &str,
+    ) -> Result<Vec<crate::app::containers::DockerHubImage>, String> {
+        let search_output = Command::new("docker")
+            .args(["search", query, "--format", "{{json .}}"])
+            .output()
+            .map_err(|e| format!("docker search: {}", e))?;
+
+        if !search_output.status.success() {
+            return Err(command_error("docker search", &search_output.stderr));
+        }
+
+        let mut images = Vec::new();
+        let stdout = String::from_utf8_lossy(&search_output.stdout);
+        for line in stdout.lines().filter(|line| !line.trim().is_empty()) {
+            if let Ok(value) = serde_json::from_str::<Value>(line) {
+                let name = field(&value, "Name");
+                let description = field(&value, "Description");
+                let official = field(&value, "Official").to_lowercase() == "ok";
+                let automated = field(&value, "Automated").to_lowercase() == "ok";
+
+                images.push(crate::app::containers::DockerHubImage {
+                    name,
+                    description,
+                    official,
+                    automated,
+                });
+            }
+        }
+
+        Ok(images)
+    }
+
+    pub fn create_and_run(
+        image: &str,
+        name: &str,
+        ports: &str,
+        env_vars: &str,
+    ) -> Result<String, String> {
+        let mut args = vec!["run", "-d"];
+
+        // Add name if provided
+        if !name.is_empty() {
+            args.push("--name");
+            args.push(name);
+        }
+
+        // Add port mappings if provided
+        let port_list: Vec<&str> = if !ports.is_empty() {
+            ports.split(',').map(|p| p.trim()).collect()
+        } else {
+            Vec::new()
+        };
+
+        for port in &port_list {
+            if !port.is_empty() {
+                args.push("-p");
+                args.push(port);
+            }
+        }
+
+        // Add environment variables if provided
+        let env_list: Vec<&str> = if !env_vars.is_empty() {
+            env_vars.split(',').map(|e| e.trim()).collect()
+        } else {
+            Vec::new()
+        };
+
+        for env in &env_list {
+            if !env.is_empty() {
+                args.push("-e");
+                args.push(env);
+            }
+        }
+
+        // Finally, add image name
+        args.push(image);
+
+        let output = Command::new("docker")
+            .args(&args)
+            .output()
+            .map_err(|e| format!("docker run: {}", e))?;
+
+        if output.status.success() {
+            let container_id = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            Ok(short_id(container_id))
+        } else {
+            Err(command_error("docker run", &output.stderr))
+        }
     }
 }
 

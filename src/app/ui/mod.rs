@@ -17,10 +17,12 @@ pub mod nav_sidebar;
 pub mod sidebar_left;
 pub mod sidebar_right;
 pub mod theme;
+pub mod trends;
 pub mod widgets;
 pub use center_panel::render_center_panel;
 pub use containers::{
     render_container_console_modal, render_container_logs_modal, render_containers_view,
+    render_docker_hub_modal,
 };
 pub use dialogs::render_confirmation_dialog;
 pub use dialogs::render_install_dialog;
@@ -36,6 +38,7 @@ pub use nav_sidebar::render_nav_sidebar;
 pub use sidebar_left::render_left_sidebar;
 pub use sidebar_right::render_right_sidebar;
 pub use theme::THEME;
+pub use trends::render_trends_view;
 pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
     let search_bar_height = if app.search_mode { 3 } else { 0 };
     let main_chunks = Layout::default()
@@ -260,6 +263,9 @@ pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
     if app.current_nav_view == NavView::Containers && app.show_container_console_modal {
         render_container_console_modal(f, app);
     }
+    if app.current_nav_view == NavView::Containers && app.show_docker_hub_modal {
+        render_docker_hub_modal(f, app);
+    }
 }
 fn render_search_bar(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let margin = (100 - config::SEARCH_BAR_PCT) / 2;
@@ -325,7 +331,7 @@ fn render_main_layout_with_nav(f: &mut ratatui::Frame, app: &App, area: Rect) {
         NavView::Main => match app.current_state {
             AppState::Dashboard => render_ide_layout(f, app, main_layout[1]),
         },
-        NavView::TrendGraphs => render_placeholder_view(f, "Gráficos de Tendencia", main_layout[1]),
+        NavView::TrendGraphs => render_trends_view(f, app, main_layout[1]),
         NavView::DgaDetector => render_placeholder_view(f, "Detector DGA", main_layout[1]),
         NavView::LibraryInspection => {
             render_placeholder_view(f, "Inspección de Librerías", main_layout[1])

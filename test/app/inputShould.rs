@@ -141,7 +141,7 @@ mod input_tests {
         let mut app = App::new();
         use crate::app::types::{NavView, SidebarFocus};
         app.sidebar_focus = SidebarFocus::Nav;
-        
+
         assert_eq!(app.current_nav_view, NavView::Main);
         app.handle_key_event(press(KeyCode::Down));
         assert_eq!(app.current_nav_view, NavView::TrendGraphs);

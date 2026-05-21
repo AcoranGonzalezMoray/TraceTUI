@@ -1,5 +1,5 @@
-use crate::app::{App, NavView, SidebarFocus};
 use crate::app::ui::theme::THEME;
+use crate::app::{App, NavView, SidebarFocus};
 use crate::tr;
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -33,16 +33,25 @@ pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
         (NavView::Main, "󰞶", tr!(app.translator, "nav.main")),
         (NavView::TrendGraphs, "󰄪", tr!(app.translator, "nav.trends")),
         (NavView::DgaDetector, "󰒙", tr!(app.translator, "nav.dga")),
-        (NavView::LibraryInspection, "󰅩", tr!(app.translator, "nav.libs")),
-        (NavView::Containers, "󰡨", tr!(app.translator, "nav.containers")),
+        (
+            NavView::LibraryInspection,
+            "󰅩",
+            tr!(app.translator, "nav.libs"),
+        ),
+        (
+            NavView::Containers,
+            "󰡨",
+            tr!(app.translator, "nav.containers"),
+        ),
     ];
 
     // Split inner area into slots for each item
     // Each item gets 3 lines of height + 1 space
-    let constraints: Vec<Constraint> = nav_items.iter()
+    let constraints: Vec<Constraint> = nav_items
+        .iter()
         .flat_map(|_| vec![Constraint::Length(3), Constraint::Length(1)])
         .collect();
-    
+
     let item_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints(constraints)
@@ -51,7 +60,7 @@ pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
     for (i, (view, icon, name)) in nav_items.into_iter().enumerate() {
         let is_selected = app.current_nav_view == view;
         let area = item_chunks[i * 2];
-        
+
         let style = if is_selected {
             Style::default()
                 .fg(THEME.primary)
@@ -66,8 +75,7 @@ pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
                 .border_type(BorderType::Rounded)
                 .border_style(Style::default().fg(THEME.primary))
         } else {
-            Block::default()
-                .padding(ratatui::widgets::Padding::new(1, 1, 1, 1))
+            Block::default().padding(ratatui::widgets::Padding::new(1, 1, 1, 1))
         };
 
         let content = if app.nav_sidebar_expanded {
@@ -76,9 +84,8 @@ pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
                 Span::styled(name, style),
             ]))
         } else {
-            Paragraph::new(Line::from(vec![
-                Span::styled(icon, style),
-            ])).alignment(ratatui::layout::Alignment::Center)
+            Paragraph::new(Line::from(vec![Span::styled(icon, style)]))
+                .alignment(ratatui::layout::Alignment::Center)
         };
 
         f.render_widget(content.block(block), area);
