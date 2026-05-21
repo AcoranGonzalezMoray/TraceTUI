@@ -323,5 +323,6 @@
   "containers.field_size": "Taille",
   "containers.state_running": "RUN",
   "containers.state_paused": "PAUSED",
-  "containers.state_unknown": "-"
+  "containers.state_unknown": "-",
+  "containers.action_console": "Ouvrir la console"
 }

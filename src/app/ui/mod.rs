@@ -19,7 +19,9 @@ pub mod sidebar_right;
 pub mod theme;
 pub mod widgets;
 pub use center_panel::render_center_panel;
-pub use containers::render_containers_view;
+pub use containers::{
+    render_container_console_modal, render_container_logs_modal, render_containers_view,
+};
 pub use dialogs::render_confirmation_dialog;
 pub use dialogs::render_install_dialog;
 pub use dialogs::render_language_modal;
@@ -128,6 +130,53 @@ pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
                 Style::default().fg(THEME.text_dim),
             ),
         ]
+    } else if app.current_nav_view == NavView::Containers {
+        vec![
+            Span::styled(
+                " R ",
+                Style::default()
+                    .fg(THEME.background)
+                    .bg(THEME.primary)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!(" {}  ", tr!(t, "containers.action_refresh")),
+                Style::default().fg(THEME.text_dim),
+            ),
+            Span::styled(
+                " L ",
+                Style::default()
+                    .fg(THEME.background)
+                    .bg(THEME.secondary)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!(" {}  ", tr!(t, "containers.action_logs")),
+                Style::default().fg(THEME.text_dim),
+            ),
+            Span::styled(
+                " C ",
+                Style::default()
+                    .fg(THEME.background)
+                    .bg(THEME.secondary)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!(" {}  ", tr!(t, "containers.action_console")),
+                Style::default().fg(THEME.text_dim),
+            ),
+            Span::styled(
+                " M ",
+                Style::default()
+                    .fg(THEME.background)
+                    .bg(THEME.primary)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!(" {} ", tr!(t, "nav.menu")),
+                Style::default().fg(THEME.text_dim),
+            ),
+        ]
     } else {
         vec![
             Span::styled(
@@ -204,6 +253,12 @@ pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
         render_confirmation_dialog(f, app);
     } else if app.show_update_dialog {
         render_update_dialog(f, app);
+    }
+    if app.current_nav_view == NavView::Containers && app.show_container_logs_modal {
+        render_container_logs_modal(f, app);
+    }
+    if app.current_nav_view == NavView::Containers && app.show_container_console_modal {
+        render_container_console_modal(f, app);
     }
 }
 fn render_search_bar(f: &mut ratatui::Frame, app: &App, area: Rect) {

@@ -24,32 +24,77 @@ pub struct ContainerInfo {
     pub pids: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DockerStatus {
+    On,
+    Starting,
+    Off,
+    Missing,
+    Unknown,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum ContainerAction {
     Refresh,
     Logs,
+    Console,
     Start,
     Stop,
     Restart,
     PauseToggle,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DockerAction {
+    StartDocker,
+    StopDocker,
+    SearchDockerHub,
+}
+
 impl ContainerAction {
-    pub const COUNT: usize = 6;
+    pub const COUNT: usize = 7;
 
     pub fn from_index(index: usize) -> Self {
         match index {
             1 => Self::Logs,
-            2 => Self::Start,
-            3 => Self::Stop,
-            4 => Self::Restart,
-            5 => Self::PauseToggle,
+            2 => Self::Console,
+            3 => Self::Start,
+            4 => Self::Stop,
+            5 => Self::Restart,
+            6 => Self::PauseToggle,
             _ => Self::Refresh,
         }
     }
 }
 
+impl DockerAction {
+    pub const COUNT: usize = 3;
+
+    pub fn from_index(index: usize) -> Self {
+        match index {
+            1 => Self::StopDocker,
+            2 => Self::SearchDockerHub,
+            _ => Self::StartDocker,
+        }
+    }
+}
+
+pub const DOCKER_ACTION_OFFSET: usize = ContainerAction::COUNT;
+pub const CONTAINER_RIGHT_ACTION_COUNT: usize = ContainerAction::COUNT + DockerAction::COUNT;
+
 impl App {
+    pub fn docker_status(&self) -> DockerStatus {
+        if self.containers_loading {
+            DockerStatus::Starting
+        } else if let Some(err) = &self.containers_error {
+            ContainerManager::classify_error(err)
+        } else if self.containers_loaded_once {
+            DockerStatus::On
+        } else {
+            DockerStatus::Unknown
+        }
+    }
+
     pub fn refresh_containers_async(&mut self) {
         if self.containers_loading {
             return;
@@ -80,8 +125,53 @@ impl App {
         });
         self.container_logs_rx = Some(rx);
         self.container_logs_loading = true;
-        self.container_detail_scroll = 0;
+        self.container_logs_scroll = 0;
+        self.show_container_logs_modal = true;
         self.status_message = tr!(self.translator, "containers.status.loading_logs").to_string();
+    }
+
+    pub fn open_selected_container_console(&mut self) {
+        let Some(container) = self.get_selected_container() else {
+            self.status_message =
+                tr!(self.translator, "containers.status.no_selection").to_string();
+            return;
+        };
+        let name = container.name.clone();
+        self.show_container_console_modal = true;
+        self.container_console_scroll = 0;
+        if self.container_console_output.is_empty() {
+            self.container_console_output.push(tr!(
+                self.translator,
+                "containers.console_welcome",
+                name
+            ));
+        }
+    }
+
+    pub fn execute_container_console_command_async(&mut self) {
+        if self.container_console_loading {
+            return;
+        }
+        let command = self.container_console_input.trim().to_string();
+        if command.is_empty() {
+            return;
+        }
+        let Some(container) = self.get_selected_container() else {
+            self.status_message =
+                tr!(self.translator, "containers.status.no_selection").to_string();
+            return;
+        };
+        let id = container.id.clone();
+        self.container_console_output
+            .push(format!("$ {}", command.as_str()));
+        self.container_console_input.clear();
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = tx.send(ContainerManager::exec_shell_command(&id, &command));
+        });
+        self.container_console_rx = Some(rx);
+        self.container_console_loading = true;
+        self.status_message = tr!(self.translator, "containers.status.console_running").to_string();
     }
 
     pub fn process_container_results(&mut self) {
@@ -89,11 +179,11 @@ impl App {
             if let Ok(result) = rx.try_recv() {
                 self.containers_loading = false;
                 self.container_rx = None;
+                self.containers_loaded_once = true;
                 match result {
                     Ok(containers) => {
                         let count = containers.len();
                         self.containers = containers;
-                        self.containers_loaded_once = true;
                         if self.selected_container_index >= count {
                             self.selected_container_index = count.saturating_sub(1);
                         }
@@ -102,9 +192,12 @@ impl App {
                             tr!(self.translator, "containers.status.ready", count);
                     }
                     Err(err) => {
-                        self.containers_loaded_once = true;
+                        self.containers.clear();
                         self.containers_error = Some(err.clone());
-                        self.status_message = tr!(self.translator, "containers.status.error", err);
+                        self.status_message = self
+                            .translator
+                            .get(docker_status_key(ContainerManager::classify_error(&err)))
+                            .to_string();
                     }
                 }
             }
@@ -128,17 +221,135 @@ impl App {
                 }
             }
         }
-    }
 
-    pub fn execute_container_action(&mut self) {
-        match ContainerAction::from_index(self.selected_container_action_index) {
-            ContainerAction::Refresh => self.refresh_containers_async(),
-            ContainerAction::Logs => self.refresh_selected_container_logs_async(),
-            action => self.run_selected_container_action(action),
+        if let Some(rx) = &self.container_console_rx {
+            if let Ok(result) = rx.try_recv() {
+                self.container_console_loading = false;
+                self.container_console_rx = None;
+                match result {
+                    Ok(lines) => {
+                        if lines.is_empty() {
+                            self.container_console_output
+                                .push(tr!(self.translator, "containers.console_empty_output"));
+                        } else {
+                            self.container_console_output.extend(lines);
+                        }
+                        self.status_message =
+                            tr!(self.translator, "containers.status.console_done").to_string();
+                    }
+                    Err(err) => {
+                        self.container_console_output.push(err.clone());
+                        self.status_message = tr!(self.translator, "containers.status.error", err);
+                    }
+                }
+            }
         }
     }
 
-    fn run_selected_container_action(&mut self, action: ContainerAction) {
+    pub fn execute_container_right_action(&mut self) {
+        if self.selected_container_action_index >= DOCKER_ACTION_OFFSET {
+            let docker_index = self
+                .selected_container_action_index
+                .saturating_sub(DOCKER_ACTION_OFFSET);
+            let action = DockerAction::from_index(docker_index);
+            match action {
+                DockerAction::SearchDockerHub => {
+                    self.show_docker_hub_modal = true;
+                    self.docker_hub_search = DockerHubSearchState::default();
+                }
+                DockerAction::StartDocker => {
+                    self.pending_docker_action = Some(DockerAction::StartDocker);
+                    self.pending_container_action = None;
+                    self.confirmation_message = tr!(self.translator, "dialog.start_docker_confirm").to_string();
+                    self.show_confirmation = true;
+                }
+                DockerAction::StopDocker => {
+                    self.pending_docker_action = Some(DockerAction::StopDocker);
+                    self.pending_container_action = None;
+                    self.confirmation_message = tr!(self.translator, "dialog.stop_docker_confirm").to_string();
+                    self.show_confirmation = true;
+                }
+            }
+            return;
+        }
+
+        match ContainerAction::from_index(self.selected_container_action_index) {
+            ContainerAction::Refresh => self.refresh_containers_async(),
+            ContainerAction::Logs => self.refresh_selected_container_logs_async(),
+            ContainerAction::Console => self.open_selected_container_console(),
+            ContainerAction::Start => {
+                if let Some(c) = self.get_selected_container() {
+                    self.pending_docker_action = None;
+                    self.pending_container_action = Some(ContainerAction::Start);
+                    self.confirmation_message = tr!(self.translator, "dialog.start_container_confirm", &c.name).to_string();
+                    self.show_confirmation = true;
+                } else {
+                    self.status_message = tr!(self.translator, "containers.status.no_selection").to_string();
+                }
+            }
+            ContainerAction::Stop => {
+                if let Some(c) = self.get_selected_container() {
+                    self.pending_docker_action = None;
+                    self.pending_container_action = Some(ContainerAction::Stop);
+                    self.confirmation_message = tr!(self.translator, "dialog.stop_container_confirm", &c.name).to_string();
+                    self.show_confirmation = true;
+                } else {
+                    self.status_message = tr!(self.translator, "containers.status.no_selection").to_string();
+                }
+            }
+            ContainerAction::Restart => {
+                if let Some(c) = self.get_selected_container() {
+                    self.pending_docker_action = None;
+                    self.pending_container_action = Some(ContainerAction::Restart);
+                    self.confirmation_message = tr!(self.translator, "dialog.restart_container_confirm", &c.name).to_string();
+                    self.show_confirmation = true;
+                } else {
+                    self.status_message = tr!(self.translator, "containers.status.no_selection").to_string();
+                }
+            }
+            ContainerAction::PauseToggle => {
+                if let Some(c) = self.get_selected_container() {
+                    self.pending_docker_action = None;
+                    self.pending_container_action = Some(ContainerAction::PauseToggle);
+                    let is_paused = c.state.eq_ignore_ascii_case("paused");
+                    let key = if is_paused { "dialog.unpause_container_confirm" } else { "dialog.pause_container_confirm" };
+                    self.confirmation_message = tr!(self.translator, key, &c.name).to_string();
+                    self.show_confirmation = true;
+                } else {
+                    self.status_message = tr!(self.translator, "containers.status.no_selection").to_string();
+                }
+            }
+        }
+    }
+
+    pub fn execute_docker_action_confirmed(&mut self, action: DockerAction) {
+        let result = match action {
+            DockerAction::StartDocker => ContainerManager::start_docker(),
+            DockerAction::StopDocker => ContainerManager::stop_docker(),
+            _ => Ok(()),
+        };
+
+        match result {
+            Ok(()) => {
+                self.containers_loaded_once = false;
+                self.status_message = match action {
+                    DockerAction::StartDocker => {
+                        tr!(self.translator, "containers.status.docker_start_requested")
+                    }
+                    DockerAction::StopDocker => {
+                        tr!(self.translator, "containers.status.docker_stop_requested")
+                    }
+                    _ => String::new(),
+                };
+                self.refresh_containers_async();
+            }
+            Err(err) => {
+                self.status_message = tr!(self.translator, "containers.status.error", err);
+            }
+        }
+    }
+
+    pub fn run_selected_container_action_confirmed(&mut self, action: ContainerAction) {
         let Some(container) = self.get_selected_container() else {
             self.status_message =
                 tr!(self.translator, "containers.status.no_selection").to_string();
@@ -155,7 +366,7 @@ impl App {
                 ContainerManager::run_action("unpause", &id)
             }
             ContainerAction::PauseToggle => ContainerManager::run_action("pause", &id),
-            ContainerAction::Refresh | ContainerAction::Logs => Ok(()),
+            ContainerAction::Refresh | ContainerAction::Logs | ContainerAction::Console => Ok(()),
         };
 
         match result {
@@ -223,7 +434,7 @@ impl ContainerManager {
 
     pub fn logs(id: &str) -> Result<Vec<String>, String> {
         let output = Command::new("docker")
-            .args(["logs", "--tail", "80", id])
+            .args(["logs", "--tail", "300", id])
             .output()
             .map_err(|e| format!("docker logs: {}", e))?;
 
@@ -240,6 +451,28 @@ impl ContainerManager {
         Ok(lines)
     }
 
+    pub fn exec_shell_command(id: &str, command: &str) -> Result<Vec<String>, String> {
+        let output = Command::new("docker")
+            .args(["exec", id, "sh", "-lc", command])
+            .output()
+            .map_err(|e| format!("docker exec: {}", e))?;
+
+        let mut lines: Vec<String> = String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .map(|line| line.to_string())
+            .collect();
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        lines.extend(stderr.lines().map(|line| line.to_string()));
+
+        if output.status.success() {
+            Ok(lines)
+        } else if lines.is_empty() {
+            Err(command_error("docker exec", &output.stderr))
+        } else {
+            Ok(lines)
+        }
+    }
+
     pub fn run_action(action: &str, id: &str) -> Result<(), String> {
         let output = Command::new("docker")
             .args([action, id])
@@ -250,6 +483,34 @@ impl ContainerManager {
             Ok(())
         } else {
             Err(command_error(&format!("docker {}", action), &output.stderr))
+        }
+    }
+
+    pub fn start_docker() -> Result<(), String> {
+        docker_service_command(true)
+    }
+
+    pub fn stop_docker() -> Result<(), String> {
+        docker_service_command(false)
+    }
+
+    pub fn classify_error(error: &str) -> DockerStatus {
+        let lower = error.to_lowercase();
+        if lower.contains("program not found")
+            || lower.contains("not recognized")
+            || lower.contains("no such file")
+            || lower.contains("executable")
+            || lower.contains("docker ps:")
+        {
+            DockerStatus::Missing
+        } else if lower.contains("cannot connect")
+            || lower.contains("connection refused")
+            || lower.contains("daemon")
+            || lower.contains("pipe")
+        {
+            DockerStatus::Off
+        } else {
+            DockerStatus::Unknown
         }
     }
 
@@ -284,6 +545,60 @@ impl ContainerManager {
             stats.insert(stat.name.clone(), stat);
         }
         Ok(stats)
+    }
+}
+
+fn docker_status_key(status: DockerStatus) -> &'static str {
+    match status {
+        DockerStatus::Missing => "containers.status.docker_missing",
+        DockerStatus::Off => "containers.status.docker_off",
+        DockerStatus::Starting => "containers.status.docker_starting",
+        DockerStatus::On => "containers.status.docker_on",
+        DockerStatus::Unknown => "containers.status.docker_unknown",
+    }
+}
+
+fn docker_service_command(start: bool) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    let output = {
+        let command = if start {
+            "Start-Service -Name com.docker.service"
+        } else {
+            "Stop-Service -Name com.docker.service"
+        };
+        Command::new("powershell")
+            .args(["-NoProfile", "-Command", command])
+            .output()
+    };
+
+    #[cfg(target_os = "linux")]
+    let output = {
+        let action = if start { "start" } else { "stop" };
+        Command::new("systemctl").args([action, "docker"]).output()
+    };
+
+    #[cfg(target_os = "macos")]
+    let output = {
+        if start {
+            Command::new("open").args(["-a", "Docker"]).output()
+        } else {
+            Command::new("osascript")
+                .args(["-e", "quit app \"Docker\""])
+                .output()
+        }
+    };
+
+    #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+    let output: Result<std::process::Output, std::io::Error> = Err(std::io::Error::new(
+        std::io::ErrorKind::Other,
+        "unsupported OS",
+    ));
+
+    let output = output.map_err(|e| format!("docker service: {}", e))?;
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(command_error("docker service", &output.stderr))
     }
 }
 

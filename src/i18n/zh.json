@@ -323,5 +323,6 @@
   "containers.field_size": "大小",
   "containers.state_running": "运行",
   "containers.state_paused": "已暂停",
-  "containers.state_unknown": "-"
+  "containers.state_unknown": "-",
+  "containers.action_console": "打开控制台"
 }

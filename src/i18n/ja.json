@@ -323,5 +323,6 @@
   "containers.field_size": "サイズ",
   "containers.state_running": "実行中",
   "containers.state_paused": "一時停止",
-  "containers.state_unknown": "-"
+  "containers.state_unknown": "-",
+  "containers.action_console": "コンソールを開く"
 }

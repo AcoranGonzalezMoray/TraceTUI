@@ -8,6 +8,24 @@ use crossterm::event::{
     KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
 };
 impl App {
+    fn switch_nav_view(&mut self, view: NavView) {
+        if self.current_nav_view == view {
+            return;
+        }
+        self.current_nav_view = view;
+        self.show_container_logs_modal = false;
+        self.show_container_console_modal = false;
+        self.search_mode = false;
+        self.continuous_refresh_counter = 0;
+        if view == NavView::Main {
+            self.status_message = tr!(self.translator, "status.analysis_resumed").to_string();
+            self.analysis_paused = false;
+        } else {
+            self.status_message = tr!(self.translator, "status.section_changed").to_string();
+            self.analysis_paused = true;
+        }
+    }
+
     pub fn handle_key_event(&mut self, key: KeyEvent) {
         if key.kind != KeyEventKind::Press {
             return;
@@ -98,13 +116,14 @@ impl App {
                 let in_investigation = self.investigation_report.is_some() || self.is_investigating;
                 match self.sidebar_focus {
                     SidebarFocus::Nav => {
-                        self.current_nav_view = match self.current_nav_view {
+                        let next = match self.current_nav_view {
                             NavView::Main => NavView::Containers,
                             NavView::TrendGraphs => NavView::Main,
                             NavView::DgaDetector => NavView::TrendGraphs,
                             NavView::LibraryInspection => NavView::DgaDetector,
                             NavView::Containers => NavView::LibraryInspection,
                         };
+                        self.switch_nav_view(next);
                     }
                     SidebarFocus::Left if !in_investigation && self.selected_app_index > 0 => {
                         self.selected_app_index -= 1;
@@ -126,13 +145,14 @@ impl App {
                 let in_investigation = self.investigation_report.is_some() || self.is_investigating;
                 match self.sidebar_focus {
                     SidebarFocus::Nav => {
-                        self.current_nav_view = match self.current_nav_view {
+                        let next = match self.current_nav_view {
                             NavView::Main => NavView::TrendGraphs,
                             NavView::TrendGraphs => NavView::DgaDetector,
                             NavView::DgaDetector => NavView::LibraryInspection,
                             NavView::LibraryInspection => NavView::Containers,
                             NavView::Containers => NavView::Main,
                         };
+                        self.switch_nav_view(next);
                     }
                     SidebarFocus::Left if !in_investigation => {
                         let filtered_count = self.get_filtered_apps().len();
@@ -164,6 +184,7 @@ impl App {
                         // Enter on Nav simply reflects that the view is already changed by Up/Down
                         // or we could expand/collapse
                         self.nav_sidebar_expanded = !self.nav_sidebar_expanded;
+                        self.sidebar_focus = SidebarFocus::Nav;
                     }
                     SidebarFocus::Right => self.execute_action(),
                     SidebarFocus::Center if !in_investigation => self.start_investigation(),
@@ -195,6 +216,7 @@ impl App {
             }
             KeyCode::Char('m') | KeyCode::Char('M') => {
                 self.nav_sidebar_expanded = !self.nav_sidebar_expanded;
+                self.sidebar_focus = SidebarFocus::Nav;
             }
             KeyCode::Char('l') | KeyCode::Char('L') => {
                 self.show_language_modal = true;
@@ -335,6 +357,15 @@ impl App {
         }
     }
     fn handle_container_keys(&mut self, key: KeyEvent) {
+        if self.show_container_console_modal {
+            self.handle_container_console_keys(key);
+            return;
+        }
+        if self.show_container_logs_modal {
+            self.handle_container_logs_keys(key);
+            return;
+        }
+
         match key.code {
             KeyCode::Tab => {
                 self.sidebar_focus = match self.sidebar_focus {
@@ -360,7 +391,7 @@ impl App {
             }
             KeyCode::Up => match self.sidebar_focus {
                 SidebarFocus::Nav => {
-                    self.current_nav_view = NavView::LibraryInspection;
+                    self.switch_nav_view(NavView::LibraryInspection);
                 }
                 SidebarFocus::Left if self.selected_container_index > 0 => {
                     self.selected_container_index -= 1;
@@ -377,7 +408,7 @@ impl App {
             },
             KeyCode::Down => match self.sidebar_focus {
                 SidebarFocus::Nav => {
-                    self.current_nav_view = NavView::Main;
+                    self.switch_nav_view(NavView::Main);
                 }
                 SidebarFocus::Left => {
                     let max = self.containers.len().saturating_sub(1);
@@ -394,42 +425,109 @@ impl App {
                     }
                 }
                 SidebarFocus::Right => {
-                    let max = crate::app::containers::ContainerAction::COUNT.saturating_sub(1);
+                    let max =
+                        crate::app::containers::CONTAINER_RIGHT_ACTION_COUNT.saturating_sub(1);
                     if self.selected_container_action_index < max {
                         self.selected_container_action_index += 1;
                     }
                 }
             },
             KeyCode::Enter => match self.sidebar_focus {
-                SidebarFocus::Nav => self.nav_sidebar_expanded = !self.nav_sidebar_expanded,
+                SidebarFocus::Nav => {
+                    self.nav_sidebar_expanded = !self.nav_sidebar_expanded;
+                    self.sidebar_focus = SidebarFocus::Nav;
+                }
                 SidebarFocus::Left => self.sidebar_focus = SidebarFocus::Center,
-                SidebarFocus::Right => self.execute_container_action(),
+                SidebarFocus::Right => self.execute_container_right_action(),
                 _ => self.refresh_selected_container_logs_async(),
             },
             KeyCode::Char('r') | KeyCode::Char('R') => self.refresh_containers_async(),
             KeyCode::Char('l') | KeyCode::Char('L') => self.refresh_selected_container_logs_async(),
             KeyCode::Char('s') | KeyCode::Char('S') => {
-                self.selected_container_action_index = 2;
-                self.execute_container_action();
+                self.selected_container_action_index = 3;
+                self.execute_container_right_action();
             }
             KeyCode::Char('t') | KeyCode::Char('T') => {
-                self.selected_container_action_index = 3;
-                self.execute_container_action();
+                self.selected_container_action_index = 4;
+                self.execute_container_right_action();
             }
             KeyCode::Char('e') | KeyCode::Char('E') => {
-                self.selected_container_action_index = 4;
-                self.execute_container_action();
+                self.selected_container_action_index = 5;
+                self.execute_container_right_action();
             }
             KeyCode::Char('p') | KeyCode::Char('P') => {
-                self.selected_container_action_index = 5;
-                self.execute_container_action();
+                self.selected_container_action_index = 6;
+                self.execute_container_right_action();
+            }
+            KeyCode::Char('c') | KeyCode::Char('C') => {
+                self.selected_container_action_index = 2;
+                self.execute_container_right_action();
+            }
+            KeyCode::Char('n') | KeyCode::Char('N') => {
+                self.selected_container_action_index = crate::app::containers::DOCKER_ACTION_OFFSET;
+                self.execute_container_right_action();
+            }
+            KeyCode::Char('o') | KeyCode::Char('O') => {
+                self.selected_container_action_index =
+                    crate::app::containers::DOCKER_ACTION_OFFSET + 1;
+                self.execute_container_right_action();
             }
             KeyCode::Char('m') | KeyCode::Char('M') => {
                 self.nav_sidebar_expanded = !self.nav_sidebar_expanded;
+                self.sidebar_focus = SidebarFocus::Nav;
             }
             KeyCode::Char('q') | KeyCode::Char('Q') | KeyCode::Esc => {
-                self.current_nav_view = NavView::Main;
+                self.switch_nav_view(NavView::Main);
                 self.sidebar_focus = SidebarFocus::Nav;
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_container_logs_keys(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('Q') => {
+                self.show_container_logs_modal = false;
+            }
+            KeyCode::Up => {
+                self.container_logs_scroll = self.container_logs_scroll.saturating_sub(1);
+            }
+            KeyCode::Down => {
+                let max = self.container_logs.len().saturating_sub(1);
+                self.container_logs_scroll = self.container_logs_scroll.saturating_add(1).min(max);
+            }
+            KeyCode::PageUp => {
+                self.container_logs_scroll = self.container_logs_scroll.saturating_sub(10);
+            }
+            KeyCode::PageDown => {
+                let max = self.container_logs.len().saturating_sub(1);
+                self.container_logs_scroll = self.container_logs_scroll.saturating_add(10).min(max);
+            }
+            KeyCode::Char('r') | KeyCode::Char('R') => self.refresh_selected_container_logs_async(),
+            _ => {}
+        }
+    }
+
+    fn handle_container_console_keys(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc => {
+                self.show_container_console_modal = false;
+                self.container_console_input.clear();
+            }
+            KeyCode::Enter => self.execute_container_console_command_async(),
+            KeyCode::Backspace => {
+                self.container_console_input.pop();
+            }
+            KeyCode::Up => {
+                self.container_console_scroll = self.container_console_scroll.saturating_sub(1);
+            }
+            KeyCode::Down => {
+                let max = self.container_console_output.len().saturating_sub(1);
+                self.container_console_scroll =
+                    self.container_console_scroll.saturating_add(1).min(max);
+            }
+            KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.container_console_input.push(c);
             }
             _ => {}
         }
@@ -563,6 +661,12 @@ impl App {
                             }
                         }
                     }
+                } else if let Some(container_action) = self.pending_container_action {
+                    self.run_selected_container_action_confirmed(container_action);
+                    self.pending_container_action = None;
+                } else if let Some(docker_action) = self.pending_docker_action {
+                    self.execute_docker_action_confirmed(docker_action);
+                    self.pending_docker_action = None;
                 }
                 self.show_confirmation = false;
                 self.confirmation_message.clear();
@@ -571,6 +675,8 @@ impl App {
                 self.status_message = tr!(self.translator, "status.action_cancelled").to_string();
                 self.show_confirmation = false;
                 self.confirmation_message.clear();
+                self.pending_container_action = None;
+                self.pending_docker_action = None;
             }
             _ => {}
         }
@@ -855,21 +961,23 @@ impl App {
             SidebarFocus::Nav => {
                 // Scroll through nav views
                 if delta > 0 {
-                    self.current_nav_view = match self.current_nav_view {
+                    let next = match self.current_nav_view {
                         NavView::Main => NavView::TrendGraphs,
                         NavView::TrendGraphs => NavView::DgaDetector,
                         NavView::DgaDetector => NavView::LibraryInspection,
                         NavView::LibraryInspection => NavView::Containers,
                         NavView::Containers => NavView::Main,
                     };
+                    self.switch_nav_view(next);
                 } else {
-                    self.current_nav_view = match self.current_nav_view {
+                    let next = match self.current_nav_view {
                         NavView::Main => NavView::Containers,
                         NavView::TrendGraphs => NavView::Main,
                         NavView::DgaDetector => NavView::TrendGraphs,
                         NavView::LibraryInspection => NavView::DgaDetector,
                         NavView::Containers => NavView::LibraryInspection,
                     };
+                    self.switch_nav_view(next);
                 }
             }
             SidebarFocus::Left => {

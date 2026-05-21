@@ -126,7 +126,24 @@ pub struct App {
     pub container_logs: Vec<String>,
     pub container_logs_loading: bool,
     pub container_logs_rx: Option<std::sync::mpsc::Receiver<Result<Vec<String>, String>>>,
+    pub show_container_logs_modal: bool,
+    pub show_container_console_modal: bool,
+    pub container_logs_scroll: usize,
+    pub container_console_input: String,
+    pub container_console_output: Vec<String>,
+    pub container_console_loading: bool,
+    pub container_console_scroll: usize,
+    pub container_console_rx: Option<std::sync::mpsc::Receiver<Result<Vec<String>, String>>>,
+    pub show_docker_hub_modal: bool,
+    pub docker_hub_search: crate::app::containers::DockerHubSearchState,
+    pub docker_hub_search_rx: Option<
+        std::sync::mpsc::Receiver<Result<Vec<crate::app::containers::DockerHubImage>, String>>,
+    >,
+    pub docker_hub_create_rx: Option<std::sync::mpsc::Receiver<Result<String, String>>>,
+    pub pending_container_action: Option<crate::app::containers::ContainerAction>,
+    pub pending_docker_action: Option<crate::app::containers::DockerAction>,
 }
+
 impl App {
     pub fn new() -> Self {
         let (tx, rx) = mpsc::unbounded_channel();
@@ -232,6 +249,20 @@ impl App {
             container_logs: Vec::new(),
             container_logs_loading: false,
             container_logs_rx: None,
+            show_container_logs_modal: false,
+            show_container_console_modal: false,
+            container_logs_scroll: 0,
+            container_console_input: String::new(),
+            container_console_output: Vec::new(),
+            container_console_loading: false,
+            container_console_scroll: 0,
+            container_console_rx: None,
+            show_docker_hub_modal: false,
+            docker_hub_search: crate::app::containers::DockerHubSearchState::default(),
+            docker_hub_search_rx: None,
+            docker_hub_create_rx: None,
+            pending_container_action: None,
+            pending_docker_action: None,
         };
 
         #[cfg(not(test))]

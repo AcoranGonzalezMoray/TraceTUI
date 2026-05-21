@@ -89,7 +89,7 @@ fn detect_linux_locale() -> String {
 #[macro_export]
 macro_rules! tr {
     ($t:expr, $key:literal) => {
-        $t.get($key).to_string()
+        $t.get($key)
     };
     ($t:expr, $key:literal, $($arg:expr),+) => {
         $t.get_fmt($key, &[$(format!("{}", $arg)),+])

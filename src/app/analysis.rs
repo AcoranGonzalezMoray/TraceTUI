@@ -19,20 +19,22 @@ fn is_newer(local: &str, remote: &str) -> bool {
 impl App {
     pub fn on_tick(&mut self) {
         self.frame_count = self.frame_count.wrapping_add(1);
-        if let Some(a) = self.get_selected_app() {
-            self.cpu_history.push(a.cpu_usage as f64);
-            if self.cpu_history.len() > config::CPU_HISTORY_MAX {
-                self.cpu_history.remove(0);
+        if self.current_nav_view == crate::app::NavView::Main {
+            if let Some(a) = self.get_selected_app() {
+                self.cpu_history.push(a.cpu_usage as f64);
+                if self.cpu_history.len() > config::CPU_HISTORY_MAX {
+                    self.cpu_history.remove(0);
+                }
             }
-        }
-        let total = self
-            .app_connections
-            .iter()
-            .map(|a| a.connections.len() as u64)
-            .sum();
-        self.conn_count_history.push(total);
-        if self.conn_count_history.len() > config::CONN_HISTORY_MAX {
-            self.conn_count_history.remove(0);
+            let total = self
+                .app_connections
+                .iter()
+                .map(|a| a.connections.len() as u64)
+                .sum();
+            self.conn_count_history.push(total);
+            if self.conn_count_history.len() > config::CONN_HISTORY_MAX {
+                self.conn_count_history.remove(0);
+            }
         }
         self.check_analysis_complete();
         self.process_deferred_icon_extraction();
@@ -54,7 +56,10 @@ impl App {
         {
             self.refresh_containers_async();
         }
-        if self.auto_analysis_complete && !self.analysis_paused {
+        if self.auto_analysis_complete
+            && !self.analysis_paused
+            && self.current_nav_view == crate::app::NavView::Main
+        {
             self.continuous_refresh_counter = self.continuous_refresh_counter.wrapping_add(1);
             if self.continuous_refresh_counter >= config::REFRESH_COUNTER_THRESHOLD {
                 self.continuous_refresh_counter = 0;
