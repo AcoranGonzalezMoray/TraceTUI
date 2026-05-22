@@ -58,7 +58,8 @@ impl App {
         }
         if self.auto_analysis_complete
             && !self.analysis_paused
-            && self.current_nav_view == crate::app::NavView::Main
+            && (self.current_nav_view == crate::app::NavView::Main
+                || self.current_nav_view == crate::app::NavView::TrendGraphs)
         {
             self.continuous_refresh_counter = self.continuous_refresh_counter.wrapping_add(1);
             if self.continuous_refresh_counter >= config::REFRESH_COUNTER_THRESHOLD {

@@ -27,6 +27,8 @@ impl ProcessManager {
     }
     pub fn refresh_processes(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         self.system.refresh_all();
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        self.system.refresh_all();
         self.processes.clear();
         for (pid, process) in self.system.processes() {
             let process_info = ProcessInfo {

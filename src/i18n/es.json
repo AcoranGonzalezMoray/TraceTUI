@@ -344,7 +344,7 @@
   "containers.footer_count": "{} contenedores",
   "containers.footer_logs": "{} líneas de registro",
   "containers.footer_no_container": "Sin contenedor",
-  "containers.logs_modal_hint": "Presiona L para abrir un visor grande de registros",
+  "containers.logs_modal_hint": "Presiona V para abrir un visor grande de registros",
   "containers.console_title": "CONSOLA: {}",
   "containers.console_input_hint": "Ingresa comando, Esc cierra",
   "containers.console_welcome": "Conectado a {}. Los comandos se ejecutan con docker exec sh -lc.",

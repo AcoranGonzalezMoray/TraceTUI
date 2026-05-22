@@ -147,7 +147,7 @@ pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
                 Style::default().fg(THEME.text_dim),
             ),
             Span::styled(
-                " L ",
+                " V ",
                 Style::default()
                     .fg(THEME.background)
                     .bg(THEME.secondary)
@@ -166,6 +166,64 @@ pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
             ),
             Span::styled(
                 format!(" {}  ", tr!(t, "containers.action_console")),
+                Style::default().fg(THEME.text_dim),
+            ),
+            Span::styled(
+                " L ",
+                Style::default()
+                    .fg(THEME.background)
+                    .bg(THEME.secondary)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!(" {}  ", tr!(t, "actions.language")),
+                Style::default().fg(THEME.text_dim),
+            ),
+            Span::styled(
+                " M ",
+                Style::default()
+                    .fg(THEME.background)
+                    .bg(THEME.primary)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!(" {} ", tr!(t, "nav.menu")),
+                Style::default().fg(THEME.text_dim),
+            ),
+        ]
+    } else if app.current_nav_view == NavView::TrendGraphs {
+        vec![
+            Span::styled(
+                " Q ",
+                Style::default()
+                    .fg(THEME.background)
+                    .bg(THEME.text_dim)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!(" {}  ", tr!(t, "hint.quit")),
+                Style::default().fg(THEME.text_dim),
+            ),
+            Span::styled(
+                " Tab ",
+                Style::default()
+                    .fg(THEME.background)
+                    .bg(THEME.text_dim)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!(" {}  ", tr!(t, "hint.switch_panel")),
+                Style::default().fg(THEME.text_dim),
+            ),
+            Span::styled(
+                " L ",
+                Style::default()
+                    .fg(THEME.background)
+                    .bg(THEME.secondary)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!(" {}  ", tr!(t, "actions.language")),
                 Style::default().fg(THEME.text_dim),
             ),
             Span::styled(

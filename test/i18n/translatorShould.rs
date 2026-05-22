@@ -104,7 +104,7 @@ mod translator_tests {
     #[test]
     fn test_new_nav_keys() {
         let t = Translator::new("en");
-        assert_eq!(t.get("nav.main"), "Main");
+        assert_eq!(t.get("nav.main"), "Networks");
         assert_eq!(t.get("nav.menu"), "Menu");
     }
 }

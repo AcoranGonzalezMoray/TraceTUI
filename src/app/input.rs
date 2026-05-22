@@ -17,7 +17,7 @@ impl App {
         self.show_container_console_modal = false;
         self.search_mode = false;
         self.continuous_refresh_counter = 0;
-        if view == NavView::Main {
+        if view == NavView::Main || view == NavView::TrendGraphs {
             self.status_message = tr!(self.translator, "status.analysis_resumed").to_string();
             self.analysis_paused = false;
         } else {
@@ -444,7 +444,17 @@ impl App {
                 _ => self.refresh_selected_container_logs_async(),
             },
             KeyCode::Char('r') | KeyCode::Char('R') => self.refresh_containers_async(),
-            KeyCode::Char('l') | KeyCode::Char('L') => self.refresh_selected_container_logs_async(),
+            KeyCode::Char('v') | KeyCode::Char('V') => self.refresh_selected_container_logs_async(),
+            KeyCode::Char('l') | KeyCode::Char('L') => {
+                self.show_language_modal = !self.show_language_modal;
+            }
+            KeyCode::Char('h') | KeyCode::Char('H') => {
+                self.show_docker_hub_modal = !self.show_docker_hub_modal;
+                if !self.show_docker_hub_modal {
+                    self.docker_hub_search =
+                        crate::app::containers::DockerHubSearchState::default();
+                }
+            }
             KeyCode::Char('s') | KeyCode::Char('S') => {
                 self.selected_container_action_index = 3;
                 self.execute_container_right_action();
@@ -504,6 +514,9 @@ impl App {
             KeyCode::PageDown => {
                 let max = self.container_logs.len().saturating_sub(1);
                 self.container_logs_scroll = self.container_logs_scroll.saturating_add(10).min(max);
+            }
+            KeyCode::End => {
+                self.container_logs_scroll = self.container_logs.len().saturating_sub(1);
             }
             KeyCode::Char('r') | KeyCode::Char('R') => self.refresh_selected_container_logs_async(),
             _ => {}
@@ -1056,6 +1069,20 @@ impl App {
         {
             return;
         }
+        if self.show_container_logs_modal {
+            match mouse.kind {
+                MouseEventKind::ScrollDown => {
+                    let max = self.container_logs.len().saturating_sub(1);
+                    self.container_logs_scroll =
+                        self.container_logs_scroll.saturating_add(1).min(max);
+                }
+                MouseEventKind::ScrollUp => {
+                    self.container_logs_scroll = self.container_logs_scroll.saturating_sub(1);
+                }
+                _ => {}
+            }
+            return;
+        }
         if self.firewall_mode {
             match mouse.kind {
                 MouseEventKind::Down(MouseButton::Left) => {
@@ -1133,7 +1160,15 @@ impl App {
                 }
             }
             SidebarFocus::Left => {
-                if self.investigation_report.is_none() && !self.is_investigating {
+                if self.current_nav_view == NavView::Containers {
+                    let max = self.containers.len().saturating_sub(1);
+                    if apply_scroll_bool(self.selected_container_index, delta, max) {
+                        self.selected_container_index =
+                            apply_scroll(self.selected_container_index, delta, max);
+                        self.container_detail_scroll = 0;
+                        self.container_logs.clear();
+                    }
+                } else if self.investigation_report.is_none() && !self.is_investigating {
                     let max = self.get_filtered_apps().len().saturating_sub(1);
                     if apply_scroll_bool(self.selected_app_index, delta, max) {
                         self.selected_app_index = apply_scroll(self.selected_app_index, delta, max);
@@ -1142,7 +1177,17 @@ impl App {
                 }
             }
             SidebarFocus::Center => {
-                if self.investigation_report.is_none() && !self.is_investigating {
+                if self.current_nav_view == NavView::Containers {
+                    if self.show_container_logs_modal {
+                        let max = self.container_logs.len().saturating_sub(1);
+                        self.container_logs_scroll =
+                            apply_scroll(self.container_logs_scroll, delta, max);
+                    } else {
+                        let max = self.container_logs.len().saturating_sub(1);
+                        self.container_detail_scroll =
+                            apply_scroll(self.container_detail_scroll, delta, max);
+                    }
+                } else if self.investigation_report.is_none() && !self.is_investigating {
                     if let Some(app) = self.get_selected_app() {
                         let max = app.connections.len().saturating_sub(1);
                         self.selected_connection_index =
@@ -1151,8 +1196,16 @@ impl App {
                 }
             }
             SidebarFocus::Right => {
-                let max = config::ACTION_COUNT;
-                self.selected_action_index = apply_scroll(self.selected_action_index, delta, max);
+                if self.current_nav_view == NavView::Containers {
+                    let max =
+                        crate::app::containers::CONTAINER_RIGHT_ACTION_COUNT.saturating_sub(1);
+                    self.selected_container_action_index =
+                        apply_scroll(self.selected_container_action_index, delta, max);
+                } else {
+                    let max = config::ACTION_COUNT;
+                    self.selected_action_index =
+                        apply_scroll(self.selected_action_index, delta, max);
+                }
             }
         }
     }
