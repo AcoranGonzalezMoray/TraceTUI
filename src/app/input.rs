@@ -3,6 +3,7 @@ use crate::app::types::{FirewallPanel, NavView, SidebarFocus};
 use crate::app::App;
 use crate::config;
 use crate::resources;
+use crate::app::storage::fmt_size;
 use crate::tr;
 use crossterm::event::{
     KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
@@ -17,12 +18,26 @@ impl App {
         self.show_container_console_modal = false;
         self.search_mode = false;
         self.continuous_refresh_counter = 0;
+        self.abort_search();
         if view == NavView::Main || view == NavView::TrendGraphs {
             self.status_message = tr!(self.translator, "status.analysis_resumed").to_string();
             self.analysis_paused = false;
         } else {
             self.status_message = tr!(self.translator, "status.section_changed").to_string();
             self.analysis_paused = true;
+        }
+        if view == NavView::Storage {
+            if self.disks.is_empty() {
+                self.refresh_disks();
+            }
+            if let Some(disk) = self.get_selected_disk() {
+                let p = std::path::Path::new(&disk.mount_point);
+                if p.exists() {
+                    self.current_directory = p.to_path_buf();
+                    self.file_scroll = 0;
+                    self.load_directory();
+                }
+            }
         }
     }
 
@@ -74,6 +89,14 @@ impl App {
             self.handle_container_keys(key);
             return;
         }
+        if self.current_nav_view == NavView::Storage && self.show_file_viewer {
+            self.handle_file_viewer_keys(key);
+            return;
+        }
+        if self.current_nav_view == NavView::Storage {
+            self.handle_storage_keys(key);
+            return;
+        }
         if self.show_map {
             if key.code == KeyCode::Esc
                 || key.code == KeyCode::Char('q')
@@ -123,8 +146,8 @@ impl App {
                         let next = match self.current_nav_view {
                             NavView::Main => NavView::Containers,
                             NavView::TrendGraphs => NavView::Main,
-                            NavView::DgaDetector => NavView::TrendGraphs,
-                            NavView::LibraryInspection => NavView::DgaDetector,
+                            NavView::Storage => NavView::TrendGraphs,
+                        NavView::LibraryInspection => NavView::Storage,
                             NavView::Containers => NavView::LibraryInspection,
                         };
                         self.switch_nav_view(next);
@@ -151,8 +174,8 @@ impl App {
                     SidebarFocus::Nav => {
                         let next = match self.current_nav_view {
                             NavView::Main => NavView::TrendGraphs,
-                            NavView::TrendGraphs => NavView::DgaDetector,
-                            NavView::DgaDetector => NavView::LibraryInspection,
+                            NavView::TrendGraphs => NavView::Storage,
+                            NavView::Storage => NavView::LibraryInspection,
                             NavView::LibraryInspection => NavView::Containers,
                             NavView::Containers => NavView::Main,
                         };
@@ -698,6 +721,365 @@ impl App {
         self.docker_hub_create_rx = Some(rx);
     }
 
+    fn handle_storage_keys(&mut self, key: KeyEvent) {
+        if self.show_file_search_modal {
+            self.handle_file_search_modal_keys(key);
+            return;
+        }
+        match key.code {
+            KeyCode::Tab => {
+                if self.sidebar_focus == SidebarFocus::Nav {
+                    self.sidebar_focus = SidebarFocus::Left;
+                    self.storage_focus = 0;
+                } else if self.storage_focus >= 2 {
+                    self.sidebar_focus = SidebarFocus::Nav;
+                } else {
+                    self.storage_focus += 1;
+                }
+            }
+            KeyCode::BackTab => {
+                if self.sidebar_focus == SidebarFocus::Nav {
+                    self.sidebar_focus = SidebarFocus::Left;
+                    self.storage_focus = 2;
+                } else if self.storage_focus == 0 {
+                    self.sidebar_focus = SidebarFocus::Nav;
+                } else {
+                    self.storage_focus -= 1;
+                }
+            }
+            KeyCode::Up => {
+                if self.sidebar_focus == SidebarFocus::Nav {
+                    let next = match self.current_nav_view {
+                        NavView::Main => NavView::Containers,
+                        NavView::TrendGraphs => NavView::Main,
+                        NavView::Storage => NavView::TrendGraphs,
+                        NavView::LibraryInspection => NavView::Storage,
+                        NavView::Containers => NavView::LibraryInspection,
+                    };
+                    self.switch_nav_view(next);
+                } else {
+                    match self.storage_focus {
+                        0 if self.selected_disk_index > 0 => {
+                            self.selected_disk_index -= 1;
+                            self.load_selected_disk();
+                        }
+                        1 if self.file_scroll > 0 => {
+                            self.file_scroll -= 1;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            KeyCode::Down => {
+                if self.sidebar_focus == SidebarFocus::Nav {
+                    let next = match self.current_nav_view {
+                        NavView::Main => NavView::TrendGraphs,
+                        NavView::TrendGraphs => NavView::Storage,
+                        NavView::Storage => NavView::LibraryInspection,
+                        NavView::LibraryInspection => NavView::Containers,
+                        NavView::Containers => NavView::Main,
+                    };
+                    self.switch_nav_view(next);
+                } else {
+                    match self.storage_focus {
+                        0 => {
+                            let max = self.disks.len().saturating_sub(1);
+                            if self.selected_disk_index < max {
+                                self.selected_disk_index += 1;
+                                self.load_selected_disk();
+                            }
+                        }
+                        1 => {
+                            let max = self.file_entries.len().saturating_sub(1);
+                            if self.file_scroll < max {
+                                self.file_scroll += 1;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            KeyCode::Enter => {
+                if self.storage_focus == 0 {
+                    if let Some(disk) = self.get_selected_disk() {
+                        let p = std::path::Path::new(&disk.mount_point);
+                        if p.exists() {
+                            self.current_directory = p.to_path_buf();
+                            self.file_scroll = 0;
+                            self.load_directory();
+                        }
+                    }
+                } else if self.storage_focus == 1 {
+                    self.open_selected_file();
+                }
+            }
+            KeyCode::Backspace => {
+                if self.storage_focus == 1 {
+                    if let Some(parent) = self.current_directory.parent() {
+                        self.current_directory = parent.to_path_buf();
+                        self.file_scroll = 0;
+                        self.load_directory();
+                    }
+                }
+            }
+            KeyCode::Char('r') | KeyCode::Char('R') => {
+                self.refresh_disks();
+            }
+            KeyCode::Char('h') | KeyCode::Char('H') => {
+                if self.storage_focus == 1 {
+                    #[cfg(windows)]
+                    {
+                        let root = self
+                            .current_directory
+                            .components()
+                            .next()
+                            .map(|c| c.as_os_str().to_os_string())
+                            .unwrap_or_else(|| std::ffi::OsString::from("C:\\"));
+                        self.current_directory = std::path::PathBuf::from(root);
+                    }
+                    #[cfg(unix)]
+                    {
+                        self.current_directory = std::path::PathBuf::from("/");
+                    }
+                    self.file_scroll = 0;
+                    self.load_directory();
+                }
+            }
+            KeyCode::Char('p') | KeyCode::Char('P') => {
+                if self.storage_focus == 1 {
+                    self.open_selected_file();
+                }
+            }
+            KeyCode::Char('/') => {
+                if self.storage_focus == 1 {
+                    self.show_file_search_modal = true;
+                    self.file_search_state = crate::app::types::FileSearchState::default();
+                }
+            }
+            KeyCode::Char('q') | KeyCode::Char('Q') | KeyCode::Esc => {
+                self.switch_nav_view(NavView::Main);
+                self.sidebar_focus = SidebarFocus::Nav;
+            }
+            KeyCode::Char('m') | KeyCode::Char('M') => {
+                self.nav_sidebar_expanded = !self.nav_sidebar_expanded;
+                self.sidebar_focus = SidebarFocus::Nav;
+            }
+            KeyCode::Char('l') | KeyCode::Char('L') => {
+                self.show_language_modal = !self.show_language_modal;
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_file_viewer_keys(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('Q') => {
+                self.show_file_viewer = false;
+                self.file_viewer_content.clear();
+            }
+            KeyCode::Up => {
+                self.file_viewer_scroll = self.file_viewer_scroll.saturating_sub(1);
+            }
+            KeyCode::Down => {
+                let max = self.file_viewer_content.len().saturating_sub(1);
+                self.file_viewer_scroll = self.file_viewer_scroll.saturating_add(1).min(max);
+            }
+            KeyCode::PageUp => {
+                self.file_viewer_scroll = self.file_viewer_scroll.saturating_sub(20);
+            }
+            KeyCode::PageDown => {
+                let max = self.file_viewer_content.len().saturating_sub(1);
+                self.file_viewer_scroll = self.file_viewer_scroll.saturating_add(20).min(max);
+            }
+            KeyCode::End => {
+                self.file_viewer_scroll = self.file_viewer_content.len().saturating_sub(1);
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_file_search_modal_keys(&mut self, key: KeyEvent) {
+        const FIELD_COUNT: usize = 5; // 0=query, 1=recursive, 2=extension, 3=Continue, 4=Cancel
+        match key.code {
+            KeyCode::Esc => {
+                self.show_file_search_modal = false;
+            }
+            KeyCode::Tab => {
+                self.file_search_state.focused_field = (self.file_search_state.focused_field + 1) % FIELD_COUNT;
+            }
+            KeyCode::BackTab => {
+                self.file_search_state.focused_field = if self.file_search_state.focused_field == 0 {
+                    FIELD_COUNT - 1
+                } else {
+                    self.file_search_state.focused_field - 1
+                };
+            }
+            // Query text input
+            KeyCode::Char(c) if self.file_search_state.focused_field == 0 && !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.file_search_state.query.push(c);
+            }
+            KeyCode::Backspace if self.file_search_state.focused_field == 0 => {
+                self.file_search_state.query.pop();
+            }
+            // Recursive toggle
+            KeyCode::Enter | KeyCode::Char(' ') if self.file_search_state.focused_field == 1 => {
+                self.file_search_state.recursive = !self.file_search_state.recursive;
+            }
+            // Extension cycle
+            KeyCode::Left if self.file_search_state.focused_field == 2 => {
+                let max = crate::app::storage::FILE_EXTENSION_FILTERS.len().saturating_sub(1);
+                self.file_search_state.extension_idx = if self.file_search_state.extension_idx == 0 { max } else { self.file_search_state.extension_idx - 1 };
+            }
+            KeyCode::Right if self.file_search_state.focused_field == 2 => {
+                let max = crate::app::storage::FILE_EXTENSION_FILTERS.len().saturating_sub(1);
+                self.file_search_state.extension_idx = if self.file_search_state.extension_idx >= max { 0 } else { self.file_search_state.extension_idx + 1 };
+            }
+            // Continue button
+            KeyCode::Enter if self.file_search_state.focused_field == 3 => {
+                self.file_search_query = self.file_search_state.query.clone();
+                self.file_search_recursive = self.file_search_state.recursive;
+                self.file_search_extension_idx = self.file_search_state.extension_idx;
+                self.file_search_mode = true;
+                self.show_file_search_modal = false;
+                self.abort_search();
+                if self.file_search_recursive {
+                    self.start_recursive_search();
+                } else {
+                    self.load_directory();
+                }
+                self.status_message = tr!(self.translator, "status.search_active").to_string();
+            }
+            // Cancel button
+            KeyCode::Enter if self.file_search_state.focused_field == 4 => {
+                self.show_file_search_modal = false;
+            }
+            _ => {}
+        }
+    }
+
+    fn load_selected_disk(&mut self) {
+        self.abort_search();
+        if let Some(disk) = self.get_selected_disk() {
+            let p = std::path::Path::new(&disk.mount_point);
+            if p.exists() {
+                self.current_directory = p.to_path_buf();
+                self.file_scroll = 0;
+                self.load_directory();
+            }
+        }
+    }
+
+    fn start_recursive_search(&mut self) {
+        let start_dir = self.current_directory.clone();
+        let query = self.file_search_query.to_lowercase();
+        let ext_idx = self.file_search_extension_idx.min(
+            crate::app::storage::FILE_EXTENSION_FILTERS.len().saturating_sub(1)
+        );
+        let exts = crate::app::storage::FILE_EXTENSION_FILTERS[ext_idx].2;
+        let (tx, rx) = std::sync::mpsc::channel();
+        let count = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let abort = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let c = count.clone();
+        let a = abort.clone();
+        std::thread::spawn(move || {
+            let mut all = Vec::new();
+            let mut dirs = vec![start_dir];
+            while let Some(dir) = dirs.pop() {
+                if a.load(std::sync::atomic::Ordering::Relaxed) {
+                    return;
+                }
+                if let Ok(entries) = crate::app::storage::StorageManager::list_directory(&dir) {
+                    for entry in entries {
+                        if entry.is_dir {
+                            dirs.push(entry.path.clone());
+                            // Only count dirs toward progress, don't filter them out
+                            c.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        } else {
+                            let matches_query = query.is_empty() || entry.name.to_lowercase().contains(&query);
+                            let matches_ext = exts.is_empty() || exts.contains(&entry.extension.to_lowercase().as_str());
+                            if matches_query && matches_ext {
+                                all.push(entry);
+                            }
+                            c.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        }
+                    }
+                }
+            }
+            let _ = tx.send(all);
+        });
+        self.search_progress_rx = Some(rx);
+        self.search_progress_count = Some(count);
+        self.search_progress_abort = Some(abort);
+        self.search_progress_running = true;
+        self.search_progress_found = 0;
+    }
+
+    fn open_selected_file(&mut self) {
+        let idx = self.file_scroll.min(self.file_entries.len().saturating_sub(1));
+        let Some(entry) = self.file_entries.get(idx) else { return };
+        if entry.is_dir {
+            let dir = entry.path.clone();
+            self.abort_search();
+            self.current_directory = dir;
+            self.file_scroll = 0;
+            self.load_directory();
+            return;
+        }
+        if crate::app::storage::StorageManager::is_text_file(&entry.extension) {
+            match crate::app::storage::StorageManager::read_file(&entry.path) {
+                Ok(content) => {
+                    self.file_viewer_content = content.lines().map(|l| l.to_string()).collect();
+                    self.file_viewer_scroll = 0;
+                    self.show_file_viewer = true;
+                }
+                Err(e) => {
+                    self.status_message =
+                        format!("[-] Failed to read file: {}", e);
+                }
+            }
+        } else if crate::app::storage::StorageManager::is_image_file(&entry.extension) {
+            // Image files — show metadata placeholder
+            let size = fmt_size(entry.size);
+            self.file_viewer_content = vec![
+                format!("File: {}", entry.name),
+                format!("Size: {}", size),
+                format!("Type: Image ({})", entry.extension.to_uppercase()),
+                format!("Path: {}", entry.path.display()),
+                String::new(),
+                "Image preview not available in terminal.".to_string(),
+                "Press Esc to close.".to_string(),
+            ];
+            self.file_viewer_scroll = 0;
+            self.show_file_viewer = true;
+        } else {
+            // Binary — show metadata
+            let size = fmt_size(entry.size);
+            self.file_viewer_content = vec![
+                format!("File: {}", entry.name),
+                format!("Size: {}", size),
+                format!("Path: {}", entry.path.display()),
+                String::new(),
+                "Binary file — cannot display content.".to_string(),
+                "Press Esc to close.".to_string(),
+            ];
+            self.file_viewer_scroll = 0;
+            self.show_file_viewer = true;
+        }
+    }
+
+    fn load_directory(&mut self) {
+        self.file_entries =
+            crate::app::storage::StorageManager::list_directory(&self.current_directory)
+                .unwrap_or_default();
+        self.file_scroll = 0;
+    }
+
+    fn refresh_disks(&mut self) {
+        self.disks = crate::app::storage::StorageManager::list_disks();
+        self.disks_loading = false;
+        self.status_message = tr!(self.translator, "storage.refreshed").to_string();
+    }
+
     fn handle_language_keys(&mut self, key: KeyEvent) {
         let locales = crate::i18n::Translator::available_locales();
         let locale_count = locales.len();
@@ -1137,13 +1519,19 @@ impl App {
         }
     }
     fn handle_mouse_scroll(&mut self, delta: i32) {
+        // File viewer modal gets priority when open (regardless of focus)
+        if self.current_nav_view == NavView::Storage && self.show_file_viewer {
+            let max = self.file_viewer_content.len().saturating_sub(1);
+            self.file_viewer_scroll = apply_scroll(self.file_viewer_scroll, delta, max);
+            return;
+        }
         match self.sidebar_focus {
             SidebarFocus::Nav => {
                 if delta > 0 {
                     let next = match self.current_nav_view {
                         NavView::Main => NavView::TrendGraphs,
-                        NavView::TrendGraphs => NavView::DgaDetector,
-                        NavView::DgaDetector => NavView::LibraryInspection,
+                        NavView::TrendGraphs => NavView::Storage,
+                        NavView::Storage => NavView::LibraryInspection,
                         NavView::LibraryInspection => NavView::Containers,
                         NavView::Containers => NavView::Main,
                     };
@@ -1152,8 +1540,8 @@ impl App {
                     let next = match self.current_nav_view {
                         NavView::Main => NavView::Containers,
                         NavView::TrendGraphs => NavView::Main,
-                        NavView::DgaDetector => NavView::TrendGraphs,
-                        NavView::LibraryInspection => NavView::DgaDetector,
+                        NavView::Storage => NavView::TrendGraphs,
+                        NavView::LibraryInspection => NavView::Storage,
                         NavView::Containers => NavView::LibraryInspection,
                     };
                     self.switch_nav_view(next);
@@ -1168,6 +1556,9 @@ impl App {
                         self.container_detail_scroll = 0;
                         self.container_logs.clear();
                     }
+                } else if self.current_nav_view == NavView::Storage {
+                    let max = self.disks.len().saturating_sub(1);
+                    self.selected_disk_index = apply_scroll(self.selected_disk_index, delta, max);
                 } else if self.investigation_report.is_none() && !self.is_investigating {
                     let max = self.get_filtered_apps().len().saturating_sub(1);
                     if apply_scroll_bool(self.selected_app_index, delta, max) {
@@ -1187,6 +1578,9 @@ impl App {
                         self.container_detail_scroll =
                             apply_scroll(self.container_detail_scroll, delta, max);
                     }
+                } else if self.current_nav_view == NavView::Storage {
+                    let max = self.file_entries.len().saturating_sub(1);
+                    self.file_scroll = apply_scroll(self.file_scroll, delta, max);
                 } else if self.investigation_report.is_none() && !self.is_investigating {
                     if let Some(app) = self.get_selected_app() {
                         let max = app.connections.len().saturating_sub(1);
@@ -1201,6 +1595,8 @@ impl App {
                         crate::app::containers::CONTAINER_RIGHT_ACTION_COUNT.saturating_sub(1);
                     self.selected_container_action_index =
                         apply_scroll(self.selected_container_action_index, delta, max);
+                } else if self.current_nav_view == NavView::Storage {
+                    // For storage actions panel, scroll action index if needed
                 } else {
                     let max = config::ACTION_COUNT;
                     self.selected_action_index =

@@ -49,6 +49,7 @@ impl App {
         self.process_user_location();
         self.process_update_result();
         self.process_update_task();
+        self.process_search_results();
         self.process_container_results();
         if self.current_nav_view == crate::app::NavView::Containers
             && !self.containers_loaded_once
@@ -213,6 +214,25 @@ impl App {
                     });
                     self.icon_extraction_rx = Some(rx_icon);
                 }
+            }
+        }
+    }
+    fn process_search_results(&mut self) {
+        if !self.search_progress_running {
+            return;
+        }
+        if let Some(ref count) = self.search_progress_count {
+            self.search_progress_found = count.load(std::sync::atomic::Ordering::Relaxed);
+        }
+        if let Some(ref rx) = self.search_progress_rx {
+            if let Ok(entries) = rx.try_recv() {
+                self.file_entries = entries;
+                self.file_scroll = 0;
+                self.search_progress_running = false;
+                self.search_progress_found = 0;
+                self.search_progress_rx = None;
+                self.search_progress_count = None;
+                self.search_progress_abort = None;
             }
         }
     }

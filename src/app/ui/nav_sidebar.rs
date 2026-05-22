@@ -32,7 +32,7 @@ pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let nav_items = vec![
         (NavView::Main, "󰞶", tr!(app.translator, "nav.main")),
         (NavView::TrendGraphs, "󰄪", tr!(app.translator, "nav.trends")),
-        (NavView::DgaDetector, "󰒙", tr!(app.translator, "nav.dga")),
+        (NavView::Storage, "󰋊", tr!(app.translator, "nav.storage")),
         (
             NavView::LibraryInspection,
             "󰅩",

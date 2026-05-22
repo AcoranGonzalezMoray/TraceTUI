@@ -1,6 +1,7 @@
 pub mod analysis;
 pub mod containers;
 pub mod firewall_service;
+pub mod storage;
 pub mod grouping;
 pub mod input;
 pub mod installation;
@@ -142,6 +143,27 @@ pub struct App {
     pub docker_hub_create_rx: Option<std::sync::mpsc::Receiver<Result<String, String>>>,
     pub pending_container_action: Option<crate::app::containers::ContainerAction>,
     pub pending_docker_action: Option<crate::app::containers::DockerAction>,
+    pub disks: Vec<crate::app::storage::DiskInfo>,
+    pub selected_disk_index: usize,
+    pub disks_loading: bool,
+    pub current_directory: std::path::PathBuf,
+    pub file_entries: Vec<crate::app::storage::FileEntry>,
+    pub file_scroll: usize,
+    pub show_file_viewer: bool,
+    pub file_viewer_content: Vec<String>,
+    pub file_viewer_scroll: usize,
+    pub storage_focus: usize,
+    pub file_search_query: String,
+    pub file_search_mode: bool,
+    pub file_search_recursive: bool,
+    pub file_search_extension_idx: usize,
+    pub show_file_search_modal: bool,
+    pub file_search_state: crate::app::types::FileSearchState,
+    pub search_progress_running: bool,
+    pub search_progress_found: usize,
+    search_progress_rx: Option<std::sync::mpsc::Receiver<Vec<crate::app::storage::FileEntry>>>,
+    search_progress_count: Option<std::sync::Arc<std::sync::atomic::AtomicUsize>>,
+    search_progress_abort: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
 }
 
 impl App {
@@ -263,6 +285,27 @@ impl App {
             docker_hub_create_rx: None,
             pending_container_action: None,
             pending_docker_action: None,
+            disks: Vec::new(),
+            selected_disk_index: 0,
+            disks_loading: false,
+            current_directory: std::path::PathBuf::from("/"),
+            file_entries: Vec::new(),
+            file_scroll: 0,
+            show_file_viewer: false,
+            file_viewer_content: Vec::new(),
+            file_viewer_scroll: 0,
+            storage_focus: 0,
+            file_search_query: String::new(),
+            file_search_mode: false,
+            file_search_recursive: false,
+            file_search_extension_idx: 0,
+            show_file_search_modal: false,
+            file_search_state: crate::app::types::FileSearchState::default(),
+            search_progress_running: false,
+            search_progress_found: 0,
+            search_progress_rx: None,
+            search_progress_count: None,
+            search_progress_abort: None,
         };
 
         #[cfg(not(test))]
@@ -317,5 +360,20 @@ impl App {
     }
     pub fn get_selected_container(&self) -> Option<&crate::app::containers::ContainerInfo> {
         self.containers.get(self.selected_container_index)
+    }
+    pub fn get_selected_disk(&self) -> Option<&crate::app::storage::DiskInfo> {
+        self.disks.get(self.selected_disk_index)
+    }
+    pub fn abort_search(&mut self) {
+        if let Some(ref abort) = self.search_progress_abort {
+            abort.store(true, std::sync::atomic::Ordering::Relaxed);
+        }
+        if self.search_progress_running {
+            self.search_progress_running = false;
+            self.search_progress_found = 0;
+        }
+        self.search_progress_rx = None;
+        self.search_progress_count = None;
+        self.search_progress_abort = None;
     }
 }

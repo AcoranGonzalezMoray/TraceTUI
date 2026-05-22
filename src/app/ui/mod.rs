@@ -17,6 +17,7 @@ pub mod nav_sidebar;
 pub mod sidebar_left;
 pub mod sidebar_right;
 pub mod theme;
+pub mod storage;
 pub mod trends;
 pub mod widgets;
 pub use center_panel::render_center_panel;
@@ -38,6 +39,7 @@ pub use nav_sidebar::render_nav_sidebar;
 pub use sidebar_left::render_left_sidebar;
 pub use sidebar_right::render_right_sidebar;
 pub use theme::THEME;
+pub use storage::render_storage_view;
 pub use trends::render_trends_view;
 pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
     let search_bar_height = if app.search_mode { 3 } else { 0 };
@@ -315,6 +317,9 @@ pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
     } else if app.show_update_dialog {
         render_update_dialog(f, app);
     }
+    if app.current_nav_view == NavView::Storage && app.show_file_search_modal {
+        crate::app::ui::storage::render_file_search_modal(f, app);
+    }
     if app.current_nav_view == NavView::Containers && app.show_container_logs_modal {
         render_container_logs_modal(f, app);
     }
@@ -390,7 +395,7 @@ fn render_main_layout_with_nav(f: &mut ratatui::Frame, app: &App, area: Rect) {
             AppState::Dashboard => render_ide_layout(f, app, main_layout[1]),
         },
         NavView::TrendGraphs => render_trends_view(f, app, main_layout[1]),
-        NavView::DgaDetector => render_placeholder_view(f, "Detector DGA", main_layout[1]),
+        NavView::Storage => render_storage_view(f, app, main_layout[1]),
         NavView::LibraryInspection => {
             render_placeholder_view(f, "Inspección de Librerías", main_layout[1])
         }

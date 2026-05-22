@@ -146,7 +146,7 @@ mod input_tests {
         app.handle_key_event(press(KeyCode::Down));
         assert_eq!(app.current_nav_view, NavView::TrendGraphs);
         app.handle_key_event(press(KeyCode::Down));
-        assert_eq!(app.current_nav_view, NavView::DgaDetector);
+        assert_eq!(app.current_nav_view, NavView::Storage);
         app.handle_key_event(press(KeyCode::Up));
         assert_eq!(app.current_nav_view, NavView::TrendGraphs);
     }

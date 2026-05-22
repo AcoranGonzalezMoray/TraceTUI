@@ -7,7 +7,7 @@ pub enum AppState {
 pub enum NavView {
     Main,
     TrendGraphs,
-    DgaDetector,
+    Storage,
     LibraryInspection,
     Containers,
 }
@@ -40,4 +40,21 @@ pub struct AppConnection {
 pub enum UpdateEvent {
     Progress(f64),
     Finished(bool, String),
+}
+#[derive(Debug, Clone)]
+pub struct FileSearchState {
+    pub query: String,
+    pub recursive: bool,
+    pub extension_idx: usize,
+    pub focused_field: usize,
+}
+impl Default for FileSearchState {
+    fn default() -> Self {
+        Self {
+            query: String::new(),
+            recursive: false,
+            extension_idx: 0,
+            focused_field: 0,
+        }
+    }
 }
