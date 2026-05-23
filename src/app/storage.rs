@@ -28,19 +28,42 @@ pub struct FileEntry {
     pub path: PathBuf,
     pub is_dir: bool,
     pub size: u64,
-    pub formatted_size: String, // OPTIMIZACIÓN: Precalculado para evitar lag en UI
+    pub _formatted_size: String,
     pub modified: String,
-    pub extension: String,      // Almacenada siempre en minúsculas para acelerar filtros
+    pub extension: String,
 }
 
 pub const FILE_EXTENSION_FILTERS: &[(&str, &[&str])] = &[
     ("\u{f15b}", &[]),
-    ("\u{f1c5}", &["png", "jpg", "jpeg", "gif", "bmp", "webp", "svg", "ico", "tiff", "tif"]),
-    ("\u{f15c}", &["txt", "md", "pdf", "doc", "docx", "csv", "json", "toml", "yml", "yaml", "xml", "html", "htm", "css", "sql", "log"]),
-    ("\u{f1c9}", &["rs", "py", "js", "ts", "go", "c", "cpp", "h", "hpp", "java", "rb", "php", "swift", "kt", "r", "pl", "lua"]),
+    (
+        "\u{f1c5}",
+        &[
+            "png", "jpg", "jpeg", "gif", "bmp", "webp", "svg", "ico", "tiff", "tif",
+        ],
+    ),
+    (
+        "\u{f15c}",
+        &[
+            "txt", "md", "pdf", "doc", "docx", "csv", "json", "toml", "yml", "yaml", "xml", "html",
+            "htm", "css", "sql", "log",
+        ],
+    ),
+    (
+        "\u{f1c9}",
+        &[
+            "rs", "py", "js", "ts", "go", "c", "cpp", "h", "hpp", "java", "rb", "php", "swift",
+            "kt", "r", "pl", "lua",
+        ],
+    ),
     ("\u{f1c6}", &["zip", "tar", "gz", "bz2", "xz", "7z", "rar"]),
-    ("\u{f1c7}", &["mp3", "wav", "flac", "ogg", "aac", "wma", "m4a"]),
-    ("\u{f1c8}", &["mp4", "avi", "mkv", "mov", "wmv", "flv", "webm"]),
+    (
+        "\u{f1c7}",
+        &["mp3", "wav", "flac", "ogg", "aac", "wma", "m4a"],
+    ),
+    (
+        "\u{f1c8}",
+        &["mp4", "avi", "mkv", "mov", "wmv", "flv", "webm"],
+    ),
 ];
 
 pub fn extension_filter_label(idx: usize) -> &'static str {
@@ -78,7 +101,7 @@ impl StorageManager {
                 for line in content.lines() {
                     let parts: Vec<&str> = line.split_whitespace().collect();
                     if parts.len() >= 3 {
-                        let device = parts[0];
+                        let _device = parts[0];
                         let mount = parts[1];
                         let fstype = parts[2];
                         if !fstype.starts_with("proc")
@@ -143,12 +166,7 @@ impl StorageManager {
             let mut total_free: u64 = 0;
 
             let result = unsafe {
-                GetDiskFreeSpaceExW(
-                    wide.as_ptr(),
-                    &mut free_avail,
-                    &mut total,
-                    &mut total_free,
-                )
+                GetDiskFreeSpaceExW(wide.as_ptr(), &mut free_avail, &mut total, &mut total_free)
             };
 
             if result == 0 {
@@ -258,7 +276,7 @@ impl StorageManager {
                         Some(format!("{:04}-{:02}-{:02} {:02}:{:02}", y, mo, d, h, mi))
                     })
                     .unwrap_or_default();
-                
+
                 let ext = if ft.is_dir() {
                     String::new()
                 } else {
@@ -267,25 +285,28 @@ impl StorageManager {
                         .extension()
                         .unwrap_or_default()
                         .to_string_lossy()
-                        .to_lowercase() // OPTIMIZACIÓN: Guardar siempre en minúsculas
+                        .to_lowercase()
                 };
 
                 let size = metadata.len();
-                let formatted_size = if ft.is_dir() { String::new() } else { fmt_size(size) };
+                let _formatted_size = if ft.is_dir() {
+                    String::new()
+                } else {
+                    fmt_size(size)
+                };
 
                 entries.push(FileEntry {
                     name,
                     path: entry.path(),
                     is_dir: ft.is_dir(),
                     size,
-                    formatted_size,
+                    _formatted_size,
                     modified,
                     extension: ext,
                 });
             }
         }
-        
-        // Ordenación eficiente
+
         entries.sort_unstable_by(|a, b| {
             if a.is_dir != b.is_dir {
                 b.is_dir.cmp(&a.is_dir)
@@ -303,7 +324,7 @@ impl StorageManager {
         let y4 = 4 * 365 + 1;
         let y1 = 365;
 
-        s += 11676096000; // convert Unix secs → seconds since 1600
+        s += 11676096000;
         let mut n400 = s / (y400 * 86400);
         s %= y400 * 86400;
         if s < 0 {
@@ -356,13 +377,58 @@ impl StorageManager {
 
     pub fn is_text_file(ext: &str) -> bool {
         matches!(
-            ext, // Asumimos minúsculas desde el sistema
-            "txt" | "rs" | "json" | "md" | "log" | "toml" | "yml" | "yaml" | "xml" | "html"
-                | "css" | "js" | "ts" | "py" | "rb" | "sh" | "bat" | "ps1" | "cfg" | "ini"
-                | "conf" | "env" | "csv" | "sql" | "lua" | "go" | "c" | "h" | "cpp" | "hpp"
-                | "java" | "kt" | "swift" | "r" | "pl" | "php" | "vue" | "svelte" | "tsx"
-                | "jsx" | "dockerfile" | "makefile" | "gradle" | "tf" | "sln" | "csproj"
-                | "lock" | "gitignore" | "editorconfig" | "prettierrc" | "eslintrc"
+            ext,
+            "txt"
+                | "rs"
+                | "json"
+                | "md"
+                | "log"
+                | "toml"
+                | "yml"
+                | "yaml"
+                | "xml"
+                | "html"
+                | "css"
+                | "js"
+                | "ts"
+                | "py"
+                | "rb"
+                | "sh"
+                | "bat"
+                | "ps1"
+                | "cfg"
+                | "ini"
+                | "conf"
+                | "env"
+                | "csv"
+                | "sql"
+                | "lua"
+                | "go"
+                | "c"
+                | "h"
+                | "cpp"
+                | "hpp"
+                | "java"
+                | "kt"
+                | "swift"
+                | "r"
+                | "pl"
+                | "php"
+                | "vue"
+                | "svelte"
+                | "tsx"
+                | "jsx"
+                | "dockerfile"
+                | "makefile"
+                | "gradle"
+                | "tf"
+                | "sln"
+                | "csproj"
+                | "lock"
+                | "gitignore"
+                | "editorconfig"
+                | "prettierrc"
+                | "eslintrc"
         )
     }
 
@@ -414,25 +480,37 @@ $thumb.Dispose(); $g.Dispose(); $bmp.Dispose(); $img.Dispose()
         if output.status.success() {
             let stdout = String::from_utf8_lossy(&output.stdout);
             let lines: Vec<String> = stdout.lines().map(|l| l.to_string()).collect();
-            if !lines.is_empty() { return Some(lines); }
+            if !lines.is_empty() {
+                return Some(lines);
+            }
         }
         None
     }
     #[cfg(unix)]
     {
-        // Try chafa (best quality)
         if let Ok(out) = Command::new("chafa")
-            .args(["--symbols", "block", "-c", "240", "-s", "60x40", "--format", "symbols"])
+            .args([
+                "--symbols",
+                "block",
+                "-c",
+                "240",
+                "-s",
+                "60x40",
+                "--format",
+                "symbols",
+            ])
             .arg(path.as_os_str())
             .output()
         {
             if out.status.success() {
                 let s = String::from_utf8_lossy(&out.stdout);
                 let lines: Vec<String> = s.lines().map(|l| l.to_string()).collect();
-                if !lines.is_empty() { return Some(lines); }
+                if !lines.is_empty() {
+                    return Some(lines);
+                }
             }
         }
-        // Try catimg
+
         if let Ok(out) = Command::new("catimg")
             .args(["-w", "60", "-r", "2"])
             .arg(path.as_os_str())
@@ -441,22 +519,24 @@ $thumb.Dispose(); $g.Dispose(); $bmp.Dispose(); $img.Dispose()
             if out.status.success() {
                 let s = String::from_utf8_lossy(&out.stdout);
                 let lines: Vec<String> = s.lines().map(|l| l.to_string()).collect();
-                if !lines.is_empty() { return Some(lines); }
+                if !lines.is_empty() {
+                    return Some(lines);
+                }
             }
         }
-        // Try python3 + PIL
+
         if let Ok(out) = Command::new("python3")
-            .args(["-c", &format!(
-                r#"import sys; sys.path.insert(0,''); from PIL import Image; i=Image.open('{}'); i=i.resize((60,int(i.height*60/i.width))); px=i.load(); w,h=i.size; b=chr(0x2580)
-for y in range(0,h,2):
- l=''
- for x in range(w):
-  tp=px[x,y]; bp=px[x,min(y+1,h-1)]
-  l+=f'\x1b[38;2;{tp[0]};{tp[1]};{tp[2]}m\x1b[48;2;{bp[0]};{bp[1]};{bp[2]}m{b}\x1b[0m'
- print(l)"#,
-                path.display().to_string().replace('\'', "'\\''")
-            )])
-            .output()
+        .args(["-c", &format!(
+            r#"import sys; sys.path.insert(0,''); from PIL import Image; i=Image.open('{}'); i=i.resize((60,int(i.height*60/i.width))); px=i.load(); w,h=i.size; b=chr(0x2580)
+    for y in range(0,h,2):
+     l=''
+     for x in range(w):
+      tp=px[x,y]; bp=px[x,min(y+1,h-1)]
+      l+=f'\x1b[38;2;{{tp[0]}};{{tp[1]}};{{tp[2]}}m\x1b[48;2;{{bp[0]}};{{bp[1]}};{{bp[2]}}m{{b}}\x1b[0m'
+     print(l)"#,
+            path.display().to_string().replace('\'', "'\\''")
+        )])
+        .output()
         {
             if out.status.success() {
                 let s = String::from_utf8_lossy(&out.stdout);
@@ -467,7 +547,9 @@ for y in range(0,h,2):
         None
     }
     #[cfg(not(any(windows, unix)))]
-    { None }
+    {
+        None
+    }
 }
 
 pub fn fmt_size(bytes: u64) -> String {

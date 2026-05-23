@@ -61,6 +61,7 @@ pub fn render_footer(f: &mut ratatui::Frame, app: &App, area: Rect) {
         NavView::Containers => container_footer_spans(app),
         NavView::Storage => storage_footer_spans(app),
         NavView::TrendGraphs => trends_footer_spans(app),
+        NavView::LibraryInspection => libraries_footer_spans(app),
         _ => network_footer_spans(app),
     };
     right_spans.push(separator());
@@ -69,7 +70,10 @@ pub fn render_footer(f: &mut ratatui::Frame, app: &App, area: Rect) {
         Style::default().fg(THEME.text_dim),
     ));
     right_spans.push(Span::styled(
-        format!(" {} ", tr!(app.translator, "app.os", os_name(&app.translator))),
+        format!(
+            " {} ",
+            tr!(app.translator, "app.os", os_name(&app.translator))
+        ),
         Style::default().fg(THEME.secondary),
     ));
 
@@ -134,12 +138,18 @@ fn storage_footer_spans(app: &App) -> Vec<Span<'_>> {
     let disk = app.get_selected_disk();
     let mut spans = vec![
         Span::styled(
-            format!(" {} ", tr!(app.translator, "storage.col_size").to_lowercase()),
+            format!(
+                " {} ",
+                tr!(app.translator, "storage.col_size").to_lowercase()
+            ),
             Style::default().fg(THEME.secondary),
         ),
         separator(),
         Span::styled(
-            format!(" {} ", tr!(app.translator, "sidebar.items", app.file_entries.len())),
+            format!(
+                " {} ",
+                tr!(app.translator, "sidebar.items", app.file_entries.len())
+            ),
             Style::default().fg(THEME.text_dim),
         ),
     ];
@@ -147,7 +157,11 @@ fn storage_footer_spans(app: &App) -> Vec<Span<'_>> {
         spans.push(separator());
         spans.push(Span::styled(
             format!(" {} {:.0}% ", d.device, d.usage_pct()),
-            Style::default().fg(if d.usage_pct() > 85.0 { THEME.danger } else { THEME.success }),
+            Style::default().fg(if d.usage_pct() > 85.0 {
+                THEME.danger
+            } else {
+                THEME.success
+            }),
         ));
     }
     spans
@@ -158,10 +172,7 @@ fn trends_footer_spans(app: &App) -> Vec<Span<'_>> {
     let current_cpu = app.cpu_history.last().copied().unwrap_or(0.0);
     vec![
         Span::styled(
-            format!(
-                " {} ",
-                tr!(app.translator, "trends.peak_connections")
-            ),
+            format!(" {} ", tr!(app.translator, "trends.peak_connections")),
             Style::default().fg(THEME.secondary),
         ),
         separator(),
@@ -172,7 +183,42 @@ fn trends_footer_spans(app: &App) -> Vec<Span<'_>> {
         separator(),
         Span::styled(
             format!(" CPU {:.1}% ", current_cpu),
-            Style::default().fg(if current_cpu > 80.0 { THEME.danger } else { THEME.text_dim }),
+            Style::default().fg(if current_cpu > 80.0 {
+                THEME.danger
+            } else {
+                THEME.text_dim
+            }),
+        ),
+    ]
+}
+
+fn libraries_footer_spans(app: &App) -> Vec<Span<'_>> {
+    let total = app.libraries.len();
+    let suspicious = app
+        .libraries
+        .iter()
+        .filter(|l| l.risk == "Suspicious")
+        .count();
+    vec![
+        Span::styled(
+            format!(" {} ", tr!(app.translator, "libraries.footer_count", total)),
+            Style::default().fg(THEME.secondary),
+        ),
+        separator(),
+        Span::styled(
+            format!(
+                " {} ",
+                if suspicious > 0 {
+                    tr!(app.translator, "libraries.footer_risk", suspicious)
+                } else {
+                    tr!(app.translator, "libraries.footer_safe")
+                }
+            ),
+            Style::default().fg(if suspicious > 0 {
+                THEME.danger
+            } else {
+                THEME.success
+            }),
         ),
     ]
 }

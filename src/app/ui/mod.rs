@@ -13,11 +13,12 @@ pub mod dialogs;
 pub mod firewall;
 pub mod footer;
 pub mod header;
+pub mod libraries;
 pub mod nav_sidebar;
 pub mod sidebar_left;
 pub mod sidebar_right;
-pub mod theme;
 pub mod storage;
+pub mod theme;
 pub mod trends;
 pub mod widgets;
 pub use center_panel::render_center_panel;
@@ -35,11 +36,12 @@ pub use dialogs::render_welcome_dialog;
 pub use firewall::render_firewall_mode;
 pub use footer::render_footer;
 pub use header::render_header;
+pub use libraries::render_libraries_view;
 pub use nav_sidebar::render_nav_sidebar;
 pub use sidebar_left::render_left_sidebar;
 pub use sidebar_right::render_right_sidebar;
-pub use theme::THEME;
 pub use storage::render_storage_view;
+pub use theme::THEME;
 pub use trends::render_trends_view;
 pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
     let search_bar_height = if app.search_mode { 3 } else { 0 };
@@ -396,38 +398,9 @@ fn render_main_layout_with_nav(f: &mut ratatui::Frame, app: &App, area: Rect) {
         },
         NavView::TrendGraphs => render_trends_view(f, app, main_layout[1]),
         NavView::Storage => render_storage_view(f, app, main_layout[1]),
-        NavView::LibraryInspection => {
-            render_placeholder_view(f, "Inspección de Librerías", main_layout[1])
-        }
+        NavView::LibraryInspection => render_libraries_view(f, app, main_layout[1]),
         NavView::Containers => render_containers_view(f, app, main_layout[1]),
     }
-}
-
-fn render_placeholder_view(f: &mut ratatui::Frame, title: &str, area: Rect) {
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .border_type(BorderType::Rounded)
-        .title(format!(" {} ", title))
-        .border_style(Style::default().fg(THEME.primary));
-
-    let paragraph = Paragraph::new(vec![
-        Line::from(""),
-        Line::from("  Próximamente..."),
-        Line::from(""),
-        Line::from(vec![
-            Span::raw("  Esta funcionalidad ("),
-            Span::styled(
-                title,
-                Style::default()
-                    .fg(THEME.secondary)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::raw(") será implementada pronto."),
-        ]),
-    ])
-    .block(block);
-
-    f.render_widget(paragraph, area);
 }
 
 fn render_ide_layout(f: &mut ratatui::Frame, app: &App, area: Rect) {

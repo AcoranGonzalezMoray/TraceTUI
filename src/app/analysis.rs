@@ -51,11 +51,20 @@ impl App {
         self.process_update_task();
         self.process_search_results();
         self.process_container_results();
+        self.process_libraries_results();
+        self.tick_libraries();
         if self.current_nav_view == crate::app::NavView::Containers
             && !self.containers_loaded_once
             && !self.containers_loading
         {
             self.refresh_containers_async();
+        }
+        if self.current_nav_view == crate::app::NavView::LibraryInspection
+            && self.auto_analysis_complete
+            && (!self.libraries_loaded_once && !self.libraries_loading
+                || self.frame_count % 120 == 0)
+        {
+            self.refresh_libraries();
         }
         if self.auto_analysis_complete
             && !self.analysis_paused
@@ -76,27 +85,34 @@ impl App {
             if !self.file_search_mode && !self.search_progress_running {
                 self.disks = crate::app::storage::StorageManager::list_disks();
                 let current = self.current_directory.clone();
-                self.file_entries =
-                    crate::app::storage::StorageManager::list_directory(&current)
-                        .unwrap_or_default();
-                // re-apply current sort
+                self.file_entries = crate::app::storage::StorageManager::list_directory(&current)
+                    .unwrap_or_default();
+
                 use crate::app::types::FileSortMode;
-                self.file_entries.sort_unstable_by(|a, b| {
-                    match self.file_sort_mode {
+                self.file_entries
+                    .sort_unstable_by(|a, b| match self.file_sort_mode {
                         FileSortMode::ByName => {
-                            if a.is_dir != b.is_dir { b.is_dir.cmp(&a.is_dir) }
-                            else { a.name.to_lowercase().cmp(&b.name.to_lowercase()) }
+                            if a.is_dir != b.is_dir {
+                                b.is_dir.cmp(&a.is_dir)
+                            } else {
+                                a.name.to_lowercase().cmp(&b.name.to_lowercase())
+                            }
                         }
                         FileSortMode::BySize => {
-                            if a.is_dir != b.is_dir { b.is_dir.cmp(&a.is_dir) }
-                            else { b.size.cmp(&a.size) }
+                            if a.is_dir != b.is_dir {
+                                b.is_dir.cmp(&a.is_dir)
+                            } else {
+                                b.size.cmp(&a.size)
+                            }
                         }
                         FileSortMode::ByDate => {
-                            if a.is_dir != b.is_dir { b.is_dir.cmp(&a.is_dir) }
-                            else { b.modified.cmp(&a.modified) }
+                            if a.is_dir != b.is_dir {
+                                b.is_dir.cmp(&a.is_dir)
+                            } else {
+                                b.modified.cmp(&a.modified)
+                            }
                         }
-                    }
-                });
+                    });
                 self.compute_filtered_indices();
             }
         }

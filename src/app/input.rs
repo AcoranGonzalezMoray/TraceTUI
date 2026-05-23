@@ -1,9 +1,9 @@
 use crate::app::firewall_service::FirewallManager;
+use crate::app::storage::fmt_size;
 use crate::app::types::{FirewallPanel, NavView, SidebarFocus};
 use crate::app::App;
 use crate::config;
 use crate::resources;
-use crate::app::storage::fmt_size;
 use crate::tr;
 use crossterm::event::{
     KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
@@ -39,6 +39,9 @@ impl App {
                     }
                 }
             }
+        }
+        if view == NavView::LibraryInspection && !self.libraries_loaded_once {
+            self.refresh_libraries();
         }
     }
 
@@ -98,6 +101,10 @@ impl App {
             self.handle_storage_keys(key);
             return;
         }
+        if self.current_nav_view == NavView::LibraryInspection {
+            self.handle_libraries_keys(key);
+            return;
+        }
         if self.show_map {
             if key.code == KeyCode::Esc
                 || key.code == KeyCode::Char('q')
@@ -148,7 +155,7 @@ impl App {
                             NavView::Main => NavView::Containers,
                             NavView::TrendGraphs => NavView::Main,
                             NavView::Storage => NavView::TrendGraphs,
-                        NavView::LibraryInspection => NavView::Storage,
+                            NavView::LibraryInspection => NavView::Storage,
                             NavView::Containers => NavView::LibraryInspection,
                         };
                         self.switch_nav_view(next);
@@ -722,6 +729,230 @@ impl App {
         self.docker_hub_create_rx = Some(rx);
     }
 
+    fn handle_libraries_keys(&mut self, key: KeyEvent) {
+        if self.library_search_active {
+            match key.code {
+                KeyCode::Esc => {
+                    self.library_search_active = false;
+                }
+                KeyCode::Enter => {
+                    self.library_search_active = false;
+                }
+                KeyCode::Backspace => {
+                    self.library_search_query.pop();
+                    self.selected_library_index = 0;
+                    self.library_lib_scroll = 0;
+                }
+                KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    self.library_search_query.push(c);
+                    self.selected_library_index = 0;
+                    self.library_lib_scroll = 0;
+                }
+                _ => {}
+            }
+            return;
+        }
+
+        match key.code {
+            KeyCode::Tab => {
+                self.sidebar_focus = match self.sidebar_focus {
+                    SidebarFocus::Nav => SidebarFocus::Left,
+                    SidebarFocus::Left => SidebarFocus::Center,
+                    SidebarFocus::Center => SidebarFocus::Nav,
+                    _ => SidebarFocus::Left,
+                };
+                self.status_message = format!("Library focus: {:?}", self.sidebar_focus);
+            }
+            KeyCode::BackTab => {
+                self.sidebar_focus = match self.sidebar_focus {
+                    SidebarFocus::Nav => SidebarFocus::Center,
+                    SidebarFocus::Left => SidebarFocus::Nav,
+                    SidebarFocus::Center => SidebarFocus::Left,
+                    _ => SidebarFocus::Nav,
+                };
+            }
+
+            KeyCode::Up if self.sidebar_focus == SidebarFocus::Left => {
+                if self.selected_library_process_index > 0 {
+                    self.selected_library_process_index -= 1;
+                    self.selected_library_index = 0;
+                    self.library_lib_scroll = 0;
+                    self.library_process_scroll = self.library_process_scroll.saturating_sub(0);
+                }
+
+                if self.selected_library_process_index < self.library_process_scroll {
+                    self.library_process_scroll = self.selected_library_process_index;
+                }
+            }
+            KeyCode::Down if self.sidebar_focus == SidebarFocus::Left => {
+                let groups = self.group_libs_by_process();
+                if self.selected_library_process_index + 1 < groups.len() {
+                    self.selected_library_process_index += 1;
+                    self.selected_library_index = 0;
+                    self.library_lib_scroll = 0;
+                }
+            }
+            KeyCode::PageUp if self.sidebar_focus == SidebarFocus::Left => {
+                self.selected_library_process_index =
+                    self.selected_library_process_index.saturating_sub(10);
+                self.selected_library_index = 0;
+                self.library_lib_scroll = 0;
+            }
+            KeyCode::PageDown if self.sidebar_focus == SidebarFocus::Left => {
+                let max = self.group_libs_by_process().len().saturating_sub(1);
+                self.selected_library_process_index =
+                    (self.selected_library_process_index + 10).min(max);
+                self.selected_library_index = 0;
+                self.library_lib_scroll = 0;
+            }
+
+            KeyCode::Up if self.sidebar_focus == SidebarFocus::Center => {
+                if self.selected_library_index > 0 {
+                    self.selected_library_index -= 1;
+                    if self.selected_library_index < self.library_lib_scroll {
+                        self.library_lib_scroll = self.selected_library_index;
+                    }
+                }
+            }
+            KeyCode::Down if self.sidebar_focus == SidebarFocus::Center => {
+                let libs = crate::app::ui::libraries::get_libs_for_selected_process(self);
+                let max = libs.len().saturating_sub(1);
+                if self.selected_library_index < max {
+                    self.selected_library_index += 1;
+                }
+            }
+            KeyCode::PageUp if self.sidebar_focus == SidebarFocus::Center => {
+                self.selected_library_index = self.selected_library_index.saturating_sub(10);
+                self.library_lib_scroll = self.library_lib_scroll.saturating_sub(10);
+            }
+            KeyCode::PageDown if self.sidebar_focus == SidebarFocus::Center => {
+                let libs = crate::app::ui::libraries::get_libs_for_selected_process(self);
+                let max = libs.len().saturating_sub(1);
+                self.selected_library_index = (self.selected_library_index + 10).min(max);
+            }
+            KeyCode::Home if self.sidebar_focus == SidebarFocus::Center => {
+                self.selected_library_index = 0;
+                self.library_lib_scroll = 0;
+            }
+            KeyCode::End if self.sidebar_focus == SidebarFocus::Center => {
+                let libs = crate::app::ui::libraries::get_libs_for_selected_process(self);
+                self.selected_library_index = libs.len().saturating_sub(1);
+            }
+
+            KeyCode::Enter if self.sidebar_focus == SidebarFocus::Center => {
+                let libs = crate::app::ui::libraries::get_libs_for_selected_process(self);
+                if let Some(lib) = libs.get(self.selected_library_index) {
+                    let path = lib.path.clone();
+                    match arboard::Clipboard::new() {
+                        Ok(mut clipboard) => match clipboard.set_text(&path) {
+                            Ok(_) => {
+                                self.status_message = format!("Copied to clipboard: {}", path);
+                            }
+                            Err(e) => {
+                                self.status_message = format!("Clipboard error: {}", e);
+                            }
+                        },
+                        Err(e) => {
+                            self.status_message = format!("Clipboard unavailable: {}", e);
+                        }
+                    }
+                }
+            }
+
+            KeyCode::Char('/') => {
+                self.library_search_active = true;
+                self.status_message =
+                    "Library search active. Type to filter, Esc to close.".to_string();
+            }
+
+            KeyCode::Delete => {
+                self.library_search_query.clear();
+                self.selected_library_index = 0;
+                self.library_lib_scroll = 0;
+                self.status_message = "Search cleared.".to_string();
+            }
+
+            KeyCode::Char('f') | KeyCode::Char('F') => {
+                self.library_risk_filter = match self.library_risk_filter.as_deref() {
+                    None => Some("Critical".to_string()),
+                    Some("Critical") => Some("Suspicious".to_string()),
+                    Some("Suspicious") => None,
+                    _ => None,
+                };
+                self.selected_library_index = 0;
+                self.library_lib_scroll = 0;
+                let label = match self.library_risk_filter.as_deref() {
+                    Some(f) => format!("Filter: {}", f),
+                    None => "Filter: All".to_string(),
+                };
+                self.status_message = label;
+            }
+
+            KeyCode::Char('r') | KeyCode::Char('R') => {
+                self.libraries_loading = true;
+                let processes = self.processes.clone();
+                let connections = self.app_connections.clone();
+                let (tx, rx) = std::sync::mpsc::channel();
+                std::thread::spawn(move || {
+                    let libs = crate::app::libraries::inspect_libraries(&processes, &connections);
+                    let _ = tx.send(libs);
+                });
+                self.libraries_rx = Some(rx);
+                self.status_message = "Refreshing libraries...".to_string();
+            }
+
+            KeyCode::Char('h') | KeyCode::Char('H') => {
+                self.rehash_suspicious_libraries();
+                self.status_message =
+                    "SHA-256 computed for suspicious/critical libraries.".to_string();
+            }
+
+            KeyCode::Char('j') | KeyCode::Char('J') => {
+                let sq = self.library_search_query.clone();
+                let rf = self.library_risk_filter.clone();
+                self.export_libraries_with_filter("json", &sq, rf.as_deref());
+            }
+
+            KeyCode::Char('c') | KeyCode::Char('C') => {
+                if key.modifiers.contains(KeyModifiers::CONTROL) {
+                    self.should_quit = true;
+                } else {
+                    let sq = self.library_search_query.clone();
+                    let rf = self.library_risk_filter.clone();
+                    self.export_libraries_with_filter("csv", &sq, rf.as_deref());
+                }
+            }
+
+            KeyCode::Char('m') | KeyCode::Char('M') => {
+                self.nav_sidebar_expanded = !self.nav_sidebar_expanded;
+                self.sidebar_focus = SidebarFocus::Nav;
+            }
+
+            KeyCode::Char('l') | KeyCode::Char('L') => {
+                self.show_language_modal = true;
+            }
+
+            KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('Q') => {
+                if !self.library_search_query.is_empty() {
+                    self.library_search_query.clear();
+                    self.library_risk_filter = None;
+                    self.selected_library_index = 0;
+                    self.library_lib_scroll = 0;
+                    self.status_message = "Filter cleared.".to_string();
+                } else if self.investigation_report.is_some() || self.is_investigating {
+                    self.investigation_report = None;
+                    self.is_investigating = false;
+                    self.analysis_paused = false;
+                } else {
+                    self.switch_nav_view(NavView::Main);
+                    self.sidebar_focus = SidebarFocus::Nav;
+                }
+            }
+
+            _ => {}
+        }
+    }
+
     fn handle_storage_keys(&mut self, key: KeyEvent) {
         if self.show_file_search_modal {
             self.handle_file_search_modal_keys(key);
@@ -922,42 +1153,61 @@ impl App {
     }
 
     fn handle_file_search_modal_keys(&mut self, key: KeyEvent) {
-        const FIELD_COUNT: usize = 5; // 0=query, 1=recursive, 2=extension, 3=Continue, 4=Cancel
+        const FIELD_COUNT: usize = 5;
         match key.code {
             KeyCode::Esc => {
                 self.show_file_search_modal = false;
             }
             KeyCode::Tab => {
-                self.file_search_state.focused_field = (self.file_search_state.focused_field + 1) % FIELD_COUNT;
+                self.file_search_state.focused_field =
+                    (self.file_search_state.focused_field + 1) % FIELD_COUNT;
             }
             KeyCode::BackTab => {
-                self.file_search_state.focused_field = if self.file_search_state.focused_field == 0 {
+                self.file_search_state.focused_field = if self.file_search_state.focused_field == 0
+                {
                     FIELD_COUNT - 1
                 } else {
                     self.file_search_state.focused_field - 1
                 };
             }
-            // Query text input
-            KeyCode::Char(c) if self.file_search_state.focused_field == 0 && !key.modifiers.contains(KeyModifiers::CONTROL) => {
+
+            KeyCode::Char(c)
+                if self.file_search_state.focused_field == 0
+                    && !key.modifiers.contains(KeyModifiers::CONTROL) =>
+            {
                 self.file_search_state.query.push(c);
             }
             KeyCode::Backspace if self.file_search_state.focused_field == 0 => {
                 self.file_search_state.query.pop();
             }
-            // Recursive toggle
+
             KeyCode::Enter | KeyCode::Char(' ') if self.file_search_state.focused_field == 1 => {
                 self.file_search_state.recursive = !self.file_search_state.recursive;
             }
-            // Extension cycle
+
             KeyCode::Left if self.file_search_state.focused_field == 2 => {
-                let max = crate::app::storage::FILE_EXTENSION_FILTERS.len().saturating_sub(1);
-                self.file_search_state.extension_idx = if self.file_search_state.extension_idx == 0 { max } else { self.file_search_state.extension_idx - 1 };
+                let max = crate::app::storage::FILE_EXTENSION_FILTERS
+                    .len()
+                    .saturating_sub(1);
+                self.file_search_state.extension_idx = if self.file_search_state.extension_idx == 0
+                {
+                    max
+                } else {
+                    self.file_search_state.extension_idx - 1
+                };
             }
             KeyCode::Right if self.file_search_state.focused_field == 2 => {
-                let max = crate::app::storage::FILE_EXTENSION_FILTERS.len().saturating_sub(1);
-                self.file_search_state.extension_idx = if self.file_search_state.extension_idx >= max { 0 } else { self.file_search_state.extension_idx + 1 };
+                let max = crate::app::storage::FILE_EXTENSION_FILTERS
+                    .len()
+                    .saturating_sub(1);
+                self.file_search_state.extension_idx =
+                    if self.file_search_state.extension_idx >= max {
+                        0
+                    } else {
+                        self.file_search_state.extension_idx + 1
+                    };
             }
-            // Continue button
+
             KeyCode::Enter if self.file_search_state.focused_field == 3 => {
                 self.file_search_query = self.file_search_state.query.clone();
                 self.file_search_recursive = self.file_search_state.recursive;
@@ -973,7 +1223,7 @@ impl App {
                 }
                 self.status_message = tr!(self.translator, "status.search_active").to_string();
             }
-            // Cancel button
+
             KeyCode::Enter if self.file_search_state.focused_field == 4 => {
                 self.show_file_search_modal = false;
             }
@@ -999,7 +1249,9 @@ impl App {
         let start_dir = self.current_directory.clone();
         let query = self.file_search_query.to_lowercase();
         let ext_idx = self.file_search_extension_idx.min(
-            crate::app::storage::FILE_EXTENSION_FILTERS.len().saturating_sub(1)
+            crate::app::storage::FILE_EXTENSION_FILTERS
+                .len()
+                .saturating_sub(1),
         );
         let exts = crate::app::storage::FILE_EXTENSION_FILTERS[ext_idx].1;
         let (tx, rx) = std::sync::mpsc::channel();
@@ -1018,11 +1270,13 @@ impl App {
                     for entry in entries {
                         if entry.is_dir {
                             dirs.push(entry.path.clone());
-                            // Only count dirs toward progress, don't filter them out
+
                             c.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                         } else {
-                            let matches_query = query.is_empty() || entry.name.to_lowercase().contains(&query);
-                            let matches_ext = exts.is_empty() || exts.contains(&entry.extension.to_lowercase().as_str());
+                            let matches_query =
+                                query.is_empty() || entry.name.to_lowercase().contains(&query);
+                            let matches_ext = exts.is_empty()
+                                || exts.contains(&entry.extension.to_lowercase().as_str());
                             if matches_query && matches_ext {
                                 all.push(entry);
                             }
@@ -1041,8 +1295,12 @@ impl App {
     }
 
     fn open_selected_file(&mut self) {
-        let idx = self.file_scroll.min(self.file_entries.len().saturating_sub(1));
-        let Some(entry) = self.file_entries.get(idx) else { return };
+        let idx = self
+            .file_scroll
+            .min(self.file_entries.len().saturating_sub(1));
+        let Some(entry) = self.file_entries.get(idx) else {
+            return;
+        };
         if entry.is_dir {
             let dir = entry.path.clone();
             self.abort_search();
@@ -1061,12 +1319,10 @@ impl App {
                     self.show_file_viewer = true;
                 }
                 Err(e) => {
-                    self.status_message =
-                        format!("[-] Failed to read file: {}", e);
+                    self.status_message = format!("[-] Failed to read file: {}", e);
                 }
             }
         } else if crate::app::storage::StorageManager::is_image_file(&entry.extension) {
-            // Image files — try ANSI preview, fall back to metadata
             let preview = crate::app::storage::render_image_preview(&entry.path);
             self.file_viewer_is_ansi = preview.is_some();
             if let Some(lines) = preview {
@@ -1086,7 +1342,6 @@ impl App {
             self.file_viewer_scroll = 0;
             self.show_file_viewer = true;
         } else {
-            // Binary — show metadata
             let size = fmt_size(entry.size);
             self.file_viewer_content = vec![
                 format!("File: {}", entry.name),
@@ -1118,22 +1373,30 @@ impl App {
 
     fn sort_file_entries(&mut self) {
         use crate::app::types::FileSortMode;
-        self.file_entries.sort_unstable_by(|a, b| {
-            match self.file_sort_mode {
+        self.file_entries
+            .sort_unstable_by(|a, b| match self.file_sort_mode {
                 FileSortMode::ByName => {
-                    if a.is_dir != b.is_dir { b.is_dir.cmp(&a.is_dir) }
-                    else { a.name.to_lowercase().cmp(&b.name.to_lowercase()) }
+                    if a.is_dir != b.is_dir {
+                        b.is_dir.cmp(&a.is_dir)
+                    } else {
+                        a.name.to_lowercase().cmp(&b.name.to_lowercase())
+                    }
                 }
                 FileSortMode::BySize => {
-                    if a.is_dir != b.is_dir { b.is_dir.cmp(&a.is_dir) }
-                    else { b.size.cmp(&a.size) }
+                    if a.is_dir != b.is_dir {
+                        b.is_dir.cmp(&a.is_dir)
+                    } else {
+                        b.size.cmp(&a.size)
+                    }
                 }
                 FileSortMode::ByDate => {
-                    if a.is_dir != b.is_dir { b.is_dir.cmp(&a.is_dir) }
-                    else { b.modified.cmp(&a.modified) }
+                    if a.is_dir != b.is_dir {
+                        b.is_dir.cmp(&a.is_dir)
+                    } else {
+                        b.modified.cmp(&a.modified)
+                    }
                 }
-            }
-        });
+            });
     }
 
     fn handle_language_keys(&mut self, key: KeyEvent) {
@@ -1575,7 +1838,6 @@ impl App {
         }
     }
     fn handle_mouse_scroll(&mut self, delta: i32) {
-        // File viewer modal gets priority when open (regardless of focus)
         if self.current_nav_view == NavView::Storage && self.show_file_viewer {
             let max = self.file_viewer_content.len().saturating_sub(1);
             self.file_viewer_scroll = apply_scroll(self.file_viewer_scroll, delta, max);
@@ -1652,7 +1914,6 @@ impl App {
                     self.selected_container_action_index =
                         apply_scroll(self.selected_container_action_index, delta, max);
                 } else if self.current_nav_view == NavView::Storage {
-                    // For storage actions panel, scroll action index if needed
                 } else {
                     let max = config::ACTION_COUNT;
                     self.selected_action_index =

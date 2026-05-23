@@ -14,6 +14,7 @@ pub fn render_header(f: &mut ratatui::Frame, app: &App, area: Rect) {
         NavView::Containers => docker_header_content(app),
         NavView::Storage => storage_header_content(app),
         NavView::TrendGraphs => trends_header_content(app),
+        NavView::LibraryInspection => libraries_header_content(app),
         _ => network_header_content(app),
     };
     let title_block = Block::default()
@@ -141,11 +142,22 @@ fn storage_header_content(app: &App) -> Line<'_> {
         Span::styled(disk_info, Style::default().fg(THEME.text_main)),
         separator(),
         Span::styled(
-            format!(" \u{f15b} {} ", if path.len() > 40 { format!("...{}", &path[path.len()-37..]) } else { path }),
+            format!(
+                " \u{f15b} {} ",
+                if path.len() > 40 {
+                    format!("...{}", &path[path.len() - 37..])
+                } else {
+                    path
+                }
+            ),
             Style::default().fg(THEME.text_dim),
         ),
         Span::styled(
-            format!("{} {}", tr!(app.translator, "storage.col_size").to_lowercase(), app.file_entries.len()),
+            format!(
+                "{} {}",
+                tr!(app.translator, "storage.col_size").to_lowercase(),
+                app.file_entries.len()
+            ),
             Style::default().fg(THEME.secondary),
         ),
     ])
@@ -173,13 +185,20 @@ fn trends_header_content(app: &App) -> Line<'_> {
         app_subtitle(app),
         separator(),
         Span::styled(
-            format!(" \u{f0c1} {} ", tr!(app.translator, "app.conns_count", active_conns)),
+            format!(
+                " \u{f0c1} {} ",
+                tr!(app.translator, "app.conns_count", active_conns)
+            ),
             Style::default().fg(THEME.primary),
         ),
         separator(),
         Span::styled(
             format!(" CPU {:.1}% ", total_cpu),
-            Style::default().fg(if total_cpu > 80.0 { THEME.danger } else { THEME.text_dim }),
+            Style::default().fg(if total_cpu > 80.0 {
+                THEME.danger
+            } else {
+                THEME.text_dim
+            }),
         ),
         Span::styled(
             format!(" MEM {} MB ", total_mem_mb),
@@ -188,7 +207,55 @@ fn trends_header_content(app: &App) -> Line<'_> {
         separator(),
         Span::styled(
             format!(" \u{26a0} {} ", high_risk),
-            Style::default().fg(if high_risk > 0 { THEME.danger } else { THEME.success }),
+            Style::default().fg(if high_risk > 0 {
+                THEME.danger
+            } else {
+                THEME.success
+            }),
+        ),
+    ])
+}
+
+fn libraries_header_content(app: &App) -> Line<'_> {
+    let total = app.libraries.len();
+    let suspicious = app
+        .libraries
+        .iter()
+        .filter(|l| l.risk == "Suspicious")
+        .count();
+    let process_count = {
+        let mut pids = std::collections::HashSet::new();
+        for l in &app.libraries {
+            pids.insert(l.pid);
+        }
+        pids.len()
+    };
+    Line::from(vec![
+        app_title(app),
+        app_subtitle(app),
+        separator(),
+        Span::styled(
+            format!(
+                " \u{f0e7} {} ",
+                tr!(app.translator, "libraries.header_count", total)
+            ),
+            Style::default().fg(THEME.primary),
+        ),
+        separator(),
+        Span::styled(
+            format!(
+                " \u{f493} {} ",
+                tr!(app.translator, "libraries.header_procs", process_count)
+            ),
+            Style::default().fg(THEME.secondary),
+        ),
+        Span::styled(
+            format!(" \u{26a0} {} ", suspicious),
+            Style::default().fg(if suspicious > 0 {
+                THEME.danger
+            } else {
+                THEME.text_dim
+            }),
         ),
     ])
 }

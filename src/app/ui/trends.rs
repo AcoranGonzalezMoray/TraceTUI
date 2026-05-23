@@ -8,10 +8,6 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Sparkline, Table},
 };
 
-// ─────────────────────────────────────────────────────────────
-// Entry point
-// ─────────────────────────────────────────────────────────────
-
 pub fn render_trends_view(f: &mut ratatui::Frame, app: &App, area: Rect) {
     if area.height < 10 || area.width < 30 {
         return;
@@ -28,17 +24,16 @@ pub fn render_trends_view(f: &mut ratatui::Frame, app: &App, area: Rect) {
         let inner = block.inner(area);
         let msg = format!(" {} {}...", s, tr!(app.translator, "status.auto_analyzing"));
         f.render_widget(
-            Paragraph::new(Line::from(Span::styled(msg, Style::default().fg(THEME.warning)))).alignment(Alignment::Center),
+            Paragraph::new(Line::from(Span::styled(
+                msg,
+                Style::default().fg(THEME.warning),
+            )))
+            .alignment(Alignment::Center),
             inner,
         );
         return;
     }
 
-    // Main vertical layout:
-    //  [0] Summary cards          (5 lines)
-    //  [1] Sparkline row          (8 lines)
-    //  [2] Middle row             (40% remaining)
-    //  [3] Bottom row             (60% remaining)
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -54,10 +49,6 @@ pub fn render_trends_view(f: &mut ratatui::Frame, app: &App, area: Rect) {
     render_middle_row(f, app, chunks[2]);
     render_bottom_row(f, app, chunks[3]);
 }
-
-// ─────────────────────────────────────────────────────────────
-// SECTION 1 — Summary cards (5 KPI metrics)
-// ─────────────────────────────────────────────────────────────
 
 fn render_summary_cards(f: &mut ratatui::Frame, app: &App, area: Rect) {
     if area.width < 40 {
@@ -75,43 +66,72 @@ fn render_summary_cards(f: &mut ratatui::Frame, app: &App, area: Rect) {
         ])
         .split(area);
 
-    // ── Active connections
     let active_conns: u64 = app
         .app_connections
         .iter()
         .map(|a| a.connections.len() as u64)
         .sum();
 
-    // ── Peak connections
-    let peak_conn = app
-        .conn_count_history
-        .iter()
-        .max()
-        .copied()
-        .unwrap_or(0);
+    let peak_conn = app.conn_count_history.iter().max().copied().unwrap_or(0);
 
-    // ── Current CPU
     let current_cpu = app.cpu_history.last().copied().unwrap_or(0.0);
 
-    // ── Total memory used by monitored processes (MB)
     let total_mem_mb: u64 = app
         .app_connections
         .iter()
         .map(|a| a.memory_usage / 1024 / 1024)
         .sum();
 
-    // ── High-risk process count
     let high_risk_count = app
         .app_connections
         .iter()
         .filter(|a| a.risk_level.contains("HIGH") || a.risk_level.contains("CRITICAL"))
         .count() as u64;
 
-    render_kpi_card(f, cards[0], "CONNECTIONS", &fmt_num(active_conns), THEME.primary, "▲");
-    render_kpi_card(f, cards[1], "PEAK CONNS",  &fmt_num(peak_conn),   THEME.success,  "◆");
-    render_kpi_card(f, cards[2], "CPU USAGE",   &format!("{:.1}%", current_cpu), cpu_color(current_cpu), "◈");
-    render_kpi_card(f, cards[3], "MEM USAGE",   &format!("{} MB", fmt_num(total_mem_mb)), THEME.secondary, "▣");
-    render_kpi_card(f, cards[4], "HIGH RISK",   &fmt_num(high_risk_count), if high_risk_count > 0 { THEME.danger } else { THEME.success }, "⚠");
+    render_kpi_card(
+        f,
+        cards[0],
+        "CONNECTIONS",
+        &fmt_num(active_conns),
+        THEME.primary,
+        "▲",
+    );
+    render_kpi_card(
+        f,
+        cards[1],
+        "PEAK CONNS",
+        &fmt_num(peak_conn),
+        THEME.success,
+        "◆",
+    );
+    render_kpi_card(
+        f,
+        cards[2],
+        "CPU USAGE",
+        &format!("{:.1}%", current_cpu),
+        cpu_color(current_cpu),
+        "◈",
+    );
+    render_kpi_card(
+        f,
+        cards[3],
+        "MEM USAGE",
+        &format!("{} MB", fmt_num(total_mem_mb)),
+        THEME.secondary,
+        "▣",
+    );
+    render_kpi_card(
+        f,
+        cards[4],
+        "HIGH RISK",
+        &fmt_num(high_risk_count),
+        if high_risk_count > 0 {
+            THEME.danger
+        } else {
+            THEME.success
+        },
+        "⚠",
+    );
 }
 
 fn render_kpi_card(
@@ -142,7 +162,6 @@ fn render_kpi_card(
         ])
         .split(inner);
 
-    // Label row with icon
     f.render_widget(
         Paragraph::new(Line::from(vec![
             Span::styled(
@@ -160,22 +179,15 @@ fn render_kpi_card(
         rows[0],
     );
 
-    // Value row
     f.render_widget(
         Paragraph::new(Line::from(Span::styled(
             value.to_string(),
-            Style::default()
-                .fg(color)
-                .add_modifier(Modifier::BOLD),
+            Style::default().fg(color).add_modifier(Modifier::BOLD),
         )))
         .alignment(Alignment::Center),
         rows[1],
     );
 }
-
-// ─────────────────────────────────────────────────────────────
-// SECTION 2 — Sparkline row (CPU + Connections over time)
-// ─────────────────────────────────────────────────────────────
 
 fn render_sparkline_row(f: &mut ratatui::Frame, app: &App, area: Rect) {
     if area.width < 20 || area.height < 3 {
@@ -193,7 +205,10 @@ fn render_sparkline_row(f: &mut ratatui::Frame, app: &App, area: Rect) {
         "  CPU HISTORY",
         &cpu_to_u64(&app.cpu_history),
         THEME.warning,
-        app.cpu_history.last().copied().map(|v| format!("{:.1}%", v)),
+        app.cpu_history
+            .last()
+            .copied()
+            .map(|v| format!("{:.1}%", v)),
     );
     render_sparkline_panel(
         f,
@@ -201,7 +216,10 @@ fn render_sparkline_row(f: &mut ratatui::Frame, app: &App, area: Rect) {
         "  CONNECTION HISTORY",
         &app.conn_count_history,
         THEME.primary,
-        app.conn_count_history.last().copied().map(|v| format!("{} active", v)),
+        app.conn_count_history
+            .last()
+            .copied()
+            .map(|v| format!("{} active", v)),
     );
 }
 
@@ -234,7 +252,6 @@ fn render_sparkline_panel(
         return;
     }
 
-    // Mini stats line above sparkline
     let stats_area = Rect {
         x: inner.x,
         y: inner.y,
@@ -277,10 +294,6 @@ fn render_sparkline_panel(
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// SECTION 3 — Middle row: Risk distribution + Top processes
-// ─────────────────────────────────────────────────────────────
-
 fn render_middle_row(f: &mut ratatui::Frame, app: &App, area: Rect) {
     if area.height < 4 {
         return;
@@ -304,7 +317,9 @@ fn render_risk_distribution(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let block = Block::default()
         .title(Span::styled(
             "  RISK DISTRIBUTION",
-            Style::default().fg(THEME.danger).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(THEME.danger)
+                .add_modifier(Modifier::BOLD),
         ))
         .borders(Borders::ALL)
         .border_style(Style::default().fg(THEME.secondary))
@@ -316,7 +331,6 @@ fn render_risk_distribution(f: &mut ratatui::Frame, app: &App, area: Rect) {
         return;
     }
 
-    // Count risk levels
     let mut critical = 0u64;
     let mut high = 0u64;
     let mut medium = 0u64;
@@ -341,10 +355,10 @@ fn render_risk_distribution(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let total = (critical + high + medium + low + safe).max(1);
     let items = [
         ("CRITICAL", critical, THEME.danger),
-        ("HIGH    ", high,     THEME.danger),
-        ("MEDIUM  ", medium,   THEME.warning),
-        ("LOW     ", low,      THEME.success),
-        ("SAFE    ", safe,     THEME.primary),
+        ("HIGH    ", high, THEME.danger),
+        ("MEDIUM  ", medium, THEME.warning),
+        ("LOW     ", low, THEME.success),
+        ("SAFE    ", safe, THEME.primary),
     ];
 
     let bar_max = inner.width.saturating_sub(16) as usize;
@@ -381,7 +395,9 @@ fn render_top_processes_cpu(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let block = Block::default()
         .title(Span::styled(
             "  TOP PROCESSES — CPU",
-            Style::default().fg(THEME.warning).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(THEME.warning)
+                .add_modifier(Modifier::BOLD),
         ))
         .borders(Borders::ALL)
         .border_style(Style::default().fg(THEME.secondary))
@@ -411,19 +427,35 @@ fn render_top_processes_cpu(f: &mut ratatui::Frame, app: &App, area: Rect) {
         return;
     }
 
-    let max_cpu = procs.iter().map(|(_, c)| *c).fold(0.0f32, f32::max).max(0.01);
+    let max_cpu = procs
+        .iter()
+        .map(|(_, c)| *c)
+        .fold(0.0f32, f32::max)
+        .max(0.01);
     let name_w = (inner.width as usize / 3).max(8).min(22);
     let bar_max = inner.width.saturating_sub(name_w as u16 + 10) as usize;
 
     let header = Row::new(vec![
-        Cell::from(Span::styled("PROCESS", Style::default().fg(THEME.secondary).add_modifier(Modifier::BOLD | Modifier::UNDERLINED))),
-        Cell::from(Span::styled("CPU %", Style::default().fg(THEME.secondary).add_modifier(Modifier::BOLD | Modifier::UNDERLINED))),
+        Cell::from(Span::styled(
+            "PROCESS",
+            Style::default()
+                .fg(THEME.secondary)
+                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
+        )),
+        Cell::from(Span::styled(
+            "CPU %",
+            Style::default()
+                .fg(THEME.secondary)
+                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
+        )),
     ]);
 
     let mut rows: Vec<Row> = vec![header];
     for (name, cpu) in &procs {
         let bar_len = ((*cpu / max_cpu) as f64 * bar_max as f64) as usize;
-        let bar: String = std::iter::repeat(bar_char(*cpu / max_cpu)).take(bar_len).collect();
+        let bar: String = std::iter::repeat(bar_char(*cpu / max_cpu))
+            .take(bar_len)
+            .collect();
         let color = cpu_color(*cpu as f64);
         let short_name = truncate_str(name, name_w);
 
@@ -443,7 +475,10 @@ fn render_top_processes_cpu(f: &mut ratatui::Frame, app: &App, area: Rect) {
     }
 
     f.render_widget(
-        Table::new(rows, [Constraint::Length(name_w as u16), Constraint::Min(0)]),
+        Table::new(
+            rows,
+            [Constraint::Length(name_w as u16), Constraint::Min(0)],
+        ),
         inner,
     );
 }
@@ -452,7 +487,9 @@ fn render_top_processes_mem(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let block = Block::default()
         .title(Span::styled(
             "  TOP PROCESSES — MEM",
-            Style::default().fg(THEME.accent).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(THEME.accent)
+                .add_modifier(Modifier::BOLD),
         ))
         .borders(Borders::ALL)
         .border_style(Style::default().fg(THEME.secondary))
@@ -487,15 +524,27 @@ fn render_top_processes_mem(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let bar_max = inner.width.saturating_sub(name_w as u16 + 10) as usize;
 
     let header = Row::new(vec![
-        Cell::from(Span::styled("PROCESS", Style::default().fg(THEME.secondary).add_modifier(Modifier::BOLD | Modifier::UNDERLINED))),
-        Cell::from(Span::styled("MEM MB", Style::default().fg(THEME.secondary).add_modifier(Modifier::BOLD | Modifier::UNDERLINED))),
+        Cell::from(Span::styled(
+            "PROCESS",
+            Style::default()
+                .fg(THEME.secondary)
+                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
+        )),
+        Cell::from(Span::styled(
+            "MEM MB",
+            Style::default()
+                .fg(THEME.secondary)
+                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
+        )),
     ]);
 
     let mut rows: Vec<Row> = vec![header];
     for (name, mem_mb) in &procs {
         let ratio = *mem_mb as f64 / max_mem as f64;
         let bar_len = (ratio * bar_max as f64) as usize;
-        let bar: String = std::iter::repeat(bar_char(ratio as f32)).take(bar_len).collect();
+        let bar: String = std::iter::repeat(bar_char(ratio as f32))
+            .take(bar_len)
+            .collect();
         let color = mem_color(*mem_mb);
         let short_name = truncate_str(name, name_w);
 
@@ -515,14 +564,13 @@ fn render_top_processes_mem(f: &mut ratatui::Frame, app: &App, area: Rect) {
     }
 
     f.render_widget(
-        Table::new(rows, [Constraint::Length(name_w as u16), Constraint::Min(0)]),
+        Table::new(
+            rows,
+            [Constraint::Length(name_w as u16), Constraint::Min(0)],
+        ),
         inner,
     );
 }
-
-// ─────────────────────────────────────────────────────────────
-// SECTION 4 — Bottom row: Protocol / Country / Containers
-// ─────────────────────────────────────────────────────────────
 
 fn render_bottom_row(f: &mut ratatui::Frame, app: &App, area: Rect) {
     if area.height < 4 {
@@ -582,10 +630,7 @@ fn render_country_dist(f: &mut ratatui::Frame, app: &App, area: Rect) {
             let key = conn
                 .location
                 .as_deref()
-                .map(|s| {
-                    // Show only country part if "City, Country" format
-                    s.split(',').last().unwrap_or(s).trim().to_string()
-                })
+                .map(|s| s.split(',').last().unwrap_or(s).trim().to_string())
                 .unwrap_or_else(|| "Unknown".to_string());
             *counts.entry(key).or_insert(0) += 1;
         }
@@ -610,7 +655,9 @@ fn render_containers_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let block = Block::default()
         .title(Span::styled(
             "  CONTAINERS",
-            Style::default().fg(THEME.primary).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(THEME.primary)
+                .add_modifier(Modifier::BOLD),
         ))
         .borders(Borders::ALL)
         .border_style(Style::default().fg(THEME.secondary))
@@ -637,22 +684,42 @@ fn render_containers_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
         return;
     }
 
-    // Running vs stopped
-    let running = app.containers.iter().filter(|c| {
-        c.status.to_lowercase().contains("running") || c.status.to_lowercase().contains("up")
-    }).count();
+    let running = app
+        .containers
+        .iter()
+        .filter(|c| {
+            c.status.to_lowercase().contains("running") || c.status.to_lowercase().contains("up")
+        })
+        .count();
     let total = app.containers.len();
     let stopped = total - running;
 
-    // Summary line
-    let summary_area = Rect { x: inner.x, y: inner.y, width: inner.width, height: 1 };
+    let summary_area = Rect {
+        x: inner.x,
+        y: inner.y,
+        width: inner.width,
+        height: 1,
+    };
     f.render_widget(
         Paragraph::new(Line::from(vec![
             Span::styled("▶ Running: ", Style::default().fg(THEME.text_dim)),
-            Span::styled(format!("{}", running), Style::default().fg(THEME.success).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                format!("{}", running),
+                Style::default()
+                    .fg(THEME.success)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled("  ■ Stopped: ", Style::default().fg(THEME.text_dim)),
-            Span::styled(format!("{}", stopped), Style::default().fg(THEME.danger).add_modifier(Modifier::BOLD)),
-            Span::styled(format!("  / {}", total), Style::default().fg(THEME.text_dim)),
+            Span::styled(
+                format!("{}", stopped),
+                Style::default()
+                    .fg(THEME.danger)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!("  / {}", total),
+                Style::default().fg(THEME.text_dim),
+            ),
         ])),
         summary_area,
     );
@@ -670,12 +737,26 @@ fn render_containers_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     let name_w = (inner.width.saturating_sub(12)) as usize;
     let header = Row::new(vec![
-        Cell::from(Span::styled("STATUS", Style::default().fg(THEME.secondary).add_modifier(Modifier::BOLD | Modifier::UNDERLINED))),
-        Cell::from(Span::styled("NAME", Style::default().fg(THEME.secondary).add_modifier(Modifier::BOLD | Modifier::UNDERLINED))),
+        Cell::from(Span::styled(
+            "STATUS",
+            Style::default()
+                .fg(THEME.secondary)
+                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
+        )),
+        Cell::from(Span::styled(
+            "NAME",
+            Style::default()
+                .fg(THEME.secondary)
+                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
+        )),
     ]);
 
     let mut rows: Vec<Row> = vec![header];
-    for container in app.containers.iter().take(list_area.height.saturating_sub(1) as usize) {
+    for container in app
+        .containers
+        .iter()
+        .take(list_area.height.saturating_sub(1) as usize)
+    {
         let is_running = container.status.to_lowercase().contains("running")
             || container.status.to_lowercase().contains("up");
         let (status_icon, color) = if is_running {
@@ -685,8 +766,14 @@ fn render_containers_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
         };
         let short_name = truncate_str(&container.name, name_w);
         rows.push(Row::new(vec![
-            Cell::from(Span::styled(status_icon, Style::default().fg(color).add_modifier(Modifier::BOLD))),
-            Cell::from(Span::styled(short_name, Style::default().fg(THEME.text_main))),
+            Cell::from(Span::styled(
+                status_icon,
+                Style::default().fg(color).add_modifier(Modifier::BOLD),
+            )),
+            Cell::from(Span::styled(
+                short_name,
+                Style::default().fg(THEME.text_main),
+            )),
         ]));
     }
 
@@ -737,11 +824,15 @@ fn render_dist_table(
     let header = Row::new(vec![
         Cell::from(Span::styled(
             format!("{:<width$}", col1, width = label_w),
-            Style::default().fg(THEME.secondary).add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
+            Style::default()
+                .fg(THEME.secondary)
+                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
         )),
         Cell::from(Span::styled(
             col2,
-            Style::default().fg(THEME.secondary).add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
+            Style::default()
+                .fg(THEME.secondary)
+                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
         )),
     ]);
 
@@ -749,13 +840,17 @@ fn render_dist_table(
     for (label, value) in items.iter().take(inner.height.saturating_sub(1) as usize) {
         let ratio = *value as f64 / max_val as f64;
         let bar_len = (ratio * bar_max as f64) as usize;
-        let bar: String = std::iter::repeat(bar_char(ratio as f32)).take(bar_len).collect();
+        let bar: String = std::iter::repeat(bar_char(ratio as f32))
+            .take(bar_len)
+            .collect();
         let short_label = truncate_str(label, label_w);
 
         rows.push(Row::new(vec![
             Cell::from(Span::styled(
                 format!("{:<width$}", short_label, width = label_w),
-                Style::default().fg(THEME.text_dim).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(THEME.text_dim)
+                    .add_modifier(Modifier::BOLD),
             )),
             Cell::from(Line::from(vec![
                 Span::styled(bar, Style::default().fg(color)),
@@ -768,17 +863,13 @@ fn render_dist_table(
     }
 
     f.render_widget(
-        Table::new(rows, [
-            Constraint::Length(label_w as u16),
-            Constraint::Min(0),
-        ]),
+        Table::new(
+            rows,
+            [Constraint::Length(label_w as u16), Constraint::Min(0)],
+        ),
         inner,
     );
 }
-
-// ─────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────
 
 fn fmt_num(n: u64) -> String {
     let s = n.to_string();
@@ -796,7 +887,6 @@ fn cpu_to_u64(data: &[f64]) -> Vec<u64> {
     data.iter().map(|&x| x as u64).collect()
 }
 
-/// Picks a bar fill character based on fill ratio (dense → light)
 fn bar_char(ratio: f32) -> char {
     if ratio > 0.75 {
         '█'

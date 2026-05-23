@@ -12,10 +12,6 @@ use ratatui::{
     },
 };
 
-// ─────────────────────────────────────────────────────────────
-// Public entry points
-// ─────────────────────────────────────────────────────────────
-
 pub fn render_containers_view(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let columns = Layout::default()
         .direction(Direction::Horizontal)
@@ -31,10 +27,6 @@ pub fn render_containers_view(f: &mut ratatui::Frame, app: &App, area: Rect) {
     render_right_panels(f, app, columns[2]);
 }
 
-// ─────────────────────────────────────────────────────────────
-// Container List (left column)
-// ─────────────────────────────────────────────────────────────
-
 fn render_container_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let focused = app.sidebar_focus == SidebarFocus::Left;
     let border_color = focus_color(focused);
@@ -42,7 +34,11 @@ fn render_container_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let block = styled_block(
         format!(
             " {} ",
-            tr!(app.translator, "containers.list_title", app.containers.len())
+            tr!(
+                app.translator,
+                "containers.list_title",
+                app.containers.len()
+            )
         ),
         border_color,
         focused,
@@ -51,7 +47,6 @@ fn render_container_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
     f.render_widget(block.clone(), area);
     let inner = block.inner(area);
 
-    // Loading / error / empty states
     if app.containers_loading && app.containers.is_empty() {
         render_docker_placeholder(f, app, inner, DockerStatus::Starting);
         return;
@@ -65,11 +60,15 @@ fn render_container_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
         return;
     }
 
-    // ── Summary bar at top
     let (running, stopped, paused) = container_counts(&app.containers);
     let total = app.containers.len();
 
-    let summary_area = Rect { x: inner.x, y: inner.y, width: inner.width, height: 1 };
+    let summary_area = Rect {
+        x: inner.x,
+        y: inner.y,
+        width: inner.width,
+        height: 1,
+    };
     let table_area = Rect {
         x: inner.x,
         y: inner.y + 1,
@@ -82,17 +81,23 @@ fn render_container_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
             Span::styled(" \u{25b6} ", Style::default().fg(THEME.success)),
             Span::styled(
                 format!("{}", running),
-                Style::default().fg(THEME.success).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(THEME.success)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::styled("  \u{25a0} ", Style::default().fg(THEME.danger)),
             Span::styled(
                 format!("{}", stopped),
-                Style::default().fg(THEME.danger).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(THEME.danger)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::styled("  \u{23f8} ", Style::default().fg(THEME.warning)),
             Span::styled(
                 format!("{}", paused),
-                Style::default().fg(THEME.warning).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(THEME.warning)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
                 format!("  / {} total", total),
@@ -102,7 +107,6 @@ fn render_container_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
         summary_area,
     );
 
-    // ── Container table
     let rows: Vec<Row> = app
         .containers
         .iter()
@@ -121,15 +125,20 @@ fn render_container_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
             let badge_style = if selected {
                 Style::default().fg(THEME.background).bg(THEME.primary)
             } else {
-                Style::default().fg(badge_color).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(badge_color)
+                    .add_modifier(Modifier::BOLD)
             };
 
-            // CPU indicator dot
             let cpu_dot = match container.cpu_percent {
-                Some(c) if c >= 75.0 => Span::styled("\u{25cf} ", Style::default().fg(THEME.danger)),
-                Some(c) if c >= 40.0 => Span::styled("\u{25cf} ", Style::default().fg(THEME.warning)),
-                Some(_)               => Span::styled("\u{25cf} ", Style::default().fg(THEME.success)),
-                None                  => Span::styled("\u{25cb} ", Style::default().fg(THEME.text_dim)),
+                Some(c) if c >= 75.0 => {
+                    Span::styled("\u{25cf} ", Style::default().fg(THEME.danger))
+                }
+                Some(c) if c >= 40.0 => {
+                    Span::styled("\u{25cf} ", Style::default().fg(THEME.warning))
+                }
+                Some(_) => Span::styled("\u{25cf} ", Style::default().fg(THEME.success)),
+                None => Span::styled("\u{25cb} ", Style::default().fg(THEME.text_dim)),
             };
 
             Row::new(vec![
@@ -191,10 +200,6 @@ fn render_container_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
     );
 }
 
-// ─────────────────────────────────────────────────────────────
-// Container Details (center column)
-// ─────────────────────────────────────────────────────────────
-
 fn render_container_details(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let focused = app.sidebar_focus == SidebarFocus::Center;
     let border_color = focus_color(focused);
@@ -215,10 +220,10 @@ fn render_container_details(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(9), // identity
-            Constraint::Length(5), // gauges
-            Constraint::Length(8), // runtime stats
-            Constraint::Min(0),    // log hint
+            Constraint::Length(9),
+            Constraint::Length(5),
+            Constraint::Length(8),
+            Constraint::Min(0),
         ])
         .split(inner);
 
@@ -230,7 +235,7 @@ fn render_container_details(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
 fn render_identity(f: &mut ratatui::Frame, app: &App, container: &ContainerInfo, area: Rect) {
     let is_running = container.state.eq_ignore_ascii_case("running");
-    let is_paused  = container.state.eq_ignore_ascii_case("paused");
+    let is_paused = container.state.eq_ignore_ascii_case("paused");
     let state_color = if is_running {
         THEME.success
     } else if is_paused {
@@ -245,29 +250,44 @@ fn render_identity(f: &mut ratatui::Frame, app: &App, container: &ContainerInfo,
         .border_style(Style::default().fg(state_color))
         .title(Span::styled(
             format!(" {} ", tr!(app.translator, "containers.identity_section")),
-            Style::default().fg(state_color).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(state_color)
+                .add_modifier(Modifier::BOLD),
         ));
     f.render_widget(block.clone(), area);
     let inner = block.inner(area);
 
     let state_icon = if is_running {
-        format!("\u{25b6} {}", tr!(app.translator, "containers.state_running_badge"))
+        format!(
+            "\u{25b6} {}",
+            tr!(app.translator, "containers.state_running_badge")
+        )
     } else if is_paused {
-        format!("\u{23f8} {}", tr!(app.translator, "containers.state_paused_badge"))
+        format!(
+            "\u{23f8} {}",
+            tr!(app.translator, "containers.state_paused_badge")
+        )
     } else {
-        format!("\u{25a0} {}", tr!(app.translator, "containers.state_stopped_badge"))
+        format!(
+            "\u{25a0} {}",
+            tr!(app.translator, "containers.state_stopped_badge")
+        )
     };
 
     let lines = vec![
         Line::from(Span::styled(
             format!("  {}", state_icon),
-            Style::default().fg(state_color).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(state_color)
+                .add_modifier(Modifier::BOLD),
         )),
         Line::from(vec![
             label(app, "containers.field_name"),
             Span::styled(
                 container.name.as_str(),
-                Style::default().fg(THEME.text_main).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(THEME.text_main)
+                    .add_modifier(Modifier::BOLD),
             ),
         ]),
         Line::from(vec![
@@ -279,7 +299,10 @@ fn render_identity(f: &mut ratatui::Frame, app: &App, container: &ContainerInfo,
         ]),
         Line::from(vec![
             label(app, "containers.field_image"),
-            Span::styled(container.image.as_str(), Style::default().fg(THEME.secondary)),
+            Span::styled(
+                container.image.as_str(),
+                Style::default().fg(THEME.secondary),
+            ),
         ]),
         Line::from(vec![
             label(app, "containers.field_status"),
@@ -318,7 +341,9 @@ fn render_usage(f: &mut ratatui::Frame, app: &App, container: &ContainerInfo, ar
         .border_style(Style::default().fg(THEME.secondary))
         .title(Span::styled(
             format!(" {} ", tr!(app.translator, "containers.usage_section")),
-            Style::default().fg(THEME.primary).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(THEME.primary)
+                .add_modifier(Modifier::BOLD),
         ));
     f.render_widget(block.clone(), area);
     let inner = block.inner(area);
@@ -350,7 +375,9 @@ fn render_usage(f: &mut ratatui::Frame, app: &App, container: &ContainerInfo, ar
             .ratio(cpu)
             .label(Span::styled(
                 format!("{:.1}%", container.cpu_percent.unwrap_or(0.0)),
-                Style::default().fg(THEME.text_main).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(THEME.text_main)
+                    .add_modifier(Modifier::BOLD),
             )),
         cols[0],
     );
@@ -374,7 +401,9 @@ fn render_usage(f: &mut ratatui::Frame, app: &App, container: &ContainerInfo, ar
                     container.memory_percent.unwrap_or(0.0),
                     container.memory_usage
                 ),
-                Style::default().fg(THEME.text_main).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(THEME.text_main)
+                    .add_modifier(Modifier::BOLD),
             )),
         cols[1],
     );
@@ -387,38 +416,60 @@ fn render_runtime(f: &mut ratatui::Frame, app: &App, container: &ContainerInfo, 
         .border_style(Style::default().fg(THEME.secondary))
         .title(Span::styled(
             format!(" {} ", tr!(app.translator, "containers.runtime_section")),
-            Style::default().fg(THEME.primary).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(THEME.primary)
+                .add_modifier(Modifier::BOLD),
         ));
     f.render_widget(block.clone(), area);
     let inner = block.inner(area);
 
-    let key_style       = Style::default().fg(THEME.text_dim);
-    let val_style       = Style::default().fg(THEME.text_main);
-    let highlight_style = Style::default().fg(THEME.primary).add_modifier(Modifier::BOLD);
+    let key_style = Style::default().fg(THEME.text_dim);
+    let val_style = Style::default().fg(THEME.text_main);
+    let highlight_style = Style::default()
+        .fg(THEME.primary)
+        .add_modifier(Modifier::BOLD);
 
     let rows = vec![
         Row::new(vec![
-            Cell::from(Span::styled(tr!(app.translator, "containers.field_running_for"), key_style)),
+            Cell::from(Span::styled(
+                tr!(app.translator, "containers.field_running_for"),
+                key_style,
+            )),
             Cell::from(Span::styled(container.running_for.clone(), highlight_style)),
         ]),
         Row::new(vec![
-            Cell::from(Span::styled(tr!(app.translator, "containers.field_created"), key_style)),
+            Cell::from(Span::styled(
+                tr!(app.translator, "containers.field_created"),
+                key_style,
+            )),
             Cell::from(Span::styled(container.created.clone(), val_style)),
         ]),
         Row::new(vec![
-            Cell::from(Span::styled(tr!(app.translator, "containers.field_net_io"), key_style)),
+            Cell::from(Span::styled(
+                tr!(app.translator, "containers.field_net_io"),
+                key_style,
+            )),
             Cell::from(Span::styled(container.net_io.clone(), val_style)),
         ]),
         Row::new(vec![
-            Cell::from(Span::styled(tr!(app.translator, "containers.field_block_io"), key_style)),
+            Cell::from(Span::styled(
+                tr!(app.translator, "containers.field_block_io"),
+                key_style,
+            )),
             Cell::from(Span::styled(container.block_io.clone(), val_style)),
         ]),
         Row::new(vec![
-            Cell::from(Span::styled(tr!(app.translator, "containers.field_size"), key_style)),
+            Cell::from(Span::styled(
+                tr!(app.translator, "containers.field_size"),
+                key_style,
+            )),
             Cell::from(Span::styled(container.size.clone(), val_style)),
         ]),
         Row::new(vec![
-            Cell::from(Span::styled(tr!(app.translator, "containers.field_pids"), key_style)),
+            Cell::from(Span::styled(
+                tr!(app.translator, "containers.field_pids"),
+                key_style,
+            )),
             Cell::from(Span::styled(container.pids.clone(), val_style)),
         ]),
     ];
@@ -435,7 +486,9 @@ fn render_log_hint(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .border_style(Style::default().fg(THEME.secondary))
         .title(Span::styled(
             format!(" {} ", tr!(app.translator, "containers.logs_title")),
-            Style::default().fg(THEME.secondary).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(THEME.secondary)
+                .add_modifier(Modifier::BOLD),
         ));
 
     let text = if app.container_logs_loading {
@@ -452,10 +505,6 @@ fn render_log_hint(f: &mut ratatui::Frame, app: &App, area: Rect) {
         area,
     );
 }
-
-// ─────────────────────────────────────────────────────────────
-// Right panels: actions + docker actions
-// ─────────────────────────────────────────────────────────────
 
 fn render_right_panels(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let chunks = Layout::default()
@@ -486,13 +535,43 @@ fn render_container_actions(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .unwrap_or_else(|| tr!(app.translator, "containers.action_pause"));
 
     let actions: Vec<(&str, String, &str, ratatui::style::Color)> = vec![
-        ("\u{f021}", tr!(app.translator, "containers.action_refresh"),  "R", THEME.text_dim),
-        ("\u{f022}", tr!(app.translator, "containers.action_logs"),     "V", THEME.secondary),
-        ("\u{e795}", tr!(app.translator, "containers.action_console"),  "C", THEME.secondary),
-        ("\u{f04b}", tr!(app.translator, "containers.action_start"),    "S", THEME.success),
-        ("\u{f04d}", tr!(app.translator, "containers.action_stop"),     "T", THEME.danger),
-        ("\u{f021}", tr!(app.translator, "containers.action_restart"),  "E", THEME.warning),
-        ("\u{f04c}", pause_label,                                       "P", THEME.primary),
+        (
+            "\u{f021}",
+            tr!(app.translator, "containers.action_refresh"),
+            "R",
+            THEME.text_dim,
+        ),
+        (
+            "\u{f022}",
+            tr!(app.translator, "containers.action_logs"),
+            "V",
+            THEME.secondary,
+        ),
+        (
+            "\u{e795}",
+            tr!(app.translator, "containers.action_console"),
+            "C",
+            THEME.secondary,
+        ),
+        (
+            "\u{f04b}",
+            tr!(app.translator, "containers.action_start"),
+            "S",
+            THEME.success,
+        ),
+        (
+            "\u{f04d}",
+            tr!(app.translator, "containers.action_stop"),
+            "T",
+            THEME.danger,
+        ),
+        (
+            "\u{f021}",
+            tr!(app.translator, "containers.action_restart"),
+            "E",
+            THEME.warning,
+        ),
+        ("\u{f04c}", pause_label, "P", THEME.primary),
     ];
 
     let items: Vec<ListItem> = actions
@@ -522,13 +601,12 @@ fn render_docker_actions(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .selected_container_action_index
         .saturating_sub(DOCKER_ACTION_OFFSET);
 
-    // Docker daemon status shown in the title
     let (status_icon, status_color) = match app.docker_status() {
-        DockerStatus::On       => ("\u{25cf} ON",      THEME.success),
+        DockerStatus::On => ("\u{25cf} ON", THEME.success),
         DockerStatus::Starting => ("\u{25cc} STARTING", THEME.warning),
-        DockerStatus::Off      => ("\u{25cb} OFF",     THEME.danger),
-        DockerStatus::Missing  => ("\u{2717} MISSING", THEME.danger),
-        DockerStatus::Unknown  => ("? UNKNOWN",        THEME.text_dim),
+        DockerStatus::Off => ("\u{25cb} OFF", THEME.danger),
+        DockerStatus::Missing => ("\u{2717} MISSING", THEME.danger),
+        DockerStatus::Unknown => ("? UNKNOWN", THEME.text_dim),
     };
 
     let title = format!(
@@ -542,19 +620,46 @@ fn render_docker_actions(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .title(Span::styled(
             title,
             Style::default()
-                .fg(if focused { status_color } else { THEME.secondary })
+                .fg(if focused {
+                    status_color
+                } else {
+                    THEME.secondary
+                })
                 .add_modifier(Modifier::BOLD),
         ))
-        .border_style(Style::default().fg(if focused { THEME.primary } else { THEME.secondary }))
-        .border_type(if focused { BorderType::Thick } else { BorderType::Rounded });
+        .border_style(Style::default().fg(if focused {
+            THEME.primary
+        } else {
+            THEME.secondary
+        }))
+        .border_type(if focused {
+            BorderType::Thick
+        } else {
+            BorderType::Rounded
+        });
 
     f.render_widget(block.clone(), area);
     let inner = block.inner(area);
 
     let actions = vec![
-        ("\u{f011}", tr!(app.translator, "containers.docker_action_start"),    "N", THEME.success),
-        ("\u{f011}", tr!(app.translator, "containers.docker_action_stop"),     "O", THEME.danger),
-        ("\u{e28b}", tr!(app.translator, "containers.docker_hub_search_title"),"H", THEME.secondary),
+        (
+            "\u{f011}",
+            tr!(app.translator, "containers.docker_action_start"),
+            "N",
+            THEME.success,
+        ),
+        (
+            "\u{f011}",
+            tr!(app.translator, "containers.docker_action_stop"),
+            "O",
+            THEME.danger,
+        ),
+        (
+            "\u{e28b}",
+            tr!(app.translator, "containers.docker_hub_search_title"),
+            "H",
+            THEME.secondary,
+        ),
     ];
 
     let items: Vec<ListItem> = actions
@@ -577,10 +682,6 @@ fn render_docker_actions(f: &mut ratatui::Frame, app: &App, area: Rect) {
     }
     f.render_stateful_widget(List::new(items), inner, &mut state);
 }
-
-// ─────────────────────────────────────────────────────────────
-// Logs modal
-// ─────────────────────────────────────────────────────────────
 
 pub fn render_container_logs_modal(f: &mut ratatui::Frame, app: &App) {
     let area = centered_rect(f.area(), 86, 78);
@@ -607,7 +708,9 @@ pub fn render_container_logs_modal(f: &mut ratatui::Frame, app: &App) {
                 tr!(app.translator, "containers.logs_title"),
                 container_name
             ),
-            Style::default().fg(THEME.primary).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(THEME.primary)
+                .add_modifier(Modifier::BOLD),
         ))
         .border_style(Style::default().fg(THEME.primary))
         .border_type(BorderType::Double);
@@ -624,7 +727,6 @@ pub fn render_container_logs_modal(f: &mut ratatui::Frame, app: &App) {
         return;
     }
 
-    // Reserve last line for scroll info
     let log_area = Rect {
         x: inner.x,
         y: inner.y,
@@ -669,29 +771,24 @@ pub fn render_container_logs_modal(f: &mut ratatui::Frame, app: &App) {
         })
         .collect();
 
-    f.render_widget(
-        Paragraph::new(lines).wrap(Wrap { trim: false }),
-        log_area,
-    );
+    f.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), log_area);
 
     render_scrollbar(f, scrollbar_area, scroll_pct);
 
-    // Hint line
     f.render_widget(
-        Paragraph::new(Line::from(vec![
-            Span::styled(
-                tr!(app.translator, "containers.logs_hint", (app.container_logs_scroll + visible).min(total_lines), total_lines),
-                Style::default().fg(THEME.text_dim),
+        Paragraph::new(Line::from(vec![Span::styled(
+            tr!(
+                app.translator,
+                "containers.logs_hint",
+                (app.container_logs_scroll + visible).min(total_lines),
+                total_lines
             ),
-        ]))
+            Style::default().fg(THEME.text_dim),
+        )]))
         .alignment(Alignment::Right),
         hint_area,
     );
 }
-
-// ─────────────────────────────────────────────────────────────
-// Console modal
-// ─────────────────────────────────────────────────────────────
 
 pub fn render_container_console_modal(f: &mut ratatui::Frame, app: &App) {
     let area = centered_rect(f.area(), 86, 78);
@@ -706,7 +803,9 @@ pub fn render_container_console_modal(f: &mut ratatui::Frame, app: &App) {
         .borders(Borders::ALL)
         .title(Span::styled(
             format!("  {}  ", title),
-            Style::default().fg(THEME.primary).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(THEME.primary)
+                .add_modifier(Modifier::BOLD),
         ))
         .border_style(Style::default().fg(THEME.primary))
         .border_type(BorderType::Double);
@@ -719,7 +818,6 @@ pub fn render_container_console_modal(f: &mut ratatui::Frame, app: &App) {
         .constraints([Constraint::Min(0), Constraint::Length(3)])
         .split(inner);
 
-    // Output area
     let visible = chunks[0].height as usize;
     let lines: Vec<Line> = app
         .container_console_output
@@ -730,21 +828,26 @@ pub fn render_container_console_modal(f: &mut ratatui::Frame, app: &App) {
             if line.starts_with('$') {
                 Line::from(Span::styled(
                     line.as_str(),
-                    Style::default().fg(THEME.success).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(THEME.success)
+                        .add_modifier(Modifier::BOLD),
                 ))
             } else {
-                Line::from(Span::styled(line.as_str(), Style::default().fg(THEME.text_main)))
+                Line::from(Span::styled(
+                    line.as_str(),
+                    Style::default().fg(THEME.text_main),
+                ))
             }
         })
         .collect();
 
-    f.render_widget(
-        Paragraph::new(lines).wrap(Wrap { trim: false }),
-        chunks[0],
-    );
+    f.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), chunks[0]);
 
-    // Input area with blinking cursor
-    let cursor = if app.frame_count % 2 == 0 { "\u{258c}" } else { " " };
+    let cursor = if app.frame_count % 2 == 0 {
+        "\u{258c}"
+    } else {
+        " "
+    };
     let prompt = if app.container_console_loading {
         tr!(app.translator, "containers.console_running")
     } else {
@@ -764,7 +867,9 @@ pub fn render_container_console_modal(f: &mut ratatui::Frame, app: &App) {
         Paragraph::new(Line::from(vec![
             Span::styled(
                 "$ ",
-                Style::default().fg(THEME.success).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(THEME.success)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::styled(prompt, Style::default().fg(THEME.text_main)),
             Span::styled(cursor, Style::default().fg(THEME.primary)),
@@ -773,10 +878,6 @@ pub fn render_container_console_modal(f: &mut ratatui::Frame, app: &App) {
         chunks[1],
     );
 }
-
-// ─────────────────────────────────────────────────────────────
-// Docker Hub modal
-// ─────────────────────────────────────────────────────────────
 
 pub fn render_docker_hub_modal(f: &mut ratatui::Frame, app: &App) {
     let area = centered_rect(f.area(), 90, 75);
@@ -789,7 +890,9 @@ pub fn render_docker_hub_modal(f: &mut ratatui::Frame, app: &App) {
                 "  {}  ",
                 tr!(app.translator, "containers.docker_hub_search_title")
             ),
-            Style::default().fg(THEME.primary).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(THEME.primary)
+                .add_modifier(Modifier::BOLD),
         ))
         .border_style(Style::default().fg(THEME.primary))
         .border_type(BorderType::Thick);
@@ -797,7 +900,6 @@ pub fn render_docker_hub_modal(f: &mut ratatui::Frame, app: &App) {
     f.render_widget(block.clone(), area);
     let inner = block.inner(area);
 
-    // Hint row at the bottom
     let hint_area = Rect {
         x: inner.x,
         y: inner.y + inner.height.saturating_sub(1),
@@ -836,7 +938,11 @@ pub fn render_docker_hub_modal(f: &mut ratatui::Frame, app: &App) {
 
 fn render_docker_hub_search_input(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let is_focused = app.docker_hub_search.focused_field == 0;
-    let border_color = if is_focused { THEME.primary } else { THEME.secondary };
+    let border_color = if is_focused {
+        THEME.primary
+    } else {
+        THEME.secondary
+    };
 
     let block = Block::default()
         .borders(Borders::ALL)
@@ -1048,7 +1154,11 @@ fn render_form_field(
     value: &str,
 ) {
     let is_focused = app.docker_hub_search.focused_field == field_index;
-    let border_color = if is_focused { THEME.primary } else { THEME.secondary };
+    let border_color = if is_focused {
+        THEME.primary
+    } else {
+        THEME.secondary
+    };
     let border_type = if is_focused {
         BorderType::Thick
     } else {
@@ -1073,7 +1183,9 @@ fn render_form_field(
         Paragraph::new(Line::from(vec![
             Span::styled(
                 format!("{} ", app.translator.get(label_key)),
-                Style::default().fg(THEME.primary).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(THEME.primary)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
                 cursor,
@@ -1101,7 +1213,10 @@ fn render_docker_hub_buttons(f: &mut ratatui::Frame, app: &App, area: Rect) {
     f.render_widget(
         Paragraph::new(Line::from(Span::styled(
             if create_focused {
-                format!("[ \u{2713} {} ]", tr!(app.translator, "containers.button_create"))
+                format!(
+                    "[ \u{2713} {} ]",
+                    tr!(app.translator, "containers.button_create")
+                )
             } else {
                 format!("[   {} ]", tr!(app.translator, "containers.button_create"))
             },
@@ -1121,7 +1236,10 @@ fn render_docker_hub_buttons(f: &mut ratatui::Frame, app: &App, area: Rect) {
     f.render_widget(
         Paragraph::new(Line::from(Span::styled(
             if cancel_focused {
-                format!("[ \u{2717} {} ]", tr!(app.translator, "containers.button_cancel"))
+                format!(
+                    "[ \u{2717} {} ]",
+                    tr!(app.translator, "containers.button_cancel")
+                )
             } else {
                 format!("[   {} ]", tr!(app.translator, "containers.button_cancel"))
             },
@@ -1138,10 +1256,6 @@ fn render_docker_hub_buttons(f: &mut ratatui::Frame, app: &App, area: Rect) {
         button_chunks[1],
     );
 }
-
-// ─────────────────────────────────────────────────────────────
-// Placeholder / empty states
-// ─────────────────────────────────────────────────────────────
 
 fn render_docker_empty(f: &mut ratatui::Frame, app: &App, area: Rect) {
     render_placeholder_lines(
@@ -1216,7 +1330,9 @@ fn render_placeholder_lines(
             ),
             Span::styled(
                 title,
-                Style::default().fg(THEME.text_main).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(THEME.text_main)
+                    .add_modifier(Modifier::BOLD),
             ),
         ]))
         .alignment(Alignment::Center),
@@ -1229,10 +1345,6 @@ fn render_placeholder_lines(
         rows[2],
     );
 }
-
-// ─────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────
 
 fn action_item<'a>(
     icon: &'a str,
@@ -1258,10 +1370,7 @@ fn action_item<'a>(
         ]),
         Line::from(vec![
             Span::raw("    "),
-            Span::styled(
-                format!("[ {} ]", key),
-                Style::default().fg(THEME.text_dim),
-            ),
+            Span::styled(format!("[ {} ]", key), Style::default().fg(THEME.text_dim)),
         ]),
     ])
 }
@@ -1279,17 +1388,28 @@ fn render_centered(f: &mut ratatui::Frame, app: &App, area: Rect, key: &str) {
 fn label<'a>(app: &'a App, key: &'a str) -> Span<'a> {
     Span::styled(
         format!("{} ", app.translator.get(key)),
-        Style::default().fg(THEME.primary).add_modifier(Modifier::BOLD),
+        Style::default()
+            .fg(THEME.primary)
+            .add_modifier(Modifier::BOLD),
     )
 }
 
 fn state_badge_styled(app: &App, container: &ContainerInfo) -> (String, ratatui::style::Color) {
     if container.state.eq_ignore_ascii_case("running") {
-        (format!("\u{25b6} {}  ", tr!(app.translator, "containers.state_run")), THEME.success)
+        (
+            format!("\u{25b6} {}  ", tr!(app.translator, "containers.state_run")),
+            THEME.success,
+        )
     } else if container.state.eq_ignore_ascii_case("paused") {
-        (format!("\u{23f8} {}", tr!(app.translator, "containers.state_pause")), THEME.warning)
+        (
+            format!("\u{23f8} {}", tr!(app.translator, "containers.state_pause")),
+            THEME.warning,
+        )
     } else if container.state.is_empty() {
-        (format!("? {}  ", tr!(app.translator, "containers.state_unk")), THEME.text_dim)
+        (
+            format!("? {}  ", tr!(app.translator, "containers.state_unk")),
+            THEME.text_dim,
+        )
     } else {
         let s = container.state.to_uppercase();
         let truncated = if s.len() > 5 {
@@ -1355,7 +1475,6 @@ fn truncate_str(s: &str, max: usize) -> String {
     }
 }
 
-/// Minimal 1-column scrollbar; `pct` = 0..100
 fn render_scrollbar(f: &mut ratatui::Frame, area: Rect, pct: u16) {
     if area.height < 3 {
         return;
@@ -1364,7 +1483,11 @@ fn render_scrollbar(f: &mut ratatui::Frame, area: Rect, pct: u16) {
     let thumb_pos = (pct as usize * track_h / 100).min(track_h.saturating_sub(1));
     let lines: Vec<Line> = (0..track_h)
         .map(|i| {
-            let ch = if i == thumb_pos { "\u{2588}" } else { "\u{2591}" };
+            let ch = if i == thumb_pos {
+                "\u{2588}"
+            } else {
+                "\u{2591}"
+            };
             Line::from(Span::styled(ch, Style::default().fg(THEME.secondary)))
         })
         .collect();

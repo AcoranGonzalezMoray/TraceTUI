@@ -82,7 +82,7 @@ impl DockerAction {
 #[derive(Debug, Clone, Default)]
 pub struct DockerHubImage {
     pub name: String,
-    pub description: String,
+    pub _description: String,
     pub official: bool,
     pub automated: bool,
 }
@@ -660,13 +660,13 @@ impl ContainerManager {
         for line in stdout.lines().filter(|line| !line.trim().is_empty()) {
             if let Ok(value) = serde_json::from_str::<Value>(line) {
                 let name = field(&value, "Name");
-                let description = field(&value, "Description");
+                let _description = field(&value, "Description");
                 let official = field(&value, "Official").to_lowercase() == "ok";
                 let automated = field(&value, "Automated").to_lowercase() == "ok";
 
                 images.push(crate::app::containers::DockerHubImage {
                     name,
-                    description,
+                    _description,
                     official,
                     automated,
                 });

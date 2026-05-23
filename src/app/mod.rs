@@ -1,21 +1,23 @@
 pub mod analysis;
 pub mod containers;
 pub mod firewall_service;
-pub mod storage;
 pub mod grouping;
 pub mod input;
 pub mod installation;
 pub mod investigation_service;
 pub mod io;
+pub mod libraries;
 pub mod nerdfont;
 pub mod network;
 pub mod process;
 pub mod risk;
+pub mod storage;
 pub mod types;
 pub mod ui;
 use crate::config;
 use crate::i18n::{self, Translator};
 use crate::services::geoip_service::{GeoInfo, GeoIpService};
+use crate::tr;
 use crate::utils::db::Database;
 use crate::utils::icon_extractor::IconCache;
 pub use investigation_service::InvestigationReport;
@@ -170,6 +172,17 @@ pub struct App {
     search_progress_rx: Option<std::sync::mpsc::Receiver<Vec<crate::app::storage::FileEntry>>>,
     search_progress_count: Option<std::sync::Arc<std::sync::atomic::AtomicUsize>>,
     search_progress_abort: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
+    pub libraries: Vec<crate::app::libraries::LibraryInfo>,
+    pub libraries_loading: bool,
+    pub selected_library_process_index: usize,
+    pub selected_library_index: usize,
+    pub library_process_scroll: usize,
+    pub library_lib_scroll: usize,
+    pub libraries_loaded_once: bool,
+    pub library_search_query: String,
+    pub library_search_active: bool,
+    pub library_risk_filter: Option<String>,
+    libraries_rx: Option<std::sync::mpsc::Receiver<Vec<crate::app::libraries::LibraryInfo>>>,
 }
 
 impl App {
@@ -318,6 +331,17 @@ impl App {
             search_progress_rx: None,
             search_progress_count: None,
             search_progress_abort: None,
+            libraries: Vec::new(),
+            libraries_loading: false,
+            selected_library_process_index: 0,
+            selected_library_index: 0,
+            library_process_scroll: 0,
+            library_lib_scroll: 0,
+            libraries_loaded_once: false,
+            libraries_rx: None,
+            library_search_query: String::new(),
+            library_search_active: false,
+            library_risk_filter: None,
         };
 
         #[cfg(not(test))]
@@ -378,15 +402,20 @@ impl App {
     }
     pub fn compute_filtered_indices(&mut self) {
         let ext_idx = self.file_search_extension_idx.min(
-            crate::app::storage::FILE_EXTENSION_FILTERS.len().saturating_sub(1)
+            crate::app::storage::FILE_EXTENSION_FILTERS
+                .len()
+                .saturating_sub(1),
         );
         let query = self.file_search_query.to_lowercase();
         let (_, exts) = crate::app::storage::FILE_EXTENSION_FILTERS[ext_idx];
         self.cached_filtered_indices = if self.file_search_mode {
-            self.file_entries.iter().enumerate()
+            self.file_entries
+                .iter()
+                .enumerate()
                 .filter(|(_, e)| {
                     let matches_query = query.is_empty() || e.name.to_lowercase().contains(&query);
-                    let matches_ext = exts.is_empty() || exts.contains(&e.extension.to_lowercase().as_str());
+                    let matches_ext =
+                        exts.is_empty() || exts.contains(&e.extension.to_lowercase().as_str());
                     matches_query && matches_ext
                 })
                 .map(|(i, _)| i)
@@ -406,5 +435,30 @@ impl App {
         self.search_progress_rx = None;
         self.search_progress_count = None;
         self.search_progress_abort = None;
+    }
+    pub fn refresh_libraries(&mut self) {
+        if self.libraries_loading {
+            return;
+        }
+
+        if self.processes.is_empty() && self.app_connections.is_empty() {
+            self.libraries_loading = true;
+            self.status_message = tr!(self.translator, "libraries.status.refreshing").to_string();
+            return;
+        }
+        let (tx, rx) = std::sync::mpsc::channel();
+        let processes = self.processes.clone();
+        let app_conns = self.app_connections.clone();
+        std::thread::spawn(move || {
+            let libs = crate::app::libraries::inspect_libraries(&processes, &app_conns);
+            let _ = tx.send(libs);
+        });
+        self.libraries_rx = Some(rx);
+        self.libraries_loading = true;
+        self.status_message = tr!(self.translator, "libraries.status.refreshing").to_string();
+    }
+
+    pub fn tick_libraries(&mut self) {
+        self.process_libraries_results();
     }
 }
