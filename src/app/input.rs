@@ -18,7 +18,6 @@ impl App {
         self.show_container_console_modal = false;
         self.search_mode = false;
         self.continuous_refresh_counter = 0;
-        self.abort_search();
         if view == NavView::Main || view == NavView::TrendGraphs {
             self.status_message = tr!(self.translator, "status.analysis_resumed").to_string();
             self.analysis_paused = false;
@@ -30,12 +29,14 @@ impl App {
             if self.disks.is_empty() {
                 self.refresh_disks();
             }
-            if let Some(disk) = self.get_selected_disk() {
-                let p = std::path::Path::new(&disk.mount_point);
-                if p.exists() {
-                    self.current_directory = p.to_path_buf();
-                    self.file_scroll = 0;
-                    self.load_directory();
+            if !self.file_search_mode && !self.search_progress_running {
+                if let Some(disk) = self.get_selected_disk() {
+                    let p = std::path::Path::new(&disk.mount_point);
+                    if p.exists() {
+                        self.current_directory = p.to_path_buf();
+                        self.file_scroll = 0;
+                        self.load_directory();
+                    }
                 }
             }
         }
@@ -1000,7 +1001,7 @@ impl App {
         let ext_idx = self.file_search_extension_idx.min(
             crate::app::storage::FILE_EXTENSION_FILTERS.len().saturating_sub(1)
         );
-        let exts = crate::app::storage::FILE_EXTENSION_FILTERS[ext_idx].2;
+        let exts = crate::app::storage::FILE_EXTENSION_FILTERS[ext_idx].1;
         let (tx, rx) = std::sync::mpsc::channel();
         let count = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let abort = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));

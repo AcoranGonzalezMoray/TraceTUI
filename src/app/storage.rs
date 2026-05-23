@@ -33,15 +33,28 @@ pub struct FileEntry {
     pub extension: String,      // Almacenada siempre en minúsculas para acelerar filtros
 }
 
-pub const FILE_EXTENSION_FILTERS: &[(&str, &str, &[&str])] = &[
-    ("\u{f15b}", "All", &[]),
-    ("\u{f1c5}", "Images", &["png", "jpg", "jpeg", "gif", "bmp", "webp", "svg", "ico", "tiff", "tif"]),
-    ("\u{f15c}", "Documents", &["txt", "md", "pdf", "doc", "docx", "csv", "json", "toml", "yml", "yaml", "xml", "html", "htm", "css", "sql", "log"]),
-    ("\u{f1c9}", "Code", &["rs", "py", "js", "ts", "go", "c", "cpp", "h", "hpp", "java", "rb", "php", "swift", "kt", "r", "pl", "lua"]),
-    ("\u{f1c6}", "Archives", &["zip", "tar", "gz", "bz2", "xz", "7z", "rar"]),
-    ("\u{f1c7}", "Audio", &["mp3", "wav", "flac", "ogg", "aac", "wma", "m4a"]),
-    ("\u{f1c8}", "Video", &["mp4", "avi", "mkv", "mov", "wmv", "flv", "webm"]),
+pub const FILE_EXTENSION_FILTERS: &[(&str, &[&str])] = &[
+    ("\u{f15b}", &[]),
+    ("\u{f1c5}", &["png", "jpg", "jpeg", "gif", "bmp", "webp", "svg", "ico", "tiff", "tif"]),
+    ("\u{f15c}", &["txt", "md", "pdf", "doc", "docx", "csv", "json", "toml", "yml", "yaml", "xml", "html", "htm", "css", "sql", "log"]),
+    ("\u{f1c9}", &["rs", "py", "js", "ts", "go", "c", "cpp", "h", "hpp", "java", "rb", "php", "swift", "kt", "r", "pl", "lua"]),
+    ("\u{f1c6}", &["zip", "tar", "gz", "bz2", "xz", "7z", "rar"]),
+    ("\u{f1c7}", &["mp3", "wav", "flac", "ogg", "aac", "wma", "m4a"]),
+    ("\u{f1c8}", &["mp4", "avi", "mkv", "mov", "wmv", "flv", "webm"]),
 ];
+
+pub fn extension_filter_label(idx: usize) -> &'static str {
+    match idx {
+        0 => "storage.extension_all",
+        1 => "storage.extension_images",
+        2 => "storage.extension_documents",
+        3 => "storage.extension_code",
+        4 => "storage.extension_archives",
+        5 => "storage.extension_audio",
+        6 => "storage.extension_video",
+        _ => "storage.extension_all",
+    }
+}
 
 pub struct StorageManager;
 

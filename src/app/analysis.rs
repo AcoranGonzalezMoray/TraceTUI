@@ -68,6 +68,38 @@ impl App {
                 self.trigger_background_refresh();
             }
         }
+        if self.auto_analysis_complete
+            && self.current_nav_view == crate::app::NavView::Storage
+            && self.last_storage_refresh.elapsed() >= std::time::Duration::from_secs(6)
+        {
+            self.last_storage_refresh = std::time::Instant::now();
+            if !self.file_search_mode && !self.search_progress_running {
+                self.disks = crate::app::storage::StorageManager::list_disks();
+                let current = self.current_directory.clone();
+                self.file_entries =
+                    crate::app::storage::StorageManager::list_directory(&current)
+                        .unwrap_or_default();
+                // re-apply current sort
+                use crate::app::types::FileSortMode;
+                self.file_entries.sort_unstable_by(|a, b| {
+                    match self.file_sort_mode {
+                        FileSortMode::ByName => {
+                            if a.is_dir != b.is_dir { b.is_dir.cmp(&a.is_dir) }
+                            else { a.name.to_lowercase().cmp(&b.name.to_lowercase()) }
+                        }
+                        FileSortMode::BySize => {
+                            if a.is_dir != b.is_dir { b.is_dir.cmp(&a.is_dir) }
+                            else { b.size.cmp(&a.size) }
+                        }
+                        FileSortMode::ByDate => {
+                            if a.is_dir != b.is_dir { b.is_dir.cmp(&a.is_dir) }
+                            else { b.modified.cmp(&a.modified) }
+                        }
+                    }
+                });
+                self.compute_filtered_indices();
+            }
+        }
     }
     pub fn perform_auto_analysis(&mut self) {
         if !self.auto_analysis_complete {

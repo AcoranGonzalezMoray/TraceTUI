@@ -10,10 +10,11 @@ use ratatui::{
 };
 
 pub fn render_header(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let header_content = if app.current_nav_view == NavView::Containers {
-        docker_header_content(app)
-    } else {
-        network_header_content(app)
+    let header_content = match app.current_nav_view {
+        NavView::Containers => docker_header_content(app),
+        NavView::Storage => storage_header_content(app),
+        NavView::TrendGraphs => trends_header_content(app),
+        _ => network_header_content(app),
     };
     let title_block = Block::default()
         .borders(Borders::ALL)
@@ -122,6 +123,72 @@ fn docker_header_content(app: &App) -> Line<'_> {
                 .map(|container| format!("{} ", container.name))
                 .unwrap_or_else(|| tr!(app.translator, "containers.header_no_selection")),
             Style::default().fg(THEME.text_dim),
+        ),
+    ])
+}
+
+fn storage_header_content(app: &App) -> Line<'_> {
+    let disk = app.get_selected_disk();
+    let disk_info = disk
+        .map(|d| format!("{} {:.0}%", d.device, d.usage_pct()))
+        .unwrap_or_default();
+    let path = app.current_directory.to_string_lossy().to_string();
+    Line::from(vec![
+        app_title(app),
+        app_subtitle(app),
+        separator(),
+        Span::styled(" \u{f0a0} ", Style::default().fg(THEME.primary)),
+        Span::styled(disk_info, Style::default().fg(THEME.text_main)),
+        separator(),
+        Span::styled(
+            format!(" \u{f15b} {} ", if path.len() > 40 { format!("...{}", &path[path.len()-37..]) } else { path }),
+            Style::default().fg(THEME.text_dim),
+        ),
+        Span::styled(
+            format!("{} {}", tr!(app.translator, "storage.col_size").to_lowercase(), app.file_entries.len()),
+            Style::default().fg(THEME.secondary),
+        ),
+    ])
+}
+
+fn trends_header_content(app: &App) -> Line<'_> {
+    let active_conns: u64 = app
+        .app_connections
+        .iter()
+        .map(|a| a.connections.len() as u64)
+        .sum();
+    let total_cpu: f64 = app.app_connections.iter().map(|a| a.cpu_usage as f64).sum();
+    let total_mem_mb: u64 = app
+        .app_connections
+        .iter()
+        .map(|a| a.memory_usage / 1024 / 1024)
+        .sum();
+    let high_risk = app
+        .app_connections
+        .iter()
+        .filter(|a| a.risk_level.contains("HIGH") || a.risk_level.contains("CRITICAL"))
+        .count();
+    Line::from(vec![
+        app_title(app),
+        app_subtitle(app),
+        separator(),
+        Span::styled(
+            format!(" \u{f0c1} {} ", tr!(app.translator, "app.conns_count", active_conns)),
+            Style::default().fg(THEME.primary),
+        ),
+        separator(),
+        Span::styled(
+            format!(" CPU {:.1}% ", total_cpu),
+            Style::default().fg(if total_cpu > 80.0 { THEME.danger } else { THEME.text_dim }),
+        ),
+        Span::styled(
+            format!(" MEM {} MB ", total_mem_mb),
+            Style::default().fg(THEME.text_dim),
+        ),
+        separator(),
+        Span::styled(
+            format!(" \u{26a0} {} ", high_risk),
+            Style::default().fg(if high_risk > 0 { THEME.danger } else { THEME.success }),
         ),
     ])
 }

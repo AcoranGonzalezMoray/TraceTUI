@@ -10,15 +10,15 @@ use ratatui::{
 
 const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-fn os_name() -> &'static str {
+fn os_name(translator: &crate::i18n::Translator) -> String {
     if cfg!(target_os = "windows") {
-        "Windows"
+        tr!(translator, "footer.os_windows")
     } else if cfg!(target_os = "linux") {
-        "Linux"
+        tr!(translator, "footer.os_linux")
     } else if cfg!(target_os = "macos") {
-        "macOS"
+        tr!(translator, "footer.os_macos")
     } else {
-        "Unknown"
+        tr!(translator, "footer.os_unknown")
     }
 }
 
@@ -57,10 +57,11 @@ pub fn render_footer(f: &mut ratatui::Frame, app: &App, area: Rect) {
         ));
     }
 
-    let mut right_spans = if app.current_nav_view == NavView::Containers {
-        container_footer_spans(app)
-    } else {
-        network_footer_spans(app)
+    let mut right_spans = match app.current_nav_view {
+        NavView::Containers => container_footer_spans(app),
+        NavView::Storage => storage_footer_spans(app),
+        NavView::TrendGraphs => trends_footer_spans(app),
+        _ => network_footer_spans(app),
     };
     right_spans.push(separator());
     right_spans.push(Span::styled(
@@ -68,7 +69,7 @@ pub fn render_footer(f: &mut ratatui::Frame, app: &App, area: Rect) {
         Style::default().fg(THEME.text_dim),
     ));
     right_spans.push(Span::styled(
-        format!(" {} ", tr!(app.translator, "app.os", os_name())),
+        format!(" {} ", tr!(app.translator, "app.os", os_name(&app.translator))),
         Style::default().fg(THEME.secondary),
     ));
 
@@ -126,6 +127,53 @@ fn container_footer_spans(app: &App) -> Vec<Span<'_>> {
         ),
         separator(),
         Span::styled(selected, Style::default().fg(THEME.text_dim)),
+    ]
+}
+
+fn storage_footer_spans(app: &App) -> Vec<Span<'_>> {
+    let disk = app.get_selected_disk();
+    let mut spans = vec![
+        Span::styled(
+            format!(" {} ", tr!(app.translator, "storage.col_size").to_lowercase()),
+            Style::default().fg(THEME.secondary),
+        ),
+        separator(),
+        Span::styled(
+            format!(" {} ", tr!(app.translator, "sidebar.items", app.file_entries.len())),
+            Style::default().fg(THEME.text_dim),
+        ),
+    ];
+    if let Some(d) = disk {
+        spans.push(separator());
+        spans.push(Span::styled(
+            format!(" {} {:.0}% ", d.device, d.usage_pct()),
+            Style::default().fg(if d.usage_pct() > 85.0 { THEME.danger } else { THEME.success }),
+        ));
+    }
+    spans
+}
+
+fn trends_footer_spans(app: &App) -> Vec<Span<'_>> {
+    let peak_conn = app.conn_count_history.iter().max().copied().unwrap_or(0);
+    let current_cpu = app.cpu_history.last().copied().unwrap_or(0.0);
+    vec![
+        Span::styled(
+            format!(
+                " {} ",
+                tr!(app.translator, "trends.peak_connections")
+            ),
+            Style::default().fg(THEME.secondary),
+        ),
+        separator(),
+        Span::styled(
+            format!(" {} ", peak_conn),
+            Style::default().fg(THEME.text_dim),
+        ),
+        separator(),
+        Span::styled(
+            format!(" CPU {:.1}% ", current_cpu),
+            Style::default().fg(if current_cpu > 80.0 { THEME.danger } else { THEME.text_dim }),
+        ),
     ]
 }
 

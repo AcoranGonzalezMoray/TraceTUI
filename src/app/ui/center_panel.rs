@@ -309,7 +309,7 @@ fn render_security_remarks(
             .risk_factors
             .iter()
             .any(|f| f.contains("Domain/Process mismatch") || f.contains("Hidden Identity"));
-    let domain_val = repo.domain.as_deref().unwrap_or("N/A");
+    let domain_val = repo.domain.clone().unwrap_or(tr!(t, "center.na"));
     let process_name = app
         .get_selected_app()
         .map(|a| a.process_name.as_str())
@@ -323,9 +323,9 @@ fn render_security_remarks(
         .any(|p| process_name.contains(p))
         || repo.risk_score < 20;
     let known_val = if known_ok {
-        repo.organization.as_deref().unwrap_or("Known")
+        repo.organization.clone().unwrap_or(tr!(t, "center.known"))
     } else {
-        "Unrecognized"
+        tr!(t, "center.unrecognized")
     };
     let proxy_risk = repo
         .risk_factors
@@ -355,8 +355,8 @@ fn render_security_remarks(
         .add_modifier(Modifier::BOLD);
     let header = Row::new(vec![
         Cell::from(""),
-        Cell::from("Checkpoint"),
-        Cell::from("Detail"),
+        Cell::from(tr!(t, "center.checkpoint")),
+        Cell::from(tr!(t, "center.detail")),
     ])
     .style(header_style)
     .height(1);
@@ -438,8 +438,8 @@ fn render_network_info(
         .add_modifier(Modifier::BOLD);
     let header = Row::new(vec![
         Cell::from(""),
-        Cell::from("Field"),
-        Cell::from("Value"),
+        Cell::from(tr!(t, "center.field")),
+        Cell::from(tr!(t, "center.value")),
     ])
     .style(header_style)
     .height(1);
@@ -449,21 +449,21 @@ fn render_network_info(
         Row::new(vec![
             Cell::from(""),
             Cell::from(tr!(t, "investigation.isp")),
-            Cell::from(repo.isp.as_deref().unwrap_or("N/A"))
+            Cell::from(repo.isp.clone().unwrap_or(tr!(t, "center.na")))
                 .style(Style::default().fg(THEME.text_main)),
         ])
         .height(1),
         Row::new(vec![
             Cell::from(""),
             Cell::from(tr!(t, "investigation.org")),
-            Cell::from(repo.organization.as_deref().unwrap_or("N/A"))
+            Cell::from(repo.organization.clone().unwrap_or(tr!(t, "center.na")))
                 .style(Style::default().fg(THEME.text_main)),
         ])
         .height(1),
         Row::new(vec![
             Cell::from(""),
             Cell::from(tr!(t, "investigation.as")),
-            Cell::from(repo.as_info.as_deref().unwrap_or("N/A"))
+            Cell::from(repo.as_info.clone().unwrap_or(tr!(t, "center.na")))
                 .style(Style::default().fg(THEME.text_main)),
         ])
         .height(1),
@@ -478,7 +478,7 @@ fn render_network_info(
             } else {
                 THEME.success
             })),
-            Cell::from("Proxy/VPN"),
+            Cell::from(tr!(t, "center.proxy_vpn")),
             Cell::from(if repo.proxy.unwrap_or(false) {
                 yes.as_str()
             } else {
@@ -502,7 +502,7 @@ fn render_network_info(
             } else {
                 THEME.success
             })),
-            Cell::from("Hosting/DC"),
+            Cell::from(tr!(t, "center.hosting_dc")),
             Cell::from(if repo.hosting.unwrap_or(false) {
                 yes.as_str()
             } else {
@@ -526,7 +526,7 @@ fn render_network_info(
             } else {
                 THEME.success
             })),
-            Cell::from("Mobile"),
+            Cell::from(tr!(t, "center.mobile")),
             Cell::from(if repo.mobile.unwrap_or(false) {
                 yes.as_str()
             } else {
@@ -566,7 +566,7 @@ fn render_network_route_table(
     let header_style = Style::default()
         .fg(THEME.text_dim)
         .add_modifier(Modifier::BOLD);
-    let header = Row::new(vec![Cell::from("  #"), Cell::from("Hop")])
+    let header = Row::new(vec![Cell::from("  #"), Cell::from(tr!(t, "center.hop"))])
         .style(header_style)
         .height(1);
     let rows: Vec<Row> = repo

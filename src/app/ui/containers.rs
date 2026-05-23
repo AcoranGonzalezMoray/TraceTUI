@@ -109,7 +109,7 @@ fn render_container_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .enumerate()
         .map(|(i, container)| {
             let selected = i == app.selected_container_index;
-            let (badge, badge_color) = state_badge_styled(container);
+            let (badge, badge_color) = state_badge_styled(app, container);
             let name_style = if selected {
                 Style::default()
                     .fg(THEME.background)
@@ -251,11 +251,11 @@ fn render_identity(f: &mut ratatui::Frame, app: &App, container: &ContainerInfo,
     let inner = block.inner(area);
 
     let state_icon = if is_running {
-        "\u{25b6} RUNNING"
+        format!("\u{25b6} {}", tr!(app.translator, "containers.state_running_badge"))
     } else if is_paused {
-        "\u{23f8} PAUSED"
+        format!("\u{23f8} {}", tr!(app.translator, "containers.state_paused_badge"))
     } else {
-        "\u{25a0} STOPPED"
+        format!("\u{25a0} {}", tr!(app.translator, "containers.state_stopped_badge"))
     };
 
     let lines = vec![
@@ -680,11 +680,7 @@ pub fn render_container_logs_modal(f: &mut ratatui::Frame, app: &App) {
     f.render_widget(
         Paragraph::new(Line::from(vec![
             Span::styled(
-                format!(
-                    " \u{2191}\u{2193} scroll  Esc close  {}/{} lines",
-                    (app.container_logs_scroll + visible).min(total_lines),
-                    total_lines
-                ),
+                tr!(app.translator, "containers.logs_hint", (app.container_logs_scroll + visible).min(total_lines), total_lines),
                 Style::default().fg(THEME.text_dim),
             ),
         ]))
@@ -817,7 +813,7 @@ pub fn render_docker_hub_modal(f: &mut ratatui::Frame, app: &App) {
 
     f.render_widget(
         Paragraph::new(Span::styled(
-            " Tab: next field   Enter: search   Esc: close ",
+            tr!(app.translator, "containers.hub_hint"),
             Style::default().fg(THEME.text_dim),
         ))
         .alignment(Alignment::Center),
@@ -851,7 +847,7 @@ fn render_docker_hub_search_input(f: &mut ratatui::Frame, app: &App, area: Rect)
             BorderType::Rounded
         })
         .title(Span::styled(
-            " Search Docker Hub ",
+            tr!(app.translator, "containers.hub_search_title"),
             Style::default().fg(border_color),
         ));
 
@@ -902,7 +898,7 @@ fn render_docker_hub_results(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .border_style(Style::default().fg(THEME.secondary))
         .border_type(BorderType::Rounded)
         .title(Span::styled(
-            " Results ",
+            tr!(app.translator, "containers.hub_results"),
             Style::default().fg(THEME.secondary),
         ));
 
@@ -982,7 +978,7 @@ fn render_docker_hub_form(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .border_style(Style::default().fg(THEME.secondary))
         .border_type(BorderType::Rounded)
         .title(Span::styled(
-            " Configuration ",
+            tr!(app.translator, "containers.hub_config"),
             Style::default().fg(THEME.secondary),
         ));
 
@@ -1029,11 +1025,11 @@ fn render_docker_hub_form(f: &mut ratatui::Frame, app: &App, area: Rect) {
             Paragraph::new(vec![
                 Line::from(""),
                 Line::from(Span::styled(
-                    "  Ports:  8080:80, 443:443",
+                    tr!(app.translator, "containers.hub_example_ports"),
                     Style::default().fg(THEME.text_dim),
                 )),
                 Line::from(Span::styled(
-                    "  Env:    KEY=val, FOO=bar",
+                    tr!(app.translator, "containers.hub_example_env"),
                     Style::default().fg(THEME.text_dim),
                 )),
             ])
@@ -1105,9 +1101,9 @@ fn render_docker_hub_buttons(f: &mut ratatui::Frame, app: &App, area: Rect) {
     f.render_widget(
         Paragraph::new(Line::from(Span::styled(
             if create_focused {
-                "[ \u{2713} CREATE ]"
+                format!("[ \u{2713} {} ]", tr!(app.translator, "containers.button_create"))
             } else {
-                "[   CREATE ]"
+                format!("[   {} ]", tr!(app.translator, "containers.button_create"))
             },
             if create_focused {
                 Style::default()
@@ -1125,9 +1121,9 @@ fn render_docker_hub_buttons(f: &mut ratatui::Frame, app: &App, area: Rect) {
     f.render_widget(
         Paragraph::new(Line::from(Span::styled(
             if cancel_focused {
-                "[ \u{2717} CANCEL ]"
+                format!("[ \u{2717} {} ]", tr!(app.translator, "containers.button_cancel"))
             } else {
-                "[   CANCEL ]"
+                format!("[   {} ]", tr!(app.translator, "containers.button_cancel"))
             },
             if cancel_focused {
                 Style::default()
@@ -1287,13 +1283,13 @@ fn label<'a>(app: &'a App, key: &'a str) -> Span<'a> {
     )
 }
 
-fn state_badge_styled(container: &ContainerInfo) -> (String, ratatui::style::Color) {
+fn state_badge_styled(app: &App, container: &ContainerInfo) -> (String, ratatui::style::Color) {
     if container.state.eq_ignore_ascii_case("running") {
-        ("\u{25b6} RUN  ".to_string(), THEME.success)
+        (format!("\u{25b6} {}  ", tr!(app.translator, "containers.state_run")), THEME.success)
     } else if container.state.eq_ignore_ascii_case("paused") {
-        ("\u{23f8} PAUSE".to_string(), THEME.warning)
+        (format!("\u{23f8} {}", tr!(app.translator, "containers.state_pause")), THEME.warning)
     } else if container.state.is_empty() {
-        ("? UNK  ".to_string(), THEME.text_dim)
+        (format!("? {}  ", tr!(app.translator, "containers.state_unk")), THEME.text_dim)
     } else {
         let s = container.state.to_uppercase();
         let truncated = if s.len() > 5 {

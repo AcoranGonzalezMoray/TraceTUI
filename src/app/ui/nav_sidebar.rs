@@ -29,10 +29,17 @@ pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
     f.render_widget(block.clone(), area);
     let inner_area = block.inner(area);
 
+    let storage_icon = if app.search_progress_running && app.current_nav_view != NavView::Storage {
+        let spinners = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+        spinners[(app.frame_count as usize) % spinners.len()]
+    } else {
+        "󰋊"
+    };
+
     let nav_items = vec![
         (NavView::Main, "󰞶", tr!(app.translator, "nav.main")),
         (NavView::TrendGraphs, "󰄪", tr!(app.translator, "nav.trends")),
-        (NavView::Storage, "󰋊", tr!(app.translator, "nav.storage")),
+        (NavView::Storage, storage_icon, tr!(app.translator, "nav.storage")),
         (
             NavView::LibraryInspection,
             "󰅩",

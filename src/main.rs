@@ -33,8 +33,16 @@ async fn main() -> Result<()> {
             match event::read()? {
                 crossterm::event::Event::Key(key) => app.handle_key_event(key),
                 crossterm::event::Event::Mouse(mouse) => app.handle_mouse_event(mouse),
+                crossterm::event::Event::Resize(_, _) => {
+                    app.needs_clear = true;
+                }
                 _ => {}
             }
+        }
+
+        if app.needs_clear {
+            terminal.clear()?;
+            app.needs_clear = false;
         }
 
         if last_tick.elapsed() >= tick_rate || !app.auto_analysis_complete {

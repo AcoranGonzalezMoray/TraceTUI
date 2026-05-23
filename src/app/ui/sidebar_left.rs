@@ -228,7 +228,7 @@ fn render_investigation_left_sidebar(
             ),
         ]),
         Line::from(vec![
-            Span::styled(" IP:", Style::default().fg(THEME.secondary)),
+            Span::styled(tr!(t, "sidebar.ip"), Style::default().fg(THEME.secondary)),
             Span::styled(
                 &repo.ip,
                 Style::default()
@@ -237,7 +237,7 @@ fn render_investigation_left_sidebar(
             ),
         ]),
         Line::from(vec![
-            Span::styled(" Port:", Style::default().fg(THEME.secondary)),
+            Span::styled(tr!(t, "sidebar.port"), Style::default().fg(THEME.secondary)),
             Span::styled(repo.port.to_string(), Style::default().fg(THEME.text_main)),
         ]),
         Line::from(vec![

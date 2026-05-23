@@ -163,6 +163,8 @@ pub struct App {
     pub show_file_search_modal: bool,
     pub file_search_state: crate::app::types::FileSearchState,
     pub file_sort_mode: crate::app::types::FileSortMode,
+    pub last_storage_refresh: std::time::Instant,
+    pub needs_clear: bool,
     pub search_progress_running: bool,
     pub search_progress_found: usize,
     search_progress_rx: Option<std::sync::mpsc::Receiver<Vec<crate::app::storage::FileEntry>>>,
@@ -307,6 +309,8 @@ impl App {
             selected_storage_action_index: 0,
             cached_filtered_indices: Vec::new(),
             file_sort_mode: crate::app::types::FileSortMode::ByName,
+            last_storage_refresh: std::time::Instant::now(),
+            needs_clear: false,
             show_file_search_modal: false,
             file_search_state: crate::app::types::FileSearchState::default(),
             search_progress_running: false,
@@ -377,7 +381,7 @@ impl App {
             crate::app::storage::FILE_EXTENSION_FILTERS.len().saturating_sub(1)
         );
         let query = self.file_search_query.to_lowercase();
-        let (_, _, exts) = crate::app::storage::FILE_EXTENSION_FILTERS[ext_idx];
+        let (_, exts) = crate::app::storage::FILE_EXTENSION_FILTERS[ext_idx];
         self.cached_filtered_indices = if self.file_search_mode {
             self.file_entries.iter().enumerate()
                 .filter(|(_, e)| {

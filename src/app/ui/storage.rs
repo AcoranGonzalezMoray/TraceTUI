@@ -127,7 +127,7 @@ fn render_disk_properties(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     let Some(disk) = app.get_selected_disk() else {
         f.render_widget(
-            Paragraph::new(Line::from(Span::styled("No disk selected", Style::default().fg(THEME.text_dim)))),
+            Paragraph::new(Line::from(Span::styled(tr!(app.translator, "storage.no_disk_selected"), Style::default().fg(THEME.text_dim)))),
             inner,
         );
         return;
@@ -138,41 +138,42 @@ fn render_disk_properties(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let free = crate::app::storage::fmt_size(disk.free_bytes);
     let pct = disk.usage_pct();
 
+    let p = |k: &str| -> String { format!("{} ", app.translator.get(k)) };
     let mut lines = vec![
         Line::from(vec![
             Span::styled("  ", Style::default()),
-            Span::styled("Device: ", Style::default().fg(THEME.text_dim)),
+            Span::styled(p("storage.device"), Style::default().fg(THEME.text_dim)),
             Span::styled(&disk.device, Style::default().fg(THEME.text_main)),
         ]),
         Line::from(vec![
             Span::styled("  ", Style::default()),
-            Span::styled("Mount:  ", Style::default().fg(THEME.text_dim)),
+            Span::styled(p("storage.mount"), Style::default().fg(THEME.text_dim)),
             Span::styled(&disk.mount_point, Style::default().fg(THEME.text_main)),
         ]),
         Line::from(vec![
             Span::styled("  ", Style::default()),
-            Span::styled("FS:     ", Style::default().fg(THEME.text_dim)),
+            Span::styled(p("storage.fs"), Style::default().fg(THEME.text_dim)),
             Span::styled(&disk.fs_type, Style::default().fg(THEME.text_main)),
         ]),
         Line::from(vec![
             Span::styled("  ", Style::default()),
-            Span::styled("Total:  ", Style::default().fg(THEME.text_dim)),
+            Span::styled(p("storage.total_label"), Style::default().fg(THEME.text_dim)),
             Span::styled(total, Style::default().fg(THEME.text_main)),
         ]),
         Line::from(vec![
             Span::styled("  ", Style::default()),
-            Span::styled("Used:   ", Style::default().fg(THEME.text_dim)),
+            Span::styled(p("storage.used_label"), Style::default().fg(THEME.text_dim)),
             Span::styled(used, Style::default().fg(if pct > 85.0 { THEME.danger } else { THEME.text_main })),
         ]),
         Line::from(vec![
             Span::styled("  ", Style::default()),
-            Span::styled("Free:   ", Style::default().fg(THEME.text_dim)),
+            Span::styled(p("storage.free_label"), Style::default().fg(THEME.text_dim)),
             Span::styled(free, Style::default().fg(THEME.success)),
         ]),
         Line::from(""),
         Line::from(vec![
             Span::styled("  ", Style::default()),
-            Span::styled("Usage: ", Style::default().fg(THEME.text_dim)),
+            Span::styled(p("storage.usage_label"), Style::default().fg(THEME.text_dim)),
         ]),
     ];
 
@@ -241,7 +242,7 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
     f.render_widget(block, area);
 
     let sort_label = app.file_sort_mode.label();
-    let sort_str = format!(" [Sort: {}]", sort_label);
+    let sort_str = format!(" {}", tr!(app.translator, "storage.sort_label", sort_label));
     let path_str = format!(" 📁 {} {}", app.current_directory.to_string_lossy(), sort_str);
     let header_path = Paragraph::new(path_str)
         .style(Style::default().fg(THEME.text_main).bg(THEME.secondary).dim())
@@ -258,10 +259,11 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
         let s = spinner[(app.frame_count as usize) % spinner.len()];
         let mut lines = vec![Line::from("")];
         
+        let files_label = tr!(app.translator, "storage.files_count", app.search_progress_found);
         let loading_msg = if app.file_search_recursive {
-            format!(" {} {} {} files...", s, tr!(app.translator, "status.search_recursive_on"), app.search_progress_found)
+            format!(" {} {} {}", s, tr!(app.translator, "status.search_recursive_on"), files_label)
         } else {
-            format!(" {} {} {} files...", s, tr!(app.translator, "storage.loading"), app.search_progress_found)
+            format!(" {} {} {}", s, tr!(app.translator, "storage.loading"), files_label)
         };
         
         lines.push(Line::from(Span::styled(loading_msg, Style::default().fg(THEME.warning).bold())));
@@ -281,6 +283,9 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
     }
 
     let current_scroll = app.file_scroll.min(total_items.saturating_sub(1));
+    let visible_rows = rest.height.saturating_sub(1).max(1) as usize;
+    let scroll_start = current_scroll;
+    let scroll_end = (scroll_start + visible_rows).min(total_items);
 
     let widths = [
         Constraint::Fill(1),
@@ -296,11 +301,11 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
     .style(Style::default().fg(THEME.primary).add_modifier(Modifier::BOLD))
     .bottom_margin(1);
 
-    let rows: Vec<Row> = app.cached_filtered_indices.iter().map(|&idx| {
+    let rows: Vec<Row> = app.cached_filtered_indices[scroll_start..scroll_end].iter().map(|&idx| {
         let entry = &app.file_entries[idx];
         let icon = file_icon(entry);
         let fg_color = file_color(entry);
-        let size_str = if entry.is_dir { "  <DIR>".to_string() } else { fmt_size(entry.size) };
+        let size_str = if entry.is_dir { format!("  {}", tr!(app.translator, "storage.dir_label")) } else { fmt_size(entry.size) };
         let file_name_style = if entry.is_dir {
             Style::default().fg(fg_color).add_modifier(Modifier::BOLD)
         } else {
@@ -317,7 +322,7 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
     }).collect();
 
     let mut table_state = TableState::default();
-    table_state.select(Some(current_scroll));
+    table_state.select(Some(0));
 
     let table = Table::new(rows, widths)
         .header(header_row)
@@ -365,7 +370,7 @@ fn render_storage_actions(f: &mut ratatui::Frame, app: &App, area: Rect) {
         ("\u{f0ca}", tr!(app.translator, "storage.properties"), "P",      THEME.warning),
         ("\u{f07c}", tr!(app.translator, "storage.parent_dir"), "Backspace", THEME.accent),
         ("\u{f015}", tr!(app.translator, "storage.go_home"),    "H",      THEME.danger),
-        ("\u{f0dc}", format!("Sort: {}", sort_mode_label),      "S",      THEME.accent),
+        ("\u{f0dc}", tr!(app.translator, "storage.sort_label", sort_mode_label), "S", THEME.accent),
     ];
 
     let list_items: Vec<ListItem> = items
@@ -453,7 +458,7 @@ pub fn render_file_viewer_modal(f: &mut ratatui::Frame, app: &App) {
     let mut lines: Vec<Line> = Vec::with_capacity(visible_height + 1);
     
     lines.push(Line::from(vec![
-        Span::styled(format!(" 📑 Lines {}/{} ", (scroll_pos + visible_height).min(total_lines), total_lines), Style::default().fg(THEME.text_dim)),
+        Span::styled(format!(" 📑 {} ", tr!(app.translator, "storage.viewer_lines", (scroll_pos + visible_height).min(total_lines), total_lines)), Style::default().fg(THEME.text_dim)),
         Span::styled(format!(" ({})", tr!(app.translator, "storage.viewer_scroll_hint")), Style::default().fg(THEME.text_dim).add_modifier(Modifier::ITALIC)),
     ]).bg(THEME.secondary).dim());
     lines.push(Line::from("")); 
@@ -537,7 +542,7 @@ pub fn render_file_search_modal(f: &mut ratatui::Frame, app: &App) {
     // ── Campo 0: Input del término ──
     let q_focused = state.focused_field == 0;
     let q_text = if state.query.is_empty() {
-        String::from("type to filter...")
+        tr!(app.translator, "storage.type_to_filter")
     } else {
         let cursor = if q_focused && app.frame_count % 2 == 0 { "█" } else { "" };
         format!("{}{}", state.query, cursor)
@@ -586,7 +591,8 @@ pub fn render_file_search_modal(f: &mut ratatui::Frame, app: &App) {
     // ── Campo 2: Selector de Extensiones ──
     let e_focused = state.focused_field == 2;
     let ext_idx = state.extension_idx.min(FILE_EXTENSION_FILTERS.len().saturating_sub(1));
-    let (ext_icon, ext_name, _) = FILE_EXTENSION_FILTERS[ext_idx];
+    let (ext_icon, _) = FILE_EXTENSION_FILTERS[ext_idx];
+    let ext_name = app.translator.get(crate::app::storage::extension_filter_label(ext_idx));
 
     let border_color_e = if e_focused { THEME.primary } else { THEME.secondary };
     let border_style_e = if e_focused { Style::default().fg(border_color_e) } else { Style::default().fg(border_color_e).dim() };
