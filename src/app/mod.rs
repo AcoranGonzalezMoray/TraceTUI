@@ -152,13 +152,17 @@ pub struct App {
     pub show_file_viewer: bool,
     pub file_viewer_content: Vec<String>,
     pub file_viewer_scroll: usize,
+    pub file_viewer_is_ansi: bool,
     pub storage_focus: usize,
     pub file_search_query: String,
     pub file_search_mode: bool,
     pub file_search_recursive: bool,
     pub file_search_extension_idx: usize,
+    pub selected_storage_action_index: usize,
+    pub cached_filtered_indices: Vec<usize>,
     pub show_file_search_modal: bool,
     pub file_search_state: crate::app::types::FileSearchState,
+    pub file_sort_mode: crate::app::types::FileSortMode,
     pub search_progress_running: bool,
     pub search_progress_found: usize,
     search_progress_rx: Option<std::sync::mpsc::Receiver<Vec<crate::app::storage::FileEntry>>>,
@@ -294,11 +298,15 @@ impl App {
             show_file_viewer: false,
             file_viewer_content: Vec::new(),
             file_viewer_scroll: 0,
+            file_viewer_is_ansi: false,
             storage_focus: 0,
             file_search_query: String::new(),
             file_search_mode: false,
             file_search_recursive: false,
             file_search_extension_idx: 0,
+            selected_storage_action_index: 0,
+            cached_filtered_indices: Vec::new(),
+            file_sort_mode: crate::app::types::FileSortMode::ByName,
             show_file_search_modal: false,
             file_search_state: crate::app::types::FileSearchState::default(),
             search_progress_running: false,
@@ -363,6 +371,25 @@ impl App {
     }
     pub fn get_selected_disk(&self) -> Option<&crate::app::storage::DiskInfo> {
         self.disks.get(self.selected_disk_index)
+    }
+    pub fn compute_filtered_indices(&mut self) {
+        let ext_idx = self.file_search_extension_idx.min(
+            crate::app::storage::FILE_EXTENSION_FILTERS.len().saturating_sub(1)
+        );
+        let query = self.file_search_query.to_lowercase();
+        let (_, _, exts) = crate::app::storage::FILE_EXTENSION_FILTERS[ext_idx];
+        self.cached_filtered_indices = if self.file_search_mode {
+            self.file_entries.iter().enumerate()
+                .filter(|(_, e)| {
+                    let matches_query = query.is_empty() || e.name.to_lowercase().contains(&query);
+                    let matches_ext = exts.is_empty() || exts.contains(&e.extension.to_lowercase().as_str());
+                    matches_query && matches_ext
+                })
+                .map(|(i, _)| i)
+                .collect()
+        } else {
+            (0..self.file_entries.len()).collect()
+        };
     }
     pub fn abort_search(&mut self) {
         if let Some(ref abort) = self.search_progress_abort {

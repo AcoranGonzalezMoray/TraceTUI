@@ -766,6 +766,9 @@ impl App {
                         1 if self.file_scroll > 0 => {
                             self.file_scroll -= 1;
                         }
+                        2 if self.selected_storage_action_index > 0 => {
+                            self.selected_storage_action_index -= 1;
+                        }
                         _ => {}
                     }
                 }
@@ -795,6 +798,12 @@ impl App {
                                 self.file_scroll += 1;
                             }
                         }
+                        2 => {
+                            let max = 4usize;
+                            if self.selected_storage_action_index < max {
+                                self.selected_storage_action_index += 1;
+                            }
+                        }
                         _ => {}
                     }
                 }
@@ -818,6 +827,8 @@ impl App {
                     if let Some(parent) = self.current_directory.parent() {
                         self.current_directory = parent.to_path_buf();
                         self.file_scroll = 0;
+                        self.file_search_mode = false;
+                        self.file_search_query.clear();
                         self.load_directory();
                     }
                 }
@@ -842,12 +853,23 @@ impl App {
                         self.current_directory = std::path::PathBuf::from("/");
                     }
                     self.file_scroll = 0;
+                    self.file_search_mode = false;
+                    self.file_search_query.clear();
                     self.load_directory();
                 }
             }
             KeyCode::Char('p') | KeyCode::Char('P') => {
                 if self.storage_focus == 1 {
                     self.open_selected_file();
+                }
+            }
+            KeyCode::Char('s') | KeyCode::Char('S') => {
+                if self.storage_focus == 1 {
+                    self.file_sort_mode = self.file_sort_mode.next();
+                    self.sort_file_entries();
+                    self.file_scroll = 0;
+                    self.compute_filtered_indices();
+                    self.status_message = format!("Sort: {}", self.file_sort_mode.label());
                 }
             }
             KeyCode::Char('/') => {
@@ -946,6 +968,7 @@ impl App {
                     self.start_recursive_search();
                 } else {
                     self.load_directory();
+                    self.compute_filtered_indices();
                 }
                 self.status_message = tr!(self.translator, "status.search_active").to_string();
             }
@@ -959,6 +982,8 @@ impl App {
 
     fn load_selected_disk(&mut self) {
         self.abort_search();
+        self.file_search_mode = false;
+        self.file_search_query.clear();
         if let Some(disk) = self.get_selected_disk() {
             let p = std::path::Path::new(&disk.mount_point);
             if p.exists() {
@@ -1020,6 +1045,8 @@ impl App {
         if entry.is_dir {
             let dir = entry.path.clone();
             self.abort_search();
+            self.file_search_mode = false;
+            self.file_search_query.clear();
             self.current_directory = dir;
             self.file_scroll = 0;
             self.load_directory();
@@ -1038,17 +1065,23 @@ impl App {
                 }
             }
         } else if crate::app::storage::StorageManager::is_image_file(&entry.extension) {
-            // Image files — show metadata placeholder
-            let size = fmt_size(entry.size);
-            self.file_viewer_content = vec![
-                format!("File: {}", entry.name),
-                format!("Size: {}", size),
-                format!("Type: Image ({})", entry.extension.to_uppercase()),
-                format!("Path: {}", entry.path.display()),
-                String::new(),
-                "Image preview not available in terminal.".to_string(),
-                "Press Esc to close.".to_string(),
-            ];
+            // Image files — try ANSI preview, fall back to metadata
+            let preview = crate::app::storage::render_image_preview(&entry.path);
+            self.file_viewer_is_ansi = preview.is_some();
+            if let Some(lines) = preview {
+                self.file_viewer_content = lines;
+            } else {
+                let size = fmt_size(entry.size);
+                self.file_viewer_content = vec![
+                    format!("File: {}", entry.name),
+                    format!("Size: {}", size),
+                    format!("Type: Image ({})", entry.extension.to_uppercase()),
+                    format!("Path: {}", entry.path.display()),
+                    String::new(),
+                    "Image preview not available (install chafa/catimg on Linux, or PowerShell + .NET on Windows).".to_string(),
+                    "Press Esc to close.".to_string(),
+                ];
+            }
             self.file_viewer_scroll = 0;
             self.show_file_viewer = true;
         } else {
@@ -1071,13 +1104,35 @@ impl App {
         self.file_entries =
             crate::app::storage::StorageManager::list_directory(&self.current_directory)
                 .unwrap_or_default();
+        self.sort_file_entries();
         self.file_scroll = 0;
+        self.compute_filtered_indices();
     }
 
     fn refresh_disks(&mut self) {
         self.disks = crate::app::storage::StorageManager::list_disks();
         self.disks_loading = false;
         self.status_message = tr!(self.translator, "storage.refreshed").to_string();
+    }
+
+    fn sort_file_entries(&mut self) {
+        use crate::app::types::FileSortMode;
+        self.file_entries.sort_unstable_by(|a, b| {
+            match self.file_sort_mode {
+                FileSortMode::ByName => {
+                    if a.is_dir != b.is_dir { b.is_dir.cmp(&a.is_dir) }
+                    else { a.name.to_lowercase().cmp(&b.name.to_lowercase()) }
+                }
+                FileSortMode::BySize => {
+                    if a.is_dir != b.is_dir { b.is_dir.cmp(&a.is_dir) }
+                    else { b.size.cmp(&a.size) }
+                }
+                FileSortMode::ByDate => {
+                    if a.is_dir != b.is_dir { b.is_dir.cmp(&a.is_dir) }
+                    else { b.modified.cmp(&a.modified) }
+                }
+            }
+        });
     }
 
     fn handle_language_keys(&mut self, key: KeyEvent) {

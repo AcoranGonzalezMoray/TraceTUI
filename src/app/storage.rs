@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
-use std::{fs, io};
+use std::{fs, io, process::Command};
 
 #[derive(Debug, Clone)]
 pub struct DiskInfo {
@@ -290,7 +290,7 @@ impl StorageManager {
         let y4 = 4 * 365 + 1;
         let y1 = 365;
 
-        s -= 62135596800; 
+        s += 11676096000; // convert Unix secs → seconds since 1600
         let mut n400 = s / (y400 * 86400);
         s %= y400 * 86400;
         if s < 0 {
@@ -359,6 +359,102 @@ impl StorageManager {
             "png" | "jpg" | "jpeg" | "gif" | "bmp" | "webp" | "svg" | "ico" | "tiff" | "tif"
         )
     }
+}
+
+pub fn render_image_preview(path: &Path) -> Option<Vec<String>> {
+    #[cfg(windows)]
+    {
+        let script = format!(
+            r#"
+Add-Type -AssemblyName System.Drawing
+$img = [System.Drawing.Image]::FromFile('{}')
+$bmp = New-Object System.Drawing.Bitmap($img)
+$w = [math]::Min($bmp.Width, 60)
+$h = [math]::Min($bmp.Height, 40)
+$thumb = New-Object System.Drawing.Bitmap($w, $h)
+$g = [System.Drawing.Graphics]::FromImage($thumb)
+$g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+$g.DrawImage($bmp, 0, 0, $w, $h)
+$blockChar = [char]0x2580
+for ($y = 0; $y -lt $thumb.Height; $y += 2) {{
+    $line = ""
+    for ($x = 0; $x -lt $thumb.Width; $x++) {{
+        $tp = $thumb.GetPixel($x, $y)
+        $bp = if ($y + 1 -lt $thumb.Height) {{ $thumb.GetPixel($x, $y + 1) }} else {{ [System.Drawing.Color]::Transparent }}
+        if ($tp.A -eq 0 -and $bp.A -eq 0) {{ $line += "  " }}
+        else {{
+            $fg = if ($tp.A -gt 0) {{ "$([char]27)[38;2;$($tp.R);$($tp.G);$($tp.B)m" }} else {{ "$([char]27)[39m" }}
+            $bg = if ($bp.A -gt 0) {{ "$([char]27)[48;2;$($bp.R);$($bp.G);$($bp.B)m" }} else {{ "$([char]27)[49m" }}
+            $line += "${{fg}}${{bg}}$blockChar"
+        }}
+    }}
+    Write-Host "$line$([char]27)[0m"
+}}
+$thumb.Dispose(); $g.Dispose(); $bmp.Dispose(); $img.Dispose()
+"#,
+            path.display().to_string().replace('\'', "''")
+        );
+        let output = Command::new("powershell")
+            .args(["-NoProfile", "-Command", &script])
+            .output()
+            .ok()?;
+        if output.status.success() {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let lines: Vec<String> = stdout.lines().map(|l| l.to_string()).collect();
+            if !lines.is_empty() { return Some(lines); }
+        }
+        None
+    }
+    #[cfg(unix)]
+    {
+        // Try chafa (best quality)
+        if let Ok(out) = Command::new("chafa")
+            .args(["--symbols", "block", "-c", "240", "-s", "60x40", "--format", "symbols"])
+            .arg(path.as_os_str())
+            .output()
+        {
+            if out.status.success() {
+                let s = String::from_utf8_lossy(&out.stdout);
+                let lines: Vec<String> = s.lines().map(|l| l.to_string()).collect();
+                if !lines.is_empty() { return Some(lines); }
+            }
+        }
+        // Try catimg
+        if let Ok(out) = Command::new("catimg")
+            .args(["-w", "60", "-r", "2"])
+            .arg(path.as_os_str())
+            .output()
+        {
+            if out.status.success() {
+                let s = String::from_utf8_lossy(&out.stdout);
+                let lines: Vec<String> = s.lines().map(|l| l.to_string()).collect();
+                if !lines.is_empty() { return Some(lines); }
+            }
+        }
+        // Try python3 + PIL
+        if let Ok(out) = Command::new("python3")
+            .args(["-c", &format!(
+                r#"import sys; sys.path.insert(0,''); from PIL import Image; i=Image.open('{}'); i=i.resize((60,int(i.height*60/i.width))); px=i.load(); w,h=i.size; b=chr(0x2580)
+for y in range(0,h,2):
+ l=''
+ for x in range(w):
+  tp=px[x,y]; bp=px[x,min(y+1,h-1)]
+  l+=f'\x1b[38;2;{tp[0]};{tp[1]};{tp[2]}m\x1b[48;2;{bp[0]};{bp[1]};{bp[2]}m{b}\x1b[0m'
+ print(l)"#,
+                path.display().to_string().replace('\'', "'\\''")
+            )])
+            .output()
+        {
+            if out.status.success() {
+                let s = String::from_utf8_lossy(&out.stdout);
+                let lines: Vec<String> = s.lines().map(|l| l.to_string()).collect();
+                if !lines.is_empty() { return Some(lines); }
+            }
+        }
+        None
+    }
+    #[cfg(not(any(windows, unix)))]
+    { None }
 }
 
 pub fn fmt_size(bytes: u64) -> String {

@@ -1,5 +1,6 @@
 use super::theme::THEME;
 use crate::app::App;
+use crate::tr;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
@@ -13,6 +14,23 @@ use ratatui::{
 
 pub fn render_trends_view(f: &mut ratatui::Frame, app: &App, area: Rect) {
     if area.height < 10 || area.width < 30 {
+        return;
+    }
+
+    if !app.auto_analysis_complete {
+        let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+        let s = spinner[(app.frame_count as usize) % spinner.len()];
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
+            .border_style(Style::default().fg(THEME.secondary));
+        f.render_widget(block.clone(), area);
+        let inner = block.inner(area);
+        let msg = format!(" {} {}...", s, tr!(app.translator, "status.auto_analyzing"));
+        f.render_widget(
+            Paragraph::new(Line::from(Span::styled(msg, Style::default().fg(THEME.warning)))).alignment(Alignment::Center),
+            inner,
+        );
         return;
     }
 

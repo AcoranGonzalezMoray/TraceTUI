@@ -228,6 +228,7 @@ impl App {
             if let Ok(entries) = rx.try_recv() {
                 self.file_entries = entries;
                 self.file_scroll = 0;
+                self.compute_filtered_indices();
                 self.search_progress_running = false;
                 self.search_progress_found = 0;
                 self.search_progress_rx = None;

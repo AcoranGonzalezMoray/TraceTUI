@@ -30,7 +30,13 @@ pub fn render_storage_view(f: &mut ratatui::Frame, app: &App, area: Rect) {
         ])
         .split(area);
 
-    render_disk_list(f, app, chunks[0]);
+    let left_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(8), Constraint::Length(9)])
+        .split(chunks[0]);
+
+    render_disk_list(f, app, left_chunks[0]);
+    render_disk_properties(f, app, left_chunks[1]);
     render_file_browser(f, app, chunks[1]);
     render_storage_actions(f, app, chunks[2]);
 }
@@ -45,7 +51,7 @@ fn render_disk_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     let block = Block::default()
         .borders(Borders::ALL)
-        .border_type(BorderType::Rounded)
+        .border_type(if is_focused { BorderType::Thick } else { BorderType::Rounded })
         .border_style(border_style)
         .title(Line::from(vec![
             Span::raw(" "),
@@ -104,6 +110,88 @@ fn render_disk_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
     f.render_stateful_widget(List::new(items), inner, &mut state);
 }
 
+// ── Propiedades del Disco (Panel Izquierdo Inferior) ──
+
+fn render_disk_properties(f: &mut ratatui::Frame, app: &App, area: Rect) {
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(THEME.secondary))
+        .title(Line::from(vec![
+            Span::raw(" "),
+            Span::styled(tr!(app.translator, "storage.properties"), Style::default().fg(THEME.accent).bold()),
+            Span::raw(" "),
+        ]));
+    let inner = block.inner(area);
+    f.render_widget(block, area);
+
+    let Some(disk) = app.get_selected_disk() else {
+        f.render_widget(
+            Paragraph::new(Line::from(Span::styled("No disk selected", Style::default().fg(THEME.text_dim)))),
+            inner,
+        );
+        return;
+    };
+
+    let total = crate::app::storage::fmt_size(disk.total_bytes);
+    let used = crate::app::storage::fmt_size(disk.used_bytes);
+    let free = crate::app::storage::fmt_size(disk.free_bytes);
+    let pct = disk.usage_pct();
+
+    let mut lines = vec![
+        Line::from(vec![
+            Span::styled("  ", Style::default()),
+            Span::styled("Device: ", Style::default().fg(THEME.text_dim)),
+            Span::styled(&disk.device, Style::default().fg(THEME.text_main)),
+        ]),
+        Line::from(vec![
+            Span::styled("  ", Style::default()),
+            Span::styled("Mount:  ", Style::default().fg(THEME.text_dim)),
+            Span::styled(&disk.mount_point, Style::default().fg(THEME.text_main)),
+        ]),
+        Line::from(vec![
+            Span::styled("  ", Style::default()),
+            Span::styled("FS:     ", Style::default().fg(THEME.text_dim)),
+            Span::styled(&disk.fs_type, Style::default().fg(THEME.text_main)),
+        ]),
+        Line::from(vec![
+            Span::styled("  ", Style::default()),
+            Span::styled("Total:  ", Style::default().fg(THEME.text_dim)),
+            Span::styled(total, Style::default().fg(THEME.text_main)),
+        ]),
+        Line::from(vec![
+            Span::styled("  ", Style::default()),
+            Span::styled("Used:   ", Style::default().fg(THEME.text_dim)),
+            Span::styled(used, Style::default().fg(if pct > 85.0 { THEME.danger } else { THEME.text_main })),
+        ]),
+        Line::from(vec![
+            Span::styled("  ", Style::default()),
+            Span::styled("Free:   ", Style::default().fg(THEME.text_dim)),
+            Span::styled(free, Style::default().fg(THEME.success)),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  ", Style::default()),
+            Span::styled("Usage: ", Style::default().fg(THEME.text_dim)),
+        ]),
+    ];
+
+    // Usage bar
+    let bar_w = inner.width.saturating_sub(4).max(4) as usize;
+    let filled = ((pct / 100.0) * bar_w as f64).round() as usize;
+    let bar: String = std::iter::repeat('█')
+        .take(filled.min(bar_w))
+        .chain(std::iter::repeat('░').take(bar_w.saturating_sub(filled)))
+        .collect();
+    lines.push(Line::from(vec![
+        Span::styled("  ", Style::default()),
+        Span::styled(bar, Style::default().fg(if pct > 85.0 { THEME.danger } else { THEME.primary })),
+        Span::styled(format!(" {:.0}%", pct), Style::default().fg(THEME.text_dim)),
+    ]));
+
+    f.render_widget(Paragraph::new(lines), inner);
+}
+
 // ── Explorador de Archivos (Panel Central) ──
 
 fn file_icon(entry: &FileEntry) -> &'static str {
@@ -141,7 +229,7 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     let block = Block::default()
         .borders(Borders::ALL)
-        .border_type(BorderType::Rounded)
+        .border_type(if is_focused { BorderType::Thick } else { BorderType::Rounded })
         .border_style(border_style)
         .title(Line::from(vec![
             Span::raw(" "),
@@ -152,7 +240,9 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let inner = block.inner(area);
     f.render_widget(block, area);
 
-    let path_str = format!(" 📁 {} ", app.current_directory.to_string_lossy());
+    let sort_label = app.file_sort_mode.label();
+    let sort_str = format!(" [Sort: {}]", sort_label);
+    let path_str = format!(" 📁 {} {}", app.current_directory.to_string_lossy(), sort_str);
     let header_path = Paragraph::new(path_str)
         .style(Style::default().fg(THEME.text_main).bg(THEME.secondary).dim())
         .alignment(Alignment::Left);
@@ -179,21 +269,8 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
         return;
     }
 
-    let query = app.file_search_query.to_lowercase();
-    let ext_idx = app.file_search_extension_idx.min(FILE_EXTENSION_FILTERS.len().saturating_sub(1));
-    let (_, _, ext_list) = FILE_EXTENSION_FILTERS[ext_idx];
-    
-    let filtered: Vec<&FileEntry> = if app.file_search_mode {
-        app.file_entries.iter().filter(|e| {
-            let matches_query = query.is_empty() || e.name.to_lowercase().contains(&query);
-            let matches_ext = ext_list.is_empty() || ext_list.contains(&e.extension.to_lowercase().as_str());
-            matches_query && matches_ext
-        }).collect()
-    } else {
-        app.file_entries.iter().collect()
-    };
-
-    if filtered.is_empty() {
+    let total_items = app.cached_filtered_indices.len();
+    if total_items == 0 {
         f.render_widget(
             Paragraph::new(tr!(app.translator, "storage.empty_dir"))
                 .alignment(Alignment::Center)
@@ -203,10 +280,12 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
         return;
     }
 
+    let current_scroll = app.file_scroll.min(total_items.saturating_sub(1));
+
     let widths = [
-        Constraint::Fill(1),      
-        Constraint::Length(11),     
-        Constraint::Length(18),     
+        Constraint::Fill(1),
+        Constraint::Length(11),
+        Constraint::Length(18),
     ];
 
     let header_row = Row::new(vec![
@@ -217,18 +296,16 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
     .style(Style::default().fg(THEME.primary).add_modifier(Modifier::BOLD))
     .bottom_margin(1);
 
-    let rows: Vec<Row> = filtered.iter().map(|entry| {
+    let rows: Vec<Row> = app.cached_filtered_indices.iter().map(|&idx| {
+        let entry = &app.file_entries[idx];
         let icon = file_icon(entry);
         let fg_color = file_color(entry);
-
         let size_str = if entry.is_dir { "  <DIR>".to_string() } else { fmt_size(entry.size) };
-
         let file_name_style = if entry.is_dir {
             Style::default().fg(fg_color).add_modifier(Modifier::BOLD)
         } else {
             Style::default().fg(fg_color)
         };
-
         Row::new(vec![
             Cell::from(Line::from(vec![
                 Span::styled(format!(" {} ", icon), Style::default().fg(fg_color)),
@@ -239,16 +316,13 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
         ])
     }).collect();
 
-    let total_items = filtered.len();
-    let current_scroll = app.file_scroll.min(total_items.saturating_sub(1));
-
     let mut table_state = TableState::default();
     table_state.select(Some(current_scroll));
 
     let table = Table::new(rows, widths)
         .header(header_row)
         .highlight_style(Style::default().bg(THEME.primary).dim().fg(THEME.background).add_modifier(Modifier::BOLD))
-        .highlight_symbol(" "); 
+        .highlight_symbol(" ");
 
     f.render_stateful_widget(table, rest, &mut table_state);
 
@@ -264,81 +338,79 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .position(current_scroll);
 
     f.render_stateful_widget(
-        scrollbar, 
-        rest.inner(ratatui::layout::Margin { vertical: 2, horizontal: 0 }), 
+        scrollbar,
+        rest.inner(ratatui::layout::Margin { vertical: 2, horizontal: 0 }),
         &mut scrollbar_state
     );
 }
 
-// ── Panel de Acciones (Panel Derecho) ──
+// ── Panel de Acciones ──
 
 fn render_storage_actions(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let is_focused = app.storage_focus == 2;
-    
-    let border_color = if is_focused { THEME.primary } else { THEME.secondary };
-    let border_style = if is_focused { Style::default().fg(border_color) } else { Style::default().fg(border_color).dim() };
+    let focused = app.storage_focus == 2;
+    let border_color = focus_color_storage(focused);
 
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .border_type(BorderType::Rounded)
-        .border_style(border_style)
-        .title(Line::from(vec![
-            Span::raw(" "),
-            Span::styled(tr!(app.translator, "storage.actions"), Style::default().fg(THEME.primary).bold()),
-            Span::raw(" "),
-        ]));
-        
+    let block = styled_block_storage(
+        format!(" {} ", tr!(app.translator, "storage.actions")),
+        border_color,
+        focused,
+    );
+    f.render_widget(block.clone(), area);
     let inner = block.inner(area);
-    f.render_widget(block, area);
 
-    // Corregido: Obtenemos los valores de traducción antes de construir el array de referencias
-    let refresh_lbl = tr!(app.translator, "storage.refresh");
-    let open_lbl = tr!(app.translator, "storage.open");
-    let prop_lbl = tr!(app.translator, "storage.properties");
-    let parent_lbl = tr!(app.translator, "storage.parent_dir");
-    let home_lbl = tr!(app.translator, "storage.go_home");
-
-    let items = [
-        ("\u{f021}", &refresh_lbl, "R", THEME.success),
-        ("\u{f15b}", &open_lbl, "Enter", THEME.primary),
-        ("\u{f0ca}", &prop_lbl, "P", THEME.warning),
-        ("\u{f07c}", &parent_lbl, "Backspace", THEME.accent),
-        ("\u{f015}", &home_lbl, "H", THEME.danger),
+    let sort_mode_label = app.file_sort_mode.label();
+    let items: Vec<(&str, String, &str, ratatui::style::Color)> = vec![
+        ("\u{f021}", tr!(app.translator, "storage.refresh"),    "R",      THEME.success),
+        ("\u{f15b}", tr!(app.translator, "storage.open"),       "Enter",  THEME.primary),
+        ("\u{f0ca}", tr!(app.translator, "storage.properties"), "P",      THEME.warning),
+        ("\u{f07c}", tr!(app.translator, "storage.parent_dir"), "Backspace", THEME.accent),
+        ("\u{f015}", tr!(app.translator, "storage.go_home"),    "H",      THEME.danger),
+        ("\u{f0dc}", format!("Sort: {}", sort_mode_label),      "S",      THEME.accent),
     ];
-
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Min(1), Constraint::Length(2)])
-        .split(inner);
 
     let list_items: Vec<ListItem> = items
         .iter()
-        .map(|(icon, lbl, key, color)| {
+        .enumerate()
+        .map(|(i, (icon, lbl, key, color))| {
+            let selected = i == app.selected_storage_action_index;
+            let prefix = if selected { " \u{258e}" } else { "  " };
+            let name_style = if selected {
+                Style::default().fg(THEME.background).bg(THEME.primary).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(THEME.text_main)
+            };
             ListItem::new(vec![
                 Line::from(vec![
-                    Span::styled(format!(" {} ", icon), Style::default().fg(*color).add_modifier(Modifier::BOLD)),
-                    Span::styled((*lbl).as_str(), Style::default().fg(THEME.text_main)), // Corregido: .as_str() evita transferir ownership
+                    Span::styled(prefix, Style::default().fg(THEME.primary)),
+                    Span::styled(format!(" {} ", icon), Style::default().fg(*color)),
+                    Span::styled(lbl.clone(), name_style),
                 ]),
                 Line::from(vec![
-                    Span::raw("     "),
-                    Span::styled(format!("❪ {} ❫", key), Style::default().fg(THEME.text_dim).add_modifier(Modifier::ITALIC)),
+                    Span::raw("    "),
+                    Span::styled(format!("[ {} ]", key), Style::default().fg(THEME.text_dim)),
                 ]),
-                Line::from(""), 
             ])
         })
         .collect();
 
     let mut state = ListState::default();
-    f.render_stateful_widget(List::new(list_items), chunks[0], &mut state);
+    state.select(Some(app.selected_storage_action_index));
+    f.render_stateful_widget(List::new(list_items), inner, &mut state);
+}
 
-    let footer_text = Line::from(vec![
-        Span::styled(" Tab ", Style::default().bg(THEME.secondary).fg(THEME.text_main)),
-        Span::raw(" Navig  "),
-        Span::styled(" ↑↓ ", Style::default().bg(THEME.secondary).fg(THEME.text_main)),
-        Span::raw(" Scroll"),
-    ]).alignment(Alignment::Center);
-    
-    f.render_widget(Paragraph::new(footer_text), chunks[1]);
+fn focus_color_storage(focused: bool) -> ratatui::style::Color {
+    if focused { THEME.primary } else { THEME.secondary }
+}
+
+fn styled_block_storage<'a>(title: String, color: ratatui::style::Color, focused: bool) -> Block<'a> {
+    Block::default()
+        .borders(Borders::ALL)
+        .title(Span::styled(
+            title,
+            Style::default().fg(color).add_modifier(Modifier::BOLD),
+        ))
+        .border_style(Style::default().fg(color))
+        .border_type(if focused { BorderType::Thick } else { BorderType::Rounded })
 }
 
 // ── Visor de Archivos (Modal) ──
@@ -385,6 +457,25 @@ pub fn render_file_viewer_modal(f: &mut ratatui::Frame, app: &App) {
         Span::styled(format!(" ({})", tr!(app.translator, "storage.viewer_scroll_hint")), Style::default().fg(THEME.text_dim).add_modifier(Modifier::ITALIC)),
     ]).bg(THEME.secondary).dim());
     lines.push(Line::from("")); 
+
+    if app.file_viewer_is_ansi {
+        let raw: Vec<u8> = app.file_viewer_content.join("\n").into_bytes();
+        match ansi_to_tui::IntoText::into_text(&raw) {
+            Ok(text) => {
+                f.render_widget(Paragraph::new(text).alignment(Alignment::Center), inner);
+            }
+            Err(_) => {
+                f.render_widget(
+                    Paragraph::new(Line::from(Span::styled(
+                        tr!(app.translator, "storage.viewer_empty"),
+                        Style::default().fg(THEME.text_dim),
+                    ))).alignment(Alignment::Center),
+                    inner,
+                );
+            }
+        }
+        return;
+    }
 
     for i in scroll_pos..(scroll_pos + visible_height).min(total_lines) {
         if let Some(line) = app.file_viewer_content.get(i) {

@@ -41,6 +41,28 @@ pub enum UpdateEvent {
     Progress(f64),
     Finished(bool, String),
 }
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum FileSortMode {
+    ByName,
+    BySize,
+    ByDate,
+}
+impl FileSortMode {
+    pub fn next(&self) -> Self {
+        match self {
+            Self::ByName => Self::BySize,
+            Self::BySize => Self::ByDate,
+            Self::ByDate => Self::ByName,
+        }
+    }
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::ByName => "Name",
+            Self::BySize => "Size",
+            Self::ByDate => "Date",
+        }
+    }
+}
 #[derive(Debug, Clone)]
 pub struct FileSearchState {
     pub query: String,
