@@ -62,15 +62,15 @@ impl App {
             self.handle_language_keys(key);
             return;
         }
-        if self.show_password_modal {
+        if self.install.show_password_modal {
             self.handle_password_keys(key);
             return;
         }
-        if self.show_nerdfont_dialog {
+        if self.nerdfont.show_dialog {
             self.handle_nerdfont_dialog_keys(key);
             return;
         }
-        if self.show_install_dialog {
+        if self.install.show_dialog {
             self.handle_install_dialog_keys(key);
             return;
         }
@@ -600,12 +600,12 @@ impl App {
             }
             KeyCode::Tab => {
                 self.docker_hub_search.focused_field =
-                    (self.docker_hub_search.focused_field + 1) % 6;
+                    (self.docker_hub_search.focused_field + 1) % config::DOCKER_HUB_FIELD_COUNT;
             }
             KeyCode::BackTab => {
                 self.docker_hub_search.focused_field = if self.docker_hub_search.focused_field == 0
                 {
-                    5
+                    config::DOCKER_HUB_FIELD_COUNT - 1
                 } else {
                     self.docker_hub_search.focused_field - 1
                 };
@@ -1130,7 +1130,7 @@ impl App {
                             }
                         }
                         2 => {
-                            let max = 4usize;
+                            let max = config::STORAGE_ACTION_COUNT;
                             if self.selected_storage_action_index < max {
                                 self.selected_storage_action_index += 1;
                             }
@@ -1252,19 +1252,18 @@ impl App {
     }
 
     fn handle_file_search_modal_keys(&mut self, key: KeyEvent) {
-        const FIELD_COUNT: usize = 5;
         match key.code {
             KeyCode::Esc => {
                 self.show_file_search_modal = false;
             }
             KeyCode::Tab => {
                 self.file_search_state.focused_field =
-                    (self.file_search_state.focused_field + 1) % FIELD_COUNT;
+                    (self.file_search_state.focused_field + 1) % config::SEARCH_MODAL_FIELD_COUNT;
             }
             KeyCode::BackTab => {
                 self.file_search_state.focused_field = if self.file_search_state.focused_field == 0
                 {
-                    FIELD_COUNT - 1
+                    config::SEARCH_MODAL_FIELD_COUNT - 1
                 } else {
                     self.file_search_state.focused_field - 1
                 };
@@ -1471,31 +1470,10 @@ impl App {
     }
 
     fn sort_file_entries(&mut self) {
-        use crate::app::types::FileSortMode;
-        self.file_entries
-            .sort_unstable_by(|a, b| match self.file_sort_mode {
-                FileSortMode::ByName => {
-                    if a.is_dir != b.is_dir {
-                        b.is_dir.cmp(&a.is_dir)
-                    } else {
-                        a.name.to_lowercase().cmp(&b.name.to_lowercase())
-                    }
-                }
-                FileSortMode::BySize => {
-                    if a.is_dir != b.is_dir {
-                        b.is_dir.cmp(&a.is_dir)
-                    } else {
-                        b.size.cmp(&a.size)
-                    }
-                }
-                FileSortMode::ByDate => {
-                    if a.is_dir != b.is_dir {
-                        b.is_dir.cmp(&a.is_dir)
-                    } else {
-                        b.modified.cmp(&a.modified)
-                    }
-                }
-            });
+        crate::app::storage::StorageManager::sort_entries(
+            &mut self.file_entries,
+            self.file_sort_mode,
+        );
     }
 
     fn handle_language_keys(&mut self, key: KeyEvent) {
@@ -1648,72 +1626,72 @@ impl App {
         }
     }
     fn handle_nerdfont_dialog_keys(&mut self, key: KeyEvent) {
-        if self.nerdfont_installing && !self.nerdfont_install_done {
+        if self.nerdfont.installing && !self.nerdfont.install_done {
             if key.code == KeyCode::Esc {
-                self.show_nerdfont_dialog = false;
-                self.nerdfont_installing = false;
-                self.nerdfont_dialog_dismissed = true;
+                self.nerdfont.show_dialog = false;
+                self.nerdfont.installing = false;
+                self.nerdfont.dialog_dismissed = true;
                 self.status_message = tr!(self.translator, "status.nerdfont_cancelled").to_string();
             }
             return;
         }
         match key.code {
             KeyCode::Enter => {
-                if !self.nerdfont_installing {
-                    self.nerdfont_installing = true;
-                    self.nerdfont_install_done = false;
-                    self.nerdfont_install_message =
+                if !self.nerdfont.installing {
+                    self.nerdfont.installing = true;
+                    self.nerdfont.install_done = false;
+                    self.nerdfont.install_message =
                         tr!(self.translator, "dialog.nerdfont_start").to_string();
                     self.status_message =
                         tr!(self.translator, "status.nerdfont_installing").to_string();
                     crate::app::installation::spawn_nerdfont_install(
-                        &mut self.nerdfont_install_rx,
-                        &mut self.nerdfont_install_message,
+                        &mut self.nerdfont.install_rx,
+                        &mut self.nerdfont.install_message,
                     );
                 } else {
-                    self.show_nerdfont_dialog = false;
-                    self.nerdfont_dialog_dismissed = true;
+                    self.nerdfont.show_dialog = false;
+                    self.nerdfont.dialog_dismissed = true;
                 }
             }
             KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
-                self.show_nerdfont_dialog = false;
-                self.nerdfont_dialog_dismissed = true;
+                self.nerdfont.show_dialog = false;
+                self.nerdfont.dialog_dismissed = true;
                 self.status_message = tr!(self.translator, "status.nerdfont_skipped").to_string();
             }
             _ => {}
         }
     }
     fn handle_install_dialog_keys(&mut self, key: KeyEvent) {
-        if self.install_done {
+        if self.install.done {
             match key.code {
                 KeyCode::Enter | KeyCode::Esc | KeyCode::Char('n') | KeyCode::Char('N') => {
-                    self.show_install_dialog = false;
+                    self.install.show_dialog = false;
                 }
                 _ => {}
             }
             return;
         }
-        if self.is_installing {
+        if self.install.installing {
             if key.code == KeyCode::Esc {
-                self.show_install_dialog = false;
-                self.is_installing = false;
+                self.install.show_dialog = false;
+                self.install.installing = false;
                 self.status_message = tr!(self.translator, "status.install_cancelled").to_string();
             }
             return;
         }
         match key.code {
             KeyCode::Char('y') | KeyCode::Char('Y') | KeyCode::Enter => {
-                self.is_installing = true;
-                self.install_done = false;
-                self.install_needs_password = false;
-                self.install_message =
+                self.install.installing = true;
+                self.install.done = false;
+                self.install.needs_password = false;
+                self.install.message =
                     tr!(self.translator, "dialog.net_tools_checking").to_string();
                 self.status_message = tr!(self.translator, "status.install_checking").to_string();
-                crate::app::installation::spawn_check_sudo(&mut self.install_child);
+                crate::app::installation::spawn_check_sudo(&mut self.install.child);
             }
             KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
-                self.show_install_dialog = false;
-                self.install_message.clear();
+                self.install.show_dialog = false;
+                self.install.message.clear();
                 self.status_message = tr!(self.translator, "status.install_cancelled").to_string();
             }
             _ => {}
@@ -1748,29 +1726,29 @@ impl App {
     fn handle_password_keys(&mut self, key: KeyEvent) {
         match key.code {
             KeyCode::Esc => {
-                self.show_password_modal = false;
-                self.install_password.clear();
-                self.is_installing = false;
-                self.install_done = true;
-                self.install_success = false;
-                self.install_message =
+                self.install.show_password_modal = false;
+                self.install.password.clear();
+                self.install.installing = false;
+                self.install.done = true;
+                self.install.success = false;
+                self.install.message =
                     tr!(self.translator, "dialog.password_cancelled").to_string();
                 self.status_message = tr!(self.translator, "status.install_cancelled").to_string();
             }
-            KeyCode::Enter if !self.install_password.is_empty() => {
-                let password = std::mem::take(&mut self.install_password);
-                self.show_password_modal = false;
+            KeyCode::Enter if !self.install.password.is_empty() => {
+                let password = std::mem::take(&mut self.install.password);
+                self.install.show_password_modal = false;
                 self.status_message = tr!(self.translator, "status.install_installing").to_string();
                 crate::app::installation::spawn_install_with_password(
-                    &mut self.install_child,
+                    &mut self.install.child,
                     password,
                 );
             }
             KeyCode::Backspace => {
-                self.install_password.pop();
+                self.install.password.pop();
             }
             KeyCode::Char(c) => {
-                self.install_password.push(c);
+                self.install.password.push(c);
             }
             _ => {}
         }
@@ -1861,9 +1839,9 @@ impl App {
     }
     pub fn handle_mouse_event(&mut self, mouse: MouseEvent) {
         if self.show_language_modal
-            || self.show_password_modal
-            || self.show_nerdfont_dialog
-            || self.show_install_dialog
+            || self.install.show_password_modal
+            || self.nerdfont.show_dialog
+            || self.install.show_dialog
             || self.show_confirmation
             || self.show_update_dialog
         {
@@ -2433,10 +2411,11 @@ impl App {
     fn handle_welcome_keys(&mut self, key: KeyEvent) {
         match key.code {
             KeyCode::Left | KeyCode::Right => {
-                self.welcome_index = if self.welcome_index == 0 { 1 } else { 0 };
+                self.welcome_index =
+                    (self.welcome_index + 1) % crate::config::WELCOME_PAGE_COUNT;
             }
             KeyCode::Enter => {
-                if self.welcome_index == 1 {
+                if self.welcome_index == crate::config::WELCOME_PAGE_COUNT - 1 {
                     let _ = open::that(&resources::URLS.github_releases_page);
                 }
                 self.show_welcome_dialog = false;

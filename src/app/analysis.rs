@@ -38,10 +38,10 @@ impl App {
         }
         self.check_analysis_complete();
         self.process_deferred_icon_extraction();
-        if self.is_installing {
+        if self.install.installing {
             self.check_install_complete();
         }
-        if self.nerdfont_installing && !self.nerdfont_install_done {
+        if self.nerdfont.installing && !self.nerdfont.install_done {
             self.check_nerdfont_install_complete();
         }
         self.process_geo_results();
@@ -72,7 +72,7 @@ impl App {
         }
         if self.auto_analysis_complete
             && self.current_nav_view == crate::app::NavView::Storage
-            && self.last_storage_refresh.elapsed() >= std::time::Duration::from_secs(6)
+            && self.last_storage_refresh.elapsed() >= std::time::Duration::from_secs(config::STORAGE_REFRESH_INTERVAL_SECS)
         {
             self.last_storage_refresh = std::time::Instant::now();
             if !self.file_search_mode && !self.search_progress_running {
@@ -81,31 +81,10 @@ impl App {
                 self.file_entries = crate::app::storage::StorageManager::list_directory(&current)
                     .unwrap_or_default();
 
-                use crate::app::types::FileSortMode;
-                self.file_entries
-                    .sort_unstable_by(|a, b| match self.file_sort_mode {
-                        FileSortMode::ByName => {
-                            if a.is_dir != b.is_dir {
-                                b.is_dir.cmp(&a.is_dir)
-                            } else {
-                                a.name.to_lowercase().cmp(&b.name.to_lowercase())
-                            }
-                        }
-                        FileSortMode::BySize => {
-                            if a.is_dir != b.is_dir {
-                                b.is_dir.cmp(&a.is_dir)
-                            } else {
-                                b.size.cmp(&a.size)
-                            }
-                        }
-                        FileSortMode::ByDate => {
-                            if a.is_dir != b.is_dir {
-                                b.is_dir.cmp(&a.is_dir)
-                            } else {
-                                b.modified.cmp(&a.modified)
-                            }
-                        }
-                    });
+                crate::app::storage::StorageManager::sort_entries(
+                    &mut self.file_entries,
+                    self.file_sort_mode,
+                );
                 self.compute_filtered_indices();
             }
         }
@@ -167,8 +146,8 @@ impl App {
                     && cfg!(target_os = "linux")
                     && !crate::app::network::has_netstat()
                 {
-                    self.show_install_dialog = true;
-                    self.install_message = tr!(self.translator, "dialog.net_tools_msg").to_string();
+                    self.install.show_dialog = true;
+                    self.install.message = tr!(self.translator, "dialog.net_tools_msg").to_string();
                     self.status_message =
                         tr!(self.translator, "status.install_required").to_string();
                 } else {
@@ -224,8 +203,8 @@ impl App {
                 self.app_connections = app_conns;
                 self.grouping_rx = None;
                 self.trigger_geo_lookup_for_selected_app();
-                if !self.nerdfont_dialog_dismissed && !nerdfont::has_nerdfont() {
-                    self.show_nerdfont_dialog = true;
+                if !self.nerdfont.dialog_dismissed && !nerdfont::has_nerdfont() {
+                    self.nerdfont.show_dialog = true;
                     self.status_message =
                         tr!(self.translator, "status.nerdfont_missing").to_string();
                 }
@@ -321,8 +300,8 @@ impl App {
                     && cfg!(target_os = "linux")
                     && !crate::app::network::has_netstat()
                 {
-                    self.show_install_dialog = true;
-                    self.install_message = tr!(self.translator, "dialog.net_tools_msg").to_string();
+                    self.install.show_dialog = true;
+                    self.install.message = tr!(self.translator, "dialog.net_tools_msg").to_string();
                     self.status_message =
                         tr!(self.translator, "status.install_required").to_string();
                 } else {
@@ -339,8 +318,8 @@ impl App {
                     && !crate::app::network::has_netstat()
                     && !crate::app::network::has_ss()
                 {
-                    self.show_install_dialog = true;
-                    self.install_message =
+                    self.install.show_dialog = true;
+                    self.install.message =
                         tr!(self.translator, "dialog.net_tools_missing").to_string();
                     self.status_message = tr!(self.translator, "status.tools_missing").to_string();
                 } else {
@@ -572,36 +551,36 @@ impl App {
         }
     }
     fn check_install_complete(&mut self) {
-        if let Some(rx) = &mut self.install_child {
+        if let Some(rx) = &mut self.install.child {
             if let Ok(output) = rx.try_recv() {
-                self.install_child = None;
+                self.install.child = None;
                 if output.status.success() {
-                    self.is_installing = false;
-                    self.install_done = true;
-                    self.install_success = true;
-                    self.install_log = String::from_utf8_lossy(&output.stdout).to_string();
-                    self.install_message =
+                    self.install.installing = false;
+                    self.install.done = true;
+                    self.install.success = true;
+                    self.install.log = String::from_utf8_lossy(&output.stdout).to_string();
+                    self.install.message =
                         tr!(self.translator, "dialog.net_tools_success").to_string();
                     self.status_message =
                         tr!(self.translator, "status.install_installed").to_string();
                     self.start_batch_analysis();
-                } else if !self.install_needs_password {
+                } else if !self.install.needs_password {
                     let stderr = String::from_utf8_lossy(&output.stderr);
                     if stderr.to_lowercase().contains("password") {
-                        self.install_needs_password = true;
-                        self.show_password_modal = true;
-                        self.install_password.clear();
-                        self.install_message =
+                        self.install.needs_password = true;
+                        self.install.show_password_modal = true;
+                        self.install.password.clear();
+                        self.install.message =
                             tr!(self.translator, "dialog.password_required").to_string();
                         self.status_message =
                             tr!(self.translator, "status.install_password").to_string();
                     } else {
-                        self.is_installing = false;
-                        self.install_done = true;
-                        self.install_success = false;
-                        self.install_log = stderr.to_string();
+                        self.install.installing = false;
+                        self.install.done = true;
+                        self.install.success = false;
+                        self.install.log = stderr.to_string();
                         let trimmed = stderr.trim().to_string();
-                        self.install_message =
+                        self.install.message =
                             tr!(self.translator, "dialog.net_tools_fail_msg", trimmed);
                         self.status_message =
                             tr!(self.translator, "status.install_failed").to_string();
@@ -609,23 +588,23 @@ impl App {
                 } else {
                     let stderr = String::from_utf8_lossy(&output.stderr);
                     let stdout = String::from_utf8_lossy(&output.stdout);
-                    self.install_log = format!("{}\n{}", stdout, stderr);
+                    self.install.log = format!("{}\n{}", stdout, stderr);
                     if stderr.to_lowercase().contains("password")
                         || stderr.to_lowercase().contains("incorrect")
                         || stderr.to_lowercase().contains("try again")
                     {
-                        self.show_password_modal = true;
-                        self.install_password.clear();
-                        self.install_message =
+                        self.install.show_password_modal = true;
+                        self.install.password.clear();
+                        self.install.message =
                             tr!(self.translator, "dialog.password_wrong").to_string();
                         self.status_message =
                             tr!(self.translator, "status.install_wrong_pw").to_string();
                     } else {
-                        self.is_installing = false;
-                        self.install_done = true;
-                        self.install_success = false;
+                        self.install.installing = false;
+                        self.install.done = true;
+                        self.install.success = false;
                         let trimmed = stderr.trim().to_string();
-                        self.install_message =
+                        self.install.message =
                             tr!(self.translator, "dialog.net_tools_fail_msg", trimmed);
                         let last_line = stderr
                             .trim()
@@ -641,13 +620,13 @@ impl App {
         }
     }
     fn check_nerdfont_install_complete(&mut self) {
-        if let Some(rx) = &mut self.nerdfont_install_rx {
+        if let Some(rx) = &mut self.nerdfont.install_rx {
             if let Ok(msg) = rx.try_recv() {
-                self.nerdfont_install_rx = None;
-                self.nerdfont_install_done = true;
-                self.nerdfont_install_success = msg.starts_with("Installed");
-                self.nerdfont_install_message = msg.clone();
-                self.status_message = if self.nerdfont_install_success {
+                self.nerdfont.install_rx = None;
+                self.nerdfont.install_done = true;
+                self.nerdfont.install_success = msg.starts_with("Installed");
+                self.nerdfont.install_message = msg.clone();
+                self.status_message = if self.nerdfont.install_success {
                     tr!(self.translator, "status.nerdfont_installed").to_string()
                 } else {
                     let first_line = msg.lines().next().unwrap_or("failed").to_string();

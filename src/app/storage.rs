@@ -28,7 +28,6 @@ pub struct FileEntry {
     pub path: PathBuf,
     pub is_dir: bool,
     pub size: u64,
-    pub _formatted_size: String,
     pub modified: String,
     pub extension: String,
 }
@@ -135,6 +134,7 @@ impl StorageManager {
             use std::iter;
             use std::os::windows::ffi::OsStrExt;
             type BOOL = i32;
+            #[allow(non_camel_case_types)]
             type ULARGE_INTEGER = u64;
 
             extern "system" {
@@ -289,18 +289,12 @@ impl StorageManager {
                 };
 
                 let size = metadata.len();
-                let _formatted_size = if ft.is_dir() {
-                    String::new()
-                } else {
-                    fmt_size(size)
-                };
 
                 entries.push(FileEntry {
                     name,
                     path: entry.path(),
                     is_dir: ft.is_dir(),
                     size,
-                    _formatted_size,
                     modified,
                     extension: ext,
                 });
@@ -430,6 +424,32 @@ impl StorageManager {
                 | "prettierrc"
                 | "eslintrc"
         )
+    }
+
+    pub fn sort_entries(entries: &mut [FileEntry], sort_mode: crate::app::types::FileSortMode) {
+        entries.sort_unstable_by(|a, b| match sort_mode {
+            crate::app::types::FileSortMode::ByName => {
+                if a.is_dir != b.is_dir {
+                    b.is_dir.cmp(&a.is_dir)
+                } else {
+                    a.name.to_lowercase().cmp(&b.name.to_lowercase())
+                }
+            }
+            crate::app::types::FileSortMode::BySize => {
+                if a.is_dir != b.is_dir {
+                    b.is_dir.cmp(&a.is_dir)
+                } else {
+                    b.size.cmp(&a.size)
+                }
+            }
+            crate::app::types::FileSortMode::ByDate => {
+                if a.is_dir != b.is_dir {
+                    b.is_dir.cmp(&a.is_dir)
+                } else {
+                    b.modified.cmp(&a.modified)
+                }
+            }
+        });
     }
 
     pub fn is_image_file(ext: &str) -> bool {

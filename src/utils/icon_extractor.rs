@@ -14,7 +14,10 @@ pub enum IconData {
 impl IconCache {
     pub fn new() -> Self {
         Self {
-            cache: LruCache::new(NonZeroUsize::new(config::LRU_CACHE_SIZE).unwrap()),
+            cache: LruCache::new(
+                NonZeroUsize::new(config::LRU_CACHE_SIZE)
+                    .expect("LRU_CACHE_SIZE must be > 0"),
+            ),
         }
     }
     pub fn get_icon(&mut self, exe_path: &str, process_name: &str) -> String {

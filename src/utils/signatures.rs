@@ -18,7 +18,9 @@ impl SignatureVerifier {
             return SignatureStatus::Unknown;
         }
         {
-            let cache = SIGNATURE_CACHE.lock().unwrap();
+            let cache = SIGNATURE_CACHE
+                .lock()
+                .expect("Signature cache lock should not be poisoned");
             if let Some(status) = cache.get(path) {
                 return status.clone();
             }
@@ -37,7 +39,9 @@ impl SignatureVerifier {
                 SignatureStatus::Unknown
             }
         };
-        let mut cache = SIGNATURE_CACHE.lock().unwrap();
+        let mut cache = SIGNATURE_CACHE
+            .lock()
+            .expect("Signature cache lock should not be poisoned");
         cache.insert(path.to_string(), status.clone());
         status
     }

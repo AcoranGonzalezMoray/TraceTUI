@@ -46,15 +46,15 @@ pub use storage::render_storage_view;
 pub use theme::THEME;
 pub use trends::render_trends_view;
 pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
-    let search_bar_height = if app.search_mode { 3 } else { 0 };
+    let search_bar_height = if app.search_mode { config::SEARCH_BAR_HEIGHT } else { 0 };
     let main_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),
+            Constraint::Length(config::HEADER_HEIGHT),
             Constraint::Length(search_bar_height),
             Constraint::Min(0),
-            Constraint::Length(1),
-            Constraint::Length(3),
+            Constraint::Length(config::HINT_BAR_HEIGHT),
+            Constraint::Length(config::FOOTER_HEIGHT),
         ])
         .split(f.area());
     render_header(f, app, main_chunks[0]);
@@ -310,11 +310,11 @@ pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
         render_welcome_dialog(f, app);
     } else if app.show_language_modal {
         render_language_modal(f, app);
-    } else if app.show_password_modal {
+    } else if app.install.show_password_modal {
         render_password_modal(f, app);
-    } else if app.show_nerdfont_dialog {
+    } else if app.nerdfont.show_dialog {
         render_nerdfont_dialog(f, app);
-    } else if app.show_install_dialog {
+    } else if app.install.show_dialog {
         render_install_dialog(f, app);
     } else if app.show_confirmation {
         render_confirmation_dialog(f, app);
@@ -391,7 +391,7 @@ fn render_search_bar(f: &mut ratatui::Frame, app: &App, area: Rect) {
     f.render_widget(search_widget, search_area);
 }
 fn render_main_layout_with_nav(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let nav_width = if app.nav_sidebar_expanded { 22 } else { 7 };
+    let nav_width = if app.nav_sidebar_expanded { config::NAV_SIDEBAR_EXPANDED_WIDTH } else { config::NAV_SIDEBAR_COLLAPSED_WIDTH };
 
     let main_layout = Layout::default()
         .direction(Direction::Horizontal)

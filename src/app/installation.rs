@@ -270,7 +270,7 @@ pub fn spawn_self_update(
 
         let status = tokio::task::spawn_blocking(move || {
             let bin_path = std::env::current_exe().map_err(|e| e.to_string())?;
-            let tmp_dir = bin_path.parent().unwrap().join(".tracetui_update_tmp");
+            let tmp_dir = bin_path.parent().expect("binary must be in a directory").join(".tracetui_update_tmp");
 
             std::fs::create_dir_all(&tmp_dir).map_err(|e| e.to_string())?;
             let tmp_path = tmp_dir.join(&name);

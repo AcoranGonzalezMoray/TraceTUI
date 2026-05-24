@@ -4,33 +4,6 @@ use std::collections::HashMap;
 pub const LIBRARY_ACTION_COUNT: usize = 7;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum LibraryRisk {
-    Safe,
-    Suspicious,
-    Critical,
-    Unknown,
-}
-
-impl LibraryRisk {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            LibraryRisk::Safe => "Safe",
-            LibraryRisk::Suspicious => "Suspicious",
-            LibraryRisk::Critical => "Critical",
-            LibraryRisk::Unknown => "Unknown",
-        }
-    }
-    pub fn from_str(s: &str) -> Self {
-        match s {
-            "Safe" => LibraryRisk::Safe,
-            "Suspicious" => LibraryRisk::Suspicious,
-            "Critical" => LibraryRisk::Critical,
-            _ => LibraryRisk::Unknown,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SignatureStatus {
     Signed,
     Unsigned,
@@ -104,7 +77,7 @@ pub fn inspect_libraries_batched(
         .collect();
 
     let libs = get_libraries_batch(&valid_pids);
-    let batch_size = 15;
+    let batch_size = crate::config::LIBRARY_BATCH_SIZE;
 
     for chunk in libs.chunks(batch_size) {
         let mut batch = Vec::with_capacity(batch_size);
@@ -487,18 +460,18 @@ pub fn compute_sha256_partial(path: &str) -> String {
     let file = std::fs::File::open(path);
     match file {
         Ok(mut f) => {
-            let mut buf = vec![0u8; 65536];
+            let mut buf = vec![0u8; crate::config::SHA256_BUFFER_SIZE];
             let n = f.read(&mut buf).unwrap_or(0);
             if n == 0 {
                 return String::new();
             }
-            sha256_hex(&buf[..n])
+            fingerprint_fnv64(&buf[..n])
         }
         Err(_) => String::new(),
     }
 }
 
-fn sha256_hex(data: &[u8]) -> String {
+fn fingerprint_fnv64(data: &[u8]) -> String {
     let mut hash: u64 = 0xcbf29ce484222325;
     for &b in data {
         hash ^= b as u64;
@@ -845,7 +818,6 @@ fn find_elf_text_section(data: &[u8]) -> Option<(usize, usize)> {
 
 pub fn load_binary_hex(path: &str) -> Vec<String> {
     use std::io::Read;
-    const MAX_SIZE: u64 = 10 * 1024 * 1024;
     let mut file = match std::fs::File::open(path) {
         Ok(f) => f,
         Err(e) => return vec![format!("Error: cannot open file: {}", e)],
@@ -854,7 +826,7 @@ pub fn load_binary_hex(path: &str) -> Vec<String> {
         Ok(m) => m.len(),
         Err(e) => return vec![format!("Error: cannot read metadata: {}", e)],
     };
-    let read_size = file_size.min(MAX_SIZE) as usize;
+    let read_size = file_size.min(crate::config::BINARY_VIEW_MAX_SIZE) as usize;
     let mut data = vec![0u8; read_size];
     if file.read_exact(&mut data).is_err() {
         return vec!["Error: cannot read file".to_string()];
@@ -885,10 +857,10 @@ pub fn load_binary_hex(path: &str) -> Vec<String> {
         }
         lines.push(format!("{:08X}  {:23}  {:23}  |{}|", addr, hl, hr, asc));
     }
-    if file_size > MAX_SIZE {
+    if file_size > crate::config::BINARY_VIEW_MAX_SIZE {
         lines.push(format!(
             "... (file truncated to {} MB)",
-            MAX_SIZE / 1024 / 1024
+            crate::config::BINARY_VIEW_MAX_SIZE / 1024 / 1024
         ));
     }
     lines
@@ -896,7 +868,6 @@ pub fn load_binary_hex(path: &str) -> Vec<String> {
 
 pub fn load_binary_disasm(path: &str) -> Vec<String> {
     use std::io::Read;
-    const MAX_SIZE: u64 = 10 * 1024 * 1024;
     let mut file = match std::fs::File::open(path) {
         Ok(f) => f,
         Err(e) => return vec![format!("Error: cannot open file: {}", e)],
@@ -905,7 +876,7 @@ pub fn load_binary_disasm(path: &str) -> Vec<String> {
         Ok(m) => m.len(),
         Err(e) => return vec![format!("Error: cannot read metadata: {}", e)],
     };
-    let read_size = file_size.min(MAX_SIZE) as usize;
+    let read_size = file_size.min(crate::config::BINARY_VIEW_MAX_SIZE) as usize;
     let mut data = vec![0u8; read_size];
     if file.read_exact(&mut data).is_err() {
         return vec!["Error: cannot read file".to_string()];
@@ -923,7 +894,7 @@ pub fn load_binary_disasm(path: &str) -> Vec<String> {
         Some(s) => s,
         None => return vec!["No executable code section found".to_string()],
     };
-    let code_size = size.min(65536);
+    let code_size = size.min(crate::config::DISASM_MAX_BYTES);
     let code = &data[offset..offset + code_size];
     let bitness: u32 = if is_pe {
         let pe_off = read_u32_le(&data, 0x3C) as usize;

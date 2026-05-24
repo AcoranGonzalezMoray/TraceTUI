@@ -16,7 +16,7 @@ pub fn render_install_dialog(f: &mut ratatui::Frame, app: &App) {
         width: f.area().width * 3 / 5,
         height: 12,
     };
-    if app.is_installing && !app.install_done {
+    if app.install.installing && !app.install.done {
         let spinner = match app.frame_count % 4 {
             0 => "/",
             1 => "-",
@@ -37,7 +37,7 @@ pub fn render_install_dialog(f: &mut ratatui::Frame, app: &App) {
             )]),
             Line::from(""),
             Line::from(vec![Span::styled(
-                format!("  {} ", app.install_message),
+                format!("  {} ", app.install.message),
                 Style::default().fg(THEME.text_main),
             )]),
             Line::from(""),
@@ -73,8 +73,8 @@ pub fn render_install_dialog(f: &mut ratatui::Frame, app: &App) {
             .alignment(Alignment::Left);
         f.render_widget(Clear, popup_area);
         f.render_widget(dialog, popup_area);
-    } else if app.install_done {
-        let (icon, border_color, title) = if app.install_success {
+    } else if app.install.done {
+        let (icon, border_color, title) = if app.install.success {
             (
                 "[OK]",
                 THEME.success,
@@ -88,7 +88,7 @@ pub fn render_install_dialog(f: &mut ratatui::Frame, app: &App) {
             )
         };
         let lines: Vec<Line> = app
-            .install_message
+            .install.message
             .lines()
             .map(|l| {
                 Line::from(Span::styled(
@@ -163,7 +163,7 @@ pub fn render_install_dialog(f: &mut ratatui::Frame, app: &App) {
             )]),
             Line::from(""),
             Line::from(vec![Span::styled(
-                &app.install_message,
+                &app.install.message,
                 Style::default().fg(THEME.text_main),
             )]),
             Line::from(""),
@@ -230,7 +230,7 @@ pub fn render_password_modal(f: &mut ratatui::Frame, app: &App) {
         width: f.area().width / 2,
         height: 10,
     };
-    let masked: String = app.install_password.chars().map(|_| '*').collect();
+    let masked: String = app.install.password.chars().map(|_| '*').collect();
     let cursor = if app.frame_count.is_multiple_of(2) {
         "█"
     } else {
@@ -308,7 +308,7 @@ pub fn render_nerdfont_dialog(f: &mut ratatui::Frame, app: &App) {
         width: f.area().width * 2 / 3,
         height: 14,
     };
-    if app.nerdfont_installing && !app.nerdfont_install_done {
+    if app.nerdfont.installing && !app.nerdfont.install_done {
         let spinner = match app.frame_count % 4 {
             0 => "/",
             1 => "-",
@@ -329,7 +329,7 @@ pub fn render_nerdfont_dialog(f: &mut ratatui::Frame, app: &App) {
             )]),
             Line::from(""),
             Line::from(vec![Span::styled(
-                format!("  {} ", app.nerdfont_install_message),
+                format!("  {} ", app.nerdfont.install_message),
                 Style::default().fg(THEME.text_main),
             )]),
             Line::from(""),
@@ -377,14 +377,14 @@ pub fn render_nerdfont_dialog(f: &mut ratatui::Frame, app: &App) {
             .alignment(Alignment::Left);
         f.render_widget(Clear, popup_area);
         f.render_widget(dialog, popup_area);
-    } else if app.nerdfont_install_done {
-        let (icon, border_color) = if app.nerdfont_install_success {
+    } else if app.nerdfont.install_done {
+        let (icon, border_color) = if app.nerdfont.install_success {
             ("[OK]", THEME.success)
         } else {
             ("[FAIL]", THEME.danger)
         };
         let lines: Vec<Line> = app
-            .nerdfont_install_message
+            .nerdfont.install_message
             .lines()
             .map(|l| {
                 Line::from(Span::styled(
@@ -1018,7 +1018,7 @@ pub fn render_welcome_dialog(f: &mut ratatui::Frame, app: &App) {
         ])
         .split(inner_chunks[1]);
 
-    let btn_continue_style = if app.welcome_index == 0 {
+    let btn_continue_style = if app.welcome_index == crate::config::WELCOME_PAGE_COUNT - 2 {
         Style::default()
             .fg(THEME.background)
             .bg(THEME.success)
@@ -1027,7 +1027,7 @@ pub fn render_welcome_dialog(f: &mut ratatui::Frame, app: &App) {
         Style::default().fg(THEME.text_dim).bg(THEME.background)
     };
 
-    let btn_changes_style = if app.welcome_index == 1 {
+    let btn_changes_style = if app.welcome_index == crate::config::WELCOME_PAGE_COUNT - 1 {
         Style::default()
             .fg(THEME.background)
             .bg(THEME.primary)
@@ -1041,7 +1041,7 @@ pub fn render_welcome_dialog(f: &mut ratatui::Frame, app: &App) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(if app.welcome_index == 0 {
+                .border_style(Style::default().fg(if app.welcome_index == crate::config::WELCOME_PAGE_COUNT - 2 {
                     THEME.success
                 } else {
                     THEME.text_dim
@@ -1053,7 +1053,7 @@ pub fn render_welcome_dialog(f: &mut ratatui::Frame, app: &App) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(if app.welcome_index == 1 {
+                .border_style(Style::default().fg(if app.welcome_index == crate::config::WELCOME_PAGE_COUNT - 1 {
                     THEME.primary
                 } else {
                     THEME.text_dim
@@ -1064,7 +1064,7 @@ pub fn render_welcome_dialog(f: &mut ratatui::Frame, app: &App) {
     f.render_widget(block, area);
     f.render_widget(content_para, inner_chunks[0]);
 
-    if app.welcome_index == 0 {
+    if app.welcome_index == crate::config::WELCOME_PAGE_COUNT - 2 {
         f.render_widget(Block::default().style(btn_continue_style), button_area[1]);
     } else {
         f.render_widget(Block::default().style(btn_changes_style), button_area[3]);

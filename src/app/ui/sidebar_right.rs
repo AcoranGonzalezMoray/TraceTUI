@@ -10,17 +10,6 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph},
 };
 pub fn render_right_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let _is_focused = app.sidebar_focus == SidebarFocus::Right;
-    let _border_color = if _is_focused {
-        THEME.primary
-    } else {
-        THEME.secondary
-    };
-    let _border_type = if _is_focused {
-        BorderType::Thick
-    } else {
-        BorderType::Rounded
-    };
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(0), Constraint::Length(14)])

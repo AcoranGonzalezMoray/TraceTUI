@@ -66,6 +66,23 @@ pub const SUSPICIOUS_PROCESS_NAMES: &[&str] = &[
 ];
 pub const DOMAIN_ALLOWLIST: &[&str] = &["microsoft", "akamai", "cloudfront", "google"];
 pub const DB_FILENAME: &str = "tracetui.db";
+
+pub const STORAGE_REFRESH_INTERVAL_SECS: u64 = 6;
+pub const STORAGE_ACTION_COUNT: usize = 4;
+pub const SEARCH_MODAL_FIELD_COUNT: usize = 5;
+pub const HEADER_HEIGHT: u16 = 3;
+pub const FOOTER_HEIGHT: u16 = 3;
+pub const HINT_BAR_HEIGHT: u16 = 1;
+pub const SEARCH_BAR_HEIGHT: u16 = 3;
+pub const NAV_SIDEBAR_EXPANDED_WIDTH: u16 = 22;
+pub const NAV_SIDEBAR_COLLAPSED_WIDTH: u16 = 7;
+pub const LIBRARY_BATCH_SIZE: usize = 15;
+pub const BINARY_VIEW_MAX_SIZE: u64 = 10 * 1024 * 1024;
+pub const SHA256_BUFFER_SIZE: usize = 65536;
+pub const DISASM_MAX_BYTES: usize = 65536;
+pub const DOCKER_HUB_FIELD_COUNT: usize = 6;
+pub const WELCOME_PAGE_COUNT: usize = 2;
+
 pub fn tick_rate() -> Duration {
     Duration::from_millis(TICK_RATE_MS)
 }
