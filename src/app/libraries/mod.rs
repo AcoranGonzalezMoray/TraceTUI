@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+pub const LIBRARY_ACTION_COUNT: usize = 7;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LibraryRisk {
     Safe,
@@ -84,27 +86,29 @@ pub struct LibraryInfo {
     pub is_signed: Option<bool>,
 }
 
-pub fn inspect_libraries(
+pub fn inspect_libraries_batched(
     processes: &[crate::app::process::ProcessInfo],
     app_connections: &[crate::app::types::AppConnection],
-) -> Vec<LibraryInfo> {
-    let mut result = Vec::new();
+    tx: std::sync::mpsc::Sender<Vec<LibraryInfo>>,
+) {
     let pid_set: std::collections::HashSet<u32> = app_connections.iter().map(|a| a.pid).collect();
-    let pid_to_name: HashMap<u32, &str> = app_connections
+    let pid_to_name: std::collections::HashMap<u32, &str> = app_connections
         .iter()
         .map(|a| (a.pid, a.process_name.as_str()))
         .collect();
 
-    for process in processes {
-        if !pid_set.contains(&process.pid) {
-            continue;
-        }
-        let libs = get_libraries_for_pid(process.pid);
-        let pname = pid_to_name
-            .get(&process.pid)
-            .copied()
-            .unwrap_or(&process.name);
-        for mut lib in libs {
+    let valid_pids: Vec<u32> = processes
+        .iter()
+        .filter(|p| pid_set.contains(&p.pid))
+        .map(|p| p.pid)
+        .collect();
+
+    let libs = get_libraries_batch(&valid_pids);
+    let batch_size = 15;
+
+    for chunk in libs.chunks(batch_size) {
+        let mut batch = Vec::with_capacity(batch_size);
+        for mut lib in chunk.iter().cloned() {
             lib.origin = classify_origin(&lib.path);
             lib.risk = classify_risk(&lib.path, &lib.origin);
             lib.signature = check_signature(&lib.path);
@@ -113,25 +117,44 @@ pub fn inspect_libraries(
                 SignatureStatus::Unsigned | SignatureStatus::Invalid => Some(false),
                 SignatureStatus::Unknown => None,
             };
-            lib.process_name = pname.to_string();
+            lib.process_name = pid_to_name
+                .get(&lib.pid)
+                .copied()
+                .unwrap_or_default()
+                .to_string();
 
             if lib.risk != "Safe" {
                 lib.sha256 = compute_sha256_partial(&lib.path);
             }
-            result.push(lib);
+            batch.push(lib);
+        }
+        if tx.send(batch).is_err() {
+            return;
         }
     }
-
-    result.sort_by(|a, b| {
-        risk_sort_key(&b.risk)
-            .cmp(&risk_sort_key(&a.risk))
-            .then_with(|| b.pid.cmp(&a.pid))
-            .then_with(|| b.size.cmp(&a.size))
-    });
-    result
 }
 
-fn risk_sort_key(r: &str) -> u8 {
+fn get_libraries_batch(pids: &[u32]) -> Vec<LibraryInfo> {
+    #[cfg(target_os = "windows")]
+    {
+        get_libraries_windows(pids)
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let mut result = Vec::new();
+        for &pid in pids {
+            result.extend(get_libraries_linux(pid));
+        }
+        result
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
+    {
+        let _ = pids;
+        Vec::new()
+    }
+}
+
+pub(crate) fn risk_sort_key(r: &str) -> u8 {
     match r {
         "Critical" => 3,
         "Suspicious" => 2,
@@ -140,68 +163,68 @@ fn risk_sort_key(r: &str) -> u8 {
     }
 }
 
-fn get_libraries_for_pid(pid: u32) -> Vec<LibraryInfo> {
-    #[cfg(target_os = "windows")]
-    {
-        get_libraries_windows(pid)
-    }
-    #[cfg(target_os = "linux")]
-    {
-        get_libraries_linux(pid)
-    }
-    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
-    {
-        let _ = pid;
-        Vec::new()
-    }
-}
-
 #[cfg(target_os = "windows")]
-fn get_libraries_windows(pid: u32) -> Vec<LibraryInfo> {
+fn get_libraries_windows(pids: &[u32]) -> Vec<LibraryInfo> {
+    if pids.is_empty() {
+        return Vec::new();
+    }
+
+    let pids_csv = pids
+        .iter()
+        .map(|p| p.to_string())
+        .collect::<Vec<_>>()
+        .join(",");
+
+    // CORRECCIÓN: Se usa $procId para evitar colisión con la variable automática $PID de PowerShell.
+    // Las llaves dobles {{ }} escapan correctamente para el macro format! de Rust.
     let script = format!(
-        "$ErrorActionPreference = 'Stop'; \
-         try {{ \
-             $p = Get-Process -Id {pid} -ErrorAction Stop; \
-             $p.Modules | ForEach-Object {{ \
-                 $m = $_; \
-                 $s = if ($m.FileName -and (Test-Path $m.FileName)) {{ \
-                     (Get-Item $m.FileName).Length \
-                 }} else {{ 0 }}; \
-                 \"{pid}|$($m.ModuleName)|$($m.FileName)|$s\" \
-             }} \
-         }} catch {{ }}",
-        pid = pid
+        r#"
+        $ErrorActionPreference = 'SilentlyContinue';
+        $targetPids = @({pids_csv});
+        foreach ($procId in $targetPids) {{
+            try {{
+                $p = Get-Process -Id $procId -ErrorAction Stop;
+                $p.Modules | ForEach-Object {{
+                    $m = $_;
+                    if ($m.FileName -and (Test-Path $m.FileName)) {{
+                        $size = (Get-Item $m.FileName).Length;
+                        "$procId|$($m.ModuleName)|$($m.FileName)|$size"
+                    }}
+                }}
+            }} catch {{ }}
+        }}
+        "#,
+        pids_csv = pids_csv
     );
-    let output = std::process::Command::new("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
-        .output();
+
     let mut libs = Vec::new();
-    if let Ok(out) = output {
+    if let Ok(out) = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+        .output()
+    {
         if out.status.success() {
             let stdout = String::from_utf8_lossy(&out.stdout);
             for line in stdout.lines() {
-                let line = line.trim();
-                if line.is_empty() {
-                    continue;
-                }
                 let parts: Vec<&str> = line.splitn(4, '|').collect();
                 if parts.len() == 4 {
-                    let name = parts[1].trim().to_string();
-                    let path = parts[2].trim().to_string();
-                    let size = parts[3].trim().parse::<u64>().unwrap_or(0);
-                    if !name.is_empty() {
-                        libs.push(LibraryInfo {
-                            pid,
-                            process_name: String::new(),
-                            signature: SignatureStatus::Unknown,
-                            origin: LibraryOrigin::Unknown,
-                            is_signed: None,
-                            risk: String::new(),
-                            sha256: String::new(),
-                            name,
-                            path,
-                            size,
-                        });
+                    if let Ok(pid) = parts[0].trim().parse::<u32>() {
+                        let name = parts[1].trim().to_string();
+                        let path = parts[2].trim().to_string();
+                        let size = parts[3].trim().parse::<u64>().unwrap_or(0);
+                        if !name.is_empty() && pid > 0 {
+                            libs.push(LibraryInfo {
+                                pid,
+                                process_name: String::new(),
+                                name,
+                                path,
+                                size,
+                                signature: SignatureStatus::Unknown,
+                                origin: LibraryOrigin::Unknown,
+                                is_signed: None,
+                                risk: String::new(),
+                                sha256: String::new(),
+                            });
+                        }
                     }
                 }
             }
@@ -519,17 +542,30 @@ fn csv_escape(s: &str) -> String {
 
 impl crate::app::App {
     pub fn process_libraries_results(&mut self) {
-        if let Some(ref rx) = self.libraries_rx {
-            if let Ok(libs) = rx.try_recv() {
-                self.libraries = libs;
-                self.libraries_loading = false;
-                self.libraries_loaded_once = true;
-                self.libraries_rx = None;
-            }
-            return;
-        }
+        use std::sync::mpsc::TryRecvError;
 
-        if self.libraries_loading && !self.processes.is_empty() {
+        if let Some(ref rx) = self.libraries_rx {
+            loop {
+                match rx.try_recv() {
+                    Ok(libs) => {
+                        self.libraries.extend(libs);
+                    }
+                    Err(TryRecvError::Empty) => break,
+                    Err(TryRecvError::Disconnected) => {
+                        self.libraries.sort_by(|a, b| {
+                            crate::app::libraries::risk_sort_key(&b.risk)
+                                .cmp(&crate::app::libraries::risk_sort_key(&a.risk))
+                                .then_with(|| b.pid.cmp(&a.pid))
+                                .then_with(|| b.size.cmp(&a.size))
+                        });
+                        self.libraries_loading = false;
+                        self.libraries_loaded_once = true;
+                        self.libraries_rx = None;
+                        break;
+                    }
+                }
+            }
+        } else if self.libraries_loading && !self.processes.is_empty() {
             self.libraries_loading = false;
             self.refresh_libraries();
         }
@@ -677,4 +713,266 @@ fn pick_save_path_linux(default_name: &str) -> Option<std::path::PathBuf> {
     } else {
         Some(std::path::PathBuf::from(path))
     }
+}
+
+fn read_u16_le(buf: &[u8], offset: usize) -> u16 {
+    u16::from_le_bytes([buf[offset], buf[offset + 1]])
+}
+fn read_u32_le(buf: &[u8], offset: usize) -> u32 {
+    u32::from_le_bytes([
+        buf[offset],
+        buf[offset + 1],
+        buf[offset + 2],
+        buf[offset + 3],
+    ])
+}
+fn read_u64_le(buf: &[u8], offset: usize) -> u64 {
+    u64::from_le_bytes([
+        buf[offset],
+        buf[offset + 1],
+        buf[offset + 2],
+        buf[offset + 3],
+        buf[offset + 4],
+        buf[offset + 5],
+        buf[offset + 6],
+        buf[offset + 7],
+    ])
+}
+
+fn find_pe_text_section(data: &[u8]) -> Option<(usize, usize)> {
+    if data.len() < 64 || read_u16_le(data, 0) != 0x5A4D {
+        return None;
+    }
+    let pe_offset = read_u32_le(data, 0x3C) as usize;
+    if pe_offset + 4 + 20 > data.len() {
+        return None;
+    }
+    if read_u32_le(data, pe_offset) != 0x00004550 {
+        return None;
+    }
+    let num_sections = read_u16_le(data, pe_offset + 4 + 2) as usize;
+    let opt_header_size = read_u16_le(data, pe_offset + 4 + 16) as usize;
+    let section_off = pe_offset + 4 + 20 + opt_header_size;
+    for i in 0..num_sections {
+        let off = section_off + i * 40;
+        if off + 40 > data.len() {
+            break;
+        }
+        let name = std::str::from_utf8(&data[off..off + 8])
+            .unwrap_or("")
+            .trim_end_matches('\0');
+        if name.eq_ignore_ascii_case(".text") || name.eq_ignore_ascii_case(".textbss") {
+            let raw_size = read_u32_le(data, off + 16) as usize;
+            let raw_off = read_u32_le(data, off + 20) as usize;
+            if raw_off + raw_size <= data.len() {
+                return Some((raw_off, raw_size));
+            }
+        }
+    }
+    None
+}
+
+fn find_elf_text_section(data: &[u8]) -> Option<(usize, usize)> {
+    if data.len() < 64 || data[..4] != [0x7f, 0x45, 0x4c, 0x46] {
+        return None;
+    }
+    let is_64bit = data[4] == 2;
+    if data[5] != 1 {
+        return None;
+    }
+    let (shoff, shentsize, shnum, shstrndx) = if is_64bit {
+        (
+            read_u64_le(data, 0x28) as usize,
+            read_u16_le(data, 0x3A) as usize,
+            read_u16_le(data, 0x3C) as usize,
+            read_u16_le(data, 0x3E) as usize,
+        )
+    } else {
+        (
+            read_u32_le(data, 0x20) as usize,
+            read_u16_le(data, 0x2E) as usize,
+            read_u16_le(data, 0x30) as usize,
+            read_u16_le(data, 0x32) as usize,
+        )
+    };
+    if shstrndx >= shnum || shoff + shnum * shentsize > data.len() {
+        return None;
+    }
+    let strtab_off = shoff + shstrndx * shentsize;
+    let strtab_sh_off = if is_64bit {
+        read_u64_le(data, strtab_off + 0x18) as usize
+    } else {
+        read_u32_le(data, strtab_off + 0x10) as usize
+    };
+    let strtab_sh_size = if is_64bit {
+        read_u64_le(data, strtab_off + 0x20) as usize
+    } else {
+        read_u32_le(data, strtab_off + 0x14) as usize
+    };
+    if strtab_sh_off + strtab_sh_size > data.len() {
+        return None;
+    }
+    let strtab = &data[strtab_sh_off..strtab_sh_off + strtab_sh_size];
+    for i in 0..shnum {
+        let off = shoff + i * shentsize;
+        let name_off = read_u32_le(data, off) as usize;
+        let name = if name_off < strtab.len() {
+            let end = strtab[name_off..]
+                .iter()
+                .position(|&b| b == 0)
+                .unwrap_or_default();
+            std::str::from_utf8(&strtab[name_off..name_off + end]).unwrap_or("")
+        } else {
+            ""
+        };
+        if name == ".text" {
+            let (sh_offset, sh_size) = if is_64bit {
+                (
+                    read_u64_le(data, off + 0x18) as usize,
+                    read_u64_le(data, off + 0x20) as usize,
+                )
+            } else {
+                (
+                    read_u32_le(data, off + 0x10) as usize,
+                    read_u32_le(data, off + 0x14) as usize,
+                )
+            };
+            if sh_offset + sh_size <= data.len() {
+                return Some((sh_offset, sh_size));
+            }
+        }
+    }
+    None
+}
+
+pub fn load_binary_hex(path: &str) -> Vec<String> {
+    use std::io::Read;
+    const MAX_SIZE: u64 = 10 * 1024 * 1024;
+    let mut file = match std::fs::File::open(path) {
+        Ok(f) => f,
+        Err(e) => return vec![format!("Error: cannot open file: {}", e)],
+    };
+    let file_size = match file.metadata() {
+        Ok(m) => m.len(),
+        Err(e) => return vec![format!("Error: cannot read metadata: {}", e)],
+    };
+    let read_size = file_size.min(MAX_SIZE) as usize;
+    let mut data = vec![0u8; read_size];
+    if file.read_exact(&mut data).is_err() {
+        return vec!["Error: cannot read file".to_string()];
+    }
+    let mut lines = Vec::new();
+    for (i, chunk) in data.chunks(16).enumerate() {
+        let addr = i * 16;
+        let mut hl = String::new();
+        let mut hr = String::new();
+        let mut asc = String::new();
+        for (j, &b) in chunk.iter().enumerate() {
+            if j < 8 {
+                if j > 0 {
+                    hl.push(' ');
+                }
+                hl.push_str(&format!("{:02x}", b));
+            } else {
+                if j > 8 {
+                    hr.push(' ');
+                }
+                hr.push_str(&format!("{:02x}", b));
+            }
+            asc.push(if b.is_ascii_graphic() || b == b' ' {
+                b as char
+            } else {
+                '.'
+            });
+        }
+        lines.push(format!("{:08X}  {:23}  {:23}  |{}|", addr, hl, hr, asc));
+    }
+    if file_size > MAX_SIZE {
+        lines.push(format!(
+            "... (file truncated to {} MB)",
+            MAX_SIZE / 1024 / 1024
+        ));
+    }
+    lines
+}
+
+pub fn load_binary_disasm(path: &str) -> Vec<String> {
+    use std::io::Read;
+    const MAX_SIZE: u64 = 10 * 1024 * 1024;
+    let mut file = match std::fs::File::open(path) {
+        Ok(f) => f,
+        Err(e) => return vec![format!("Error: cannot open file: {}", e)],
+    };
+    let file_size = match file.metadata() {
+        Ok(m) => m.len(),
+        Err(e) => return vec![format!("Error: cannot read metadata: {}", e)],
+    };
+    let read_size = file_size.min(MAX_SIZE) as usize;
+    let mut data = vec![0u8; read_size];
+    if file.read_exact(&mut data).is_err() {
+        return vec!["Error: cannot read file".to_string()];
+    }
+    let is_pe = data.starts_with(&[0x4D, 0x5A]);
+    let is_elf = data.starts_with(&[0x7f, 0x45, 0x4c, 0x46]);
+    let section = if is_pe {
+        find_pe_text_section(&data)
+    } else if is_elf {
+        find_elf_text_section(&data)
+    } else {
+        Some((0, read_size))
+    };
+    let (offset, size) = match section {
+        Some(s) => s,
+        None => return vec!["No executable code section found".to_string()],
+    };
+    let code_size = size.min(65536);
+    let code = &data[offset..offset + code_size];
+    let bitness: u32 = if is_pe {
+        let pe_off = read_u32_le(&data, 0x3C) as usize;
+        if pe_off + 4 + 20 + 2 <= data.len() && read_u16_le(&data, pe_off + 4 + 20) == 0x020B {
+            64
+        } else {
+            32
+        }
+    } else if is_elf && data[4] == 2 {
+        64
+    } else if is_elf {
+        32
+    } else {
+        64
+    };
+    let mut lines = Vec::new();
+    lines.push(format!("; Architecture: {}-bit", bitness));
+    lines.push(format!(
+        "; Section offset: 0x{:X}, size: {} bytes",
+        offset, size
+    ));
+    lines.push(format!("; Displaying {} bytes", code.len()));
+    lines.push(String::new());
+    let mut decoder =
+        iced_x86::Decoder::with_ip(bitness, code, offset as u64, iced_x86::DecoderOptions::NONE);
+    let mut formatter = iced_x86::IntelFormatter::new();
+    let mut output = String::new();
+    let mut instr = iced_x86::Instruction::default();
+    use iced_x86::Formatter;
+    let mut pos = 0usize;
+    while decoder.can_decode() {
+        decoder.decode_out(&mut instr);
+        output.clear();
+        formatter.format(&instr, &mut output);
+        let addr = instr.ip();
+        let len = instr.len() as usize;
+        let bytes_hex: String = code[pos..pos + len]
+            .iter()
+            .map(|b| format!("{:02X}", b))
+            .collect::<Vec<_>>()
+            .join(" ");
+        pos += len;
+        if bitness == 64 {
+            lines.push(format!("{:016X}  {:30}  {}", addr, bytes_hex, output));
+        } else {
+            lines.push(format!("{:08X}  {:30}  {}", addr, bytes_hex, output));
+        }
+    }
+    lines
 }

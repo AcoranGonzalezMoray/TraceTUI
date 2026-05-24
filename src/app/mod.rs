@@ -182,6 +182,13 @@ pub struct App {
     pub library_search_query: String,
     pub library_search_active: bool,
     pub library_risk_filter: Option<String>,
+    pub show_hash_info_modal: bool,
+    pub show_library_binary_viewer: bool,
+    pub library_binary_path: String,
+    pub library_binary_hex_lines: Vec<String>,
+    pub library_binary_disasm_lines: Vec<String>,
+    pub library_binary_scroll: usize,
+    pub library_binary_tab: usize,
     libraries_rx: Option<std::sync::mpsc::Receiver<Vec<crate::app::libraries::LibraryInfo>>>,
 }
 
@@ -342,6 +349,13 @@ impl App {
             library_search_query: String::new(),
             library_search_active: false,
             library_risk_filter: None,
+            show_hash_info_modal: false,
+            show_library_binary_viewer: false,
+            library_binary_path: String::new(),
+            library_binary_hex_lines: Vec::new(),
+            library_binary_disasm_lines: Vec::new(),
+            library_binary_scroll: 0,
+            library_binary_tab: 0,
         };
 
         #[cfg(not(test))]
@@ -449,9 +463,9 @@ impl App {
         let (tx, rx) = std::sync::mpsc::channel();
         let processes = self.processes.clone();
         let app_conns = self.app_connections.clone();
+        self.libraries.clear();
         std::thread::spawn(move || {
-            let libs = crate::app::libraries::inspect_libraries(&processes, &app_conns);
-            let _ = tx.send(libs);
+            crate::app::libraries::inspect_libraries_batched(&processes, &app_conns, tx);
         });
         self.libraries_rx = Some(rx);
         self.libraries_loading = true;

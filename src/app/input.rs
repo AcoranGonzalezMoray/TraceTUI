@@ -14,11 +14,13 @@ impl App {
             return;
         }
         self.current_nav_view = view;
+        self.needs_clear = true;
         self.show_container_logs_modal = false;
         self.show_container_console_modal = false;
         self.search_mode = false;
         self.continuous_refresh_counter = 0;
         if view == NavView::Main || view == NavView::TrendGraphs {
+            self.selected_action_index = 0;
             self.status_message = tr!(self.translator, "status.analysis_resumed").to_string();
             self.analysis_paused = false;
         } else {
@@ -40,8 +42,11 @@ impl App {
                 }
             }
         }
-        if view == NavView::LibraryInspection && !self.libraries_loaded_once {
-            self.refresh_libraries();
+        if view == NavView::LibraryInspection {
+            self.selected_action_index = 0;
+            if self.auto_analysis_complete {
+                self.refresh_libraries();
+            }
         }
     }
 
@@ -95,6 +100,14 @@ impl App {
         }
         if self.current_nav_view == NavView::Storage && self.show_file_viewer {
             self.handle_file_viewer_keys(key);
+            return;
+        }
+        if self.current_nav_view == NavView::LibraryInspection && self.show_hash_info_modal {
+            self.handle_library_hash_modal_keys(key);
+            return;
+        }
+        if self.current_nav_view == NavView::LibraryInspection && self.show_library_binary_viewer {
+            self.handle_library_binary_viewer_keys(key);
             return;
         }
         if self.current_nav_view == NavView::Storage {
@@ -729,6 +742,63 @@ impl App {
         self.docker_hub_create_rx = Some(rx);
     }
 
+    fn handle_library_hash_modal_keys(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Char('y') | KeyCode::Char('Y') | KeyCode::Enter => {
+                self.rehash_suspicious_libraries();
+                self.status_message = tr!(self.translator, "libraries.hash_computed").to_string();
+                self.show_hash_info_modal = false;
+            }
+            KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
+                self.show_hash_info_modal = false;
+            }
+            _ => {}
+        }
+    }
+    fn handle_library_binary_viewer_keys(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Up | KeyCode::Char('k') => {
+                self.library_binary_scroll = self.library_binary_scroll.saturating_sub(1);
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                let total = if self.library_binary_tab == 0 {
+                    self.library_binary_hex_lines.len()
+                } else {
+                    self.library_binary_disasm_lines.len()
+                };
+                self.library_binary_scroll = self
+                    .library_binary_scroll
+                    .saturating_add(1)
+                    .min(total.saturating_sub(1));
+            }
+            KeyCode::PageUp => {
+                self.library_binary_scroll = self.library_binary_scroll.saturating_sub(20);
+            }
+            KeyCode::PageDown => {
+                let total = if self.library_binary_tab == 0 {
+                    self.library_binary_hex_lines.len()
+                } else {
+                    self.library_binary_disasm_lines.len()
+                };
+                self.library_binary_scroll = self
+                    .library_binary_scroll
+                    .saturating_add(20)
+                    .min(total.saturating_sub(1));
+            }
+            KeyCode::Tab => {
+                self.library_binary_tab = (self.library_binary_tab + 1) % 2;
+                self.library_binary_scroll = 0;
+            }
+            KeyCode::BackTab => {
+                self.library_binary_tab = self.library_binary_tab.saturating_sub(1) % 2;
+                self.library_binary_scroll = 0;
+            }
+            KeyCode::Esc => {
+                self.show_library_binary_viewer = false;
+            }
+            _ => {}
+        }
+    }
     fn handle_libraries_keys(&mut self, key: KeyEvent) {
         if self.library_search_active {
             match key.code {
@@ -758,20 +828,40 @@ impl App {
                 self.sidebar_focus = match self.sidebar_focus {
                     SidebarFocus::Nav => SidebarFocus::Left,
                     SidebarFocus::Left => SidebarFocus::Center,
-                    SidebarFocus::Center => SidebarFocus::Nav,
-                    _ => SidebarFocus::Left,
+                    SidebarFocus::Center => SidebarFocus::Right,
+                    SidebarFocus::Right => SidebarFocus::Nav,
                 };
                 self.status_message = format!("Library focus: {:?}", self.sidebar_focus);
             }
             KeyCode::BackTab => {
                 self.sidebar_focus = match self.sidebar_focus {
-                    SidebarFocus::Nav => SidebarFocus::Center,
+                    SidebarFocus::Nav => SidebarFocus::Right,
                     SidebarFocus::Left => SidebarFocus::Nav,
                     SidebarFocus::Center => SidebarFocus::Left,
-                    _ => SidebarFocus::Nav,
+                    SidebarFocus::Right => SidebarFocus::Center,
                 };
             }
 
+            KeyCode::Up if self.sidebar_focus == SidebarFocus::Nav => {
+                let next = match self.current_nav_view {
+                    NavView::Main => NavView::Containers,
+                    NavView::TrendGraphs => NavView::Main,
+                    NavView::Storage => NavView::TrendGraphs,
+                    NavView::LibraryInspection => NavView::Storage,
+                    NavView::Containers => NavView::LibraryInspection,
+                };
+                self.switch_nav_view(next);
+            }
+            KeyCode::Down if self.sidebar_focus == SidebarFocus::Nav => {
+                let next = match self.current_nav_view {
+                    NavView::Main => NavView::TrendGraphs,
+                    NavView::TrendGraphs => NavView::Storage,
+                    NavView::Storage => NavView::LibraryInspection,
+                    NavView::LibraryInspection => NavView::Containers,
+                    NavView::Containers => NavView::Main,
+                };
+                self.switch_nav_view(next);
+            }
             KeyCode::Up if self.sidebar_focus == SidebarFocus::Left => {
                 if self.selected_library_process_index > 0 {
                     self.selected_library_process_index -= 1;
@@ -839,6 +929,20 @@ impl App {
                 self.selected_library_index = libs.len().saturating_sub(1);
             }
 
+            KeyCode::Up if self.sidebar_focus == SidebarFocus::Right => {
+                if self.selected_action_index > 0 {
+                    self.selected_action_index -= 1;
+                }
+            }
+            KeyCode::Down if self.sidebar_focus == SidebarFocus::Right => {
+                if self.selected_action_index + 1 < crate::app::libraries::LIBRARY_ACTION_COUNT {
+                    self.selected_action_index += 1;
+                }
+            }
+            KeyCode::Enter if self.sidebar_focus == SidebarFocus::Right => {
+                self.execute_library_action();
+            }
+
             KeyCode::Enter if self.sidebar_focus == SidebarFocus::Center => {
                 let libs = crate::app::ui::libraries::get_libs_for_selected_process(self);
                 if let Some(lib) = libs.get(self.selected_library_index) {
@@ -889,22 +993,12 @@ impl App {
             }
 
             KeyCode::Char('r') | KeyCode::Char('R') => {
-                self.libraries_loading = true;
-                let processes = self.processes.clone();
-                let connections = self.app_connections.clone();
-                let (tx, rx) = std::sync::mpsc::channel();
-                std::thread::spawn(move || {
-                    let libs = crate::app::libraries::inspect_libraries(&processes, &connections);
-                    let _ = tx.send(libs);
-                });
-                self.libraries_rx = Some(rx);
-                self.status_message = "Refreshing libraries...".to_string();
+                self.refresh_libraries();
             }
 
             KeyCode::Char('h') | KeyCode::Char('H') => {
-                self.rehash_suspicious_libraries();
-                self.status_message =
-                    "SHA-256 computed for suspicious/critical libraries.".to_string();
+                self.selected_action_index = 5;
+                self.execute_library_action();
             }
 
             KeyCode::Char('j') | KeyCode::Char('J') => {
@@ -926,6 +1020,11 @@ impl App {
             KeyCode::Char('m') | KeyCode::Char('M') => {
                 self.nav_sidebar_expanded = !self.nav_sidebar_expanded;
                 self.sidebar_focus = SidebarFocus::Nav;
+            }
+
+            KeyCode::Char('v') | KeyCode::Char('V') => {
+                self.selected_action_index = 6;
+                self.execute_library_action();
             }
 
             KeyCode::Char('l') | KeyCode::Char('L') => {
@@ -1838,6 +1937,15 @@ impl App {
         }
     }
     fn handle_mouse_scroll(&mut self, delta: i32) {
+        if self.current_nav_view == NavView::LibraryInspection && self.show_library_binary_viewer {
+            let max = if self.library_binary_tab == 0 {
+                self.library_binary_hex_lines.len().saturating_sub(1)
+            } else {
+                self.library_binary_disasm_lines.len().saturating_sub(1)
+            };
+            self.library_binary_scroll = apply_scroll(self.library_binary_scroll, delta, max);
+            return;
+        }
         if self.current_nav_view == NavView::Storage && self.show_file_viewer {
             let max = self.file_viewer_content.len().saturating_sub(1);
             self.file_viewer_scroll = apply_scroll(self.file_viewer_scroll, delta, max);
@@ -1877,6 +1985,15 @@ impl App {
                 } else if self.current_nav_view == NavView::Storage {
                     let max = self.disks.len().saturating_sub(1);
                     self.selected_disk_index = apply_scroll(self.selected_disk_index, delta, max);
+                } else if self.current_nav_view == NavView::LibraryInspection {
+                    let groups = self.group_libs_by_process();
+                    let max = groups.len().saturating_sub(1);
+                    if apply_scroll_bool(self.selected_library_process_index, delta, max) {
+                        self.selected_library_process_index =
+                            apply_scroll(self.selected_library_process_index, delta, max);
+                        self.selected_library_index = 0;
+                        self.library_lib_scroll = 0;
+                    }
                 } else if self.investigation_report.is_none() && !self.is_investigating {
                     let max = self.get_filtered_apps().len().saturating_sub(1);
                     if apply_scroll_bool(self.selected_app_index, delta, max) {
@@ -1899,6 +2016,11 @@ impl App {
                 } else if self.current_nav_view == NavView::Storage {
                     let max = self.file_entries.len().saturating_sub(1);
                     self.file_scroll = apply_scroll(self.file_scroll, delta, max);
+                } else if self.current_nav_view == NavView::LibraryInspection {
+                    let libs = crate::app::ui::libraries::get_libs_for_selected_process(self);
+                    let max = libs.len().saturating_sub(1);
+                    self.selected_library_index =
+                        apply_scroll(self.selected_library_index, delta, max);
                 } else if self.investigation_report.is_none() && !self.is_investigating {
                     if let Some(app) = self.get_selected_app() {
                         let max = app.connections.len().saturating_sub(1);
@@ -1913,6 +2035,10 @@ impl App {
                         crate::app::containers::CONTAINER_RIGHT_ACTION_COUNT.saturating_sub(1);
                     self.selected_container_action_index =
                         apply_scroll(self.selected_container_action_index, delta, max);
+                } else if self.current_nav_view == NavView::LibraryInspection {
+                    let max = crate::app::libraries::LIBRARY_ACTION_COUNT.saturating_sub(1);
+                    self.selected_action_index =
+                        apply_scroll(self.selected_action_index, delta, max);
                 } else if self.current_nav_view == NavView::Storage {
                 } else {
                     let max = config::ACTION_COUNT;
@@ -2029,6 +2155,74 @@ impl App {
             }
             8 => {
                 self.show_language_modal = true;
+            }
+            _ => {}
+        }
+    }
+    pub fn execute_library_action(&mut self) {
+        match self.selected_action_index {
+            0 => self.refresh_libraries(),
+            1 => {
+                self.library_risk_filter = match self.library_risk_filter.as_deref() {
+                    None => Some("Critical".to_string()),
+                    Some("Critical") => Some("Suspicious".to_string()),
+                    Some("Suspicious") => None,
+                    _ => None,
+                };
+                self.selected_library_index = 0;
+                self.library_lib_scroll = 0;
+                let label = match self.library_risk_filter.as_deref() {
+                    Some(f) => format!("Filter: {}", f),
+                    None => "Filter: All".to_string(),
+                };
+                self.status_message = label;
+            }
+            2 => {
+                let libs = crate::app::ui::libraries::get_libs_for_selected_process(self);
+                if let Some(lib) = libs.get(self.selected_library_index) {
+                    let path = lib.path.clone();
+                    match arboard::Clipboard::new() {
+                        Ok(mut clipboard) => match clipboard.set_text(&path) {
+                            Ok(_) => {
+                                self.status_message = format!("Copied to clipboard: {}", path);
+                            }
+                            Err(e) => {
+                                self.status_message = format!("Clipboard error: {}", e);
+                            }
+                        },
+                        Err(e) => {
+                            self.status_message = format!("Clipboard unavailable: {}", e);
+                        }
+                    }
+                }
+            }
+            3 => {
+                let sq = self.library_search_query.clone();
+                let rf = self.library_risk_filter.clone();
+                self.export_libraries_with_filter("json", &sq, rf.as_deref());
+            }
+            4 => {
+                let sq = self.library_search_query.clone();
+                let rf = self.library_risk_filter.clone();
+                self.export_libraries_with_filter("csv", &sq, rf.as_deref());
+            }
+            5 => {
+                self.show_hash_info_modal = true;
+            }
+            6 => {
+                let libs = crate::app::ui::libraries::get_libs_for_selected_process(self);
+                if let Some(lib) = libs.get(self.selected_library_index) {
+                    let path = lib.path.clone();
+                    self.library_binary_path = path.clone();
+                    self.library_binary_hex_lines = crate::app::libraries::load_binary_hex(&path);
+                    self.library_binary_disasm_lines =
+                        crate::app::libraries::load_binary_disasm(&path);
+                    self.library_binary_scroll = 0;
+                    self.library_binary_tab = 0;
+                    self.show_library_binary_viewer = true;
+                } else {
+                    self.status_message = "No library selected.".to_string();
+                }
             }
             _ => {}
         }

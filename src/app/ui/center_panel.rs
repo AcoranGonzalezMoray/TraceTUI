@@ -50,6 +50,9 @@ pub fn render_center_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
         render_investigation_report(f, app, repo, area, border_color);
         return;
     }
+    if area.height < 10 || area.width < 30 {
+        return;
+    }
     if let Some(selected_app) = app.get_selected_app() {
         let sections = Layout::default()
             .direction(Direction::Vertical)
@@ -824,9 +827,9 @@ fn render_process_info_section(
     let gauge_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),
-            Constraint::Length(3),
-            Constraint::Length(3),
+            Constraint::Length(2),
+            Constraint::Length(2),
+            Constraint::Length(2),
         ])
         .split(top_chunks[1]);
     let cpu_ratio = (selected_app.cpu_usage as f64 / 100.0).clamp(0.0, 1.0);
@@ -1005,10 +1008,13 @@ fn render_risk_barchart(
         })
         .collect();
 
+    let bar_count = bars.len().max(1) as u16;
+    let bar_width =
+        ((inner.width.saturating_sub(bar_count.saturating_sub(1))) / bar_count).clamp(3, 20);
     let bar_chart = BarChart::default()
         .data(BarGroup::default().bars(&bars))
         .bar_gap(1)
-        .bar_width(14)
+        .bar_width(bar_width)
         .max(100);
     f.render_widget(bar_chart, inner);
 }

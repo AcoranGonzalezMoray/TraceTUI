@@ -36,7 +36,9 @@ pub use dialogs::render_welcome_dialog;
 pub use firewall::render_firewall_mode;
 pub use footer::render_footer;
 pub use header::render_header;
-pub use libraries::render_libraries_view;
+pub use libraries::{
+    render_libraries_view, render_library_binary_viewer, render_library_hash_modal,
+};
 pub use nav_sidebar::render_nav_sidebar;
 pub use sidebar_left::render_left_sidebar;
 pub use sidebar_right::render_right_sidebar;
@@ -330,6 +332,12 @@ pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
     }
     if app.current_nav_view == NavView::Containers && app.show_docker_hub_modal {
         render_docker_hub_modal(f, app);
+    }
+    if app.current_nav_view == NavView::LibraryInspection && app.show_hash_info_modal {
+        render_library_hash_modal(f, app);
+    }
+    if app.current_nav_view == NavView::LibraryInspection && app.show_library_binary_viewer {
+        render_library_binary_viewer(f, app);
     }
 }
 fn render_search_bar(f: &mut ratatui::Frame, app: &App, area: Rect) {

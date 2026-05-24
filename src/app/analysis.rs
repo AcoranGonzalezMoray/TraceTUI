@@ -59,13 +59,6 @@ impl App {
         {
             self.refresh_containers_async();
         }
-        if self.current_nav_view == crate::app::NavView::LibraryInspection
-            && self.auto_analysis_complete
-            && (!self.libraries_loaded_once && !self.libraries_loading
-                || self.frame_count % 120 == 0)
-        {
-            self.refresh_libraries();
-        }
         if self.auto_analysis_complete
             && !self.analysis_paused
             && (self.current_nav_view == crate::app::NavView::Main
@@ -239,6 +232,9 @@ impl App {
                 self.is_initial_loading = false;
                 let is_background = self.auto_analysis_complete;
                 self.auto_analysis_complete = true;
+                if self.current_nav_view == crate::app::NavView::LibraryInspection {
+                    self.refresh_libraries();
+                }
                 if is_background {
                     for app_conn in &mut self.app_connections {
                         if app_conn.icon.is_empty() {

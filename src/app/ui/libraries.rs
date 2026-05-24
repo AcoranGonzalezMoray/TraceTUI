@@ -1,37 +1,58 @@
 use super::theme::THEME;
+use super::widgets;
 use crate::app::libraries::{LibraryInfo, LibraryOrigin, SignatureStatus};
-use crate::app::App;
+use crate::app::{App, NavView, SidebarFocus};
+use crate::config;
 use crate::tr;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Table},
+    widgets::{
+        Block, BorderType, Borders, Cell, Clear, List, ListItem, ListState, Paragraph, Row, Table,
+    },
 };
 
 pub fn render_libraries_view(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    if app.libraries_loading {
+    if app.libraries_loading && app.libraries.is_empty() {
         render_loading(f, app, area);
         return;
     }
 
+    let search_bar_height = if app.library_search_active { 3 } else { 0 };
+
     let rows = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(3), Constraint::Min(0)])
+        .constraints([
+            Constraint::Length(search_bar_height),
+            Constraint::Min(0),
+            Constraint::Length(7),
+        ])
         .split(area);
 
-    render_search_bar(f, app, rows[0]);
+    if app.library_search_active {
+        render_library_search_bar(f, app, rows[0]);
+    }
 
     let cols = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Ratio(1, 4), Constraint::Ratio(3, 4)])
+        .constraints([
+            Constraint::Ratio(1, 5),
+            Constraint::Ratio(3, 5),
+            Constraint::Ratio(1, 5),
+        ])
         .split(rows[1]);
 
     render_process_list(f, app, cols[0]);
-    render_library_right_panel(f, app, cols[1]);
+    render_library_table(f, app, cols[1]);
+    render_library_actions_panel(f, app, cols[2]);
+    render_selected_library_info(f, app, rows[2]);
 }
 
 fn render_loading(f: &mut ratatui::Frame, app: &App, area: Rect) {
+    let spinners = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+    let s = spinners[(app.frame_count as usize) % spinners.len()];
+
     let block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
@@ -45,77 +66,86 @@ fn render_loading(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let inner = block.inner(area);
     f.render_widget(block, area);
     f.render_widget(
-        Paragraph::new(tr!(app.translator, "libraries.loading"))
-            .alignment(Alignment::Center)
-            .style(Style::default().fg(THEME.text_dim)),
+        Paragraph::new(Line::from(vec![
+            Span::styled(" ", Style::default()),
+            Span::styled(
+                s,
+                Style::default()
+                    .fg(THEME.warning)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!(" {}", tr!(app.translator, "libraries.loading")),
+                Style::default()
+                    .fg(THEME.warning)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        ]))
+        .alignment(Alignment::Center),
         inner,
     );
 }
 
-fn render_search_bar(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let is_searching = app.library_search_active;
-    let border_color = if is_searching {
-        THEME.primary
+fn render_library_search_bar(f: &mut ratatui::Frame, app: &App, area: Rect) {
+    let margin = 30;
+    let h_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage(margin),
+            Constraint::Min(20),
+            Constraint::Percentage(margin),
+        ])
+        .split(area);
+    let search_area = h_chunks[1];
+
+    let count = get_libs_for_selected_process(app).len();
+    let cursor = if app.frame_count.is_multiple_of(2) {
+        "█"
     } else {
-        THEME.secondary
-    };
-    let border_type = if is_searching {
-        BorderType::Thick
-    } else {
-        BorderType::Rounded
+        " "
     };
 
-    let filter_tag = match app.library_risk_filter.as_deref() {
-        Some("Critical") => "  [Filter: CRITICAL]",
-        Some("Suspicious") => "  [Filter: SUSPICIOUS]",
-        _ => "",
-    };
-
-    let total = app.libraries.len();
-    let shown = get_libs_for_selected_process(app).len();
-    let stats = format!("  {}/{} libs{}", shown, total, filter_tag);
+    let search_line = Line::from(vec![
+        Span::styled(
+            " 󰅩 SEARCH ",
+            Style::default()
+                .fg(THEME.background)
+                .bg(THEME.primary)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(" ", Style::default()),
+        Span::styled(
+            &app.library_search_query,
+            Style::default()
+                .fg(THEME.text_main)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(cursor, Style::default().fg(THEME.primary)),
+        Span::styled(
+            format!("  ({})", count),
+            Style::default().fg(if count > 0 {
+                THEME.success
+            } else {
+                THEME.danger
+            }),
+        ),
+    ]);
 
     let block = Block::default()
         .borders(Borders::ALL)
-        .border_type(border_type)
-        .border_style(Style::default().fg(border_color))
-        .title(Span::styled(
-            format!(
-                " {} | [/] Search  [F] Filter Risk  [J/C] Export JSON/CSV  [H] Hash{}",
-                tr!(app.translator, "libraries.title"),
-                stats
-            ),
-            Style::default()
-                .fg(THEME.primary)
-                .add_modifier(Modifier::BOLD),
-        ));
-
-    let inner = block.inner(area);
-    f.render_widget(block, area);
-
-    let search_display = if app.library_search_query.is_empty() {
-        if is_searching {
-            "Type to search libraries...".to_string()
-        } else {
-            "Press [/] to search".to_string()
-        }
-    } else {
-        format!("Search: {}", app.library_search_query)
-    };
-
-    let style = if is_searching {
-        Style::default().fg(THEME.text_main)
-    } else {
-        Style::default().fg(THEME.text_dim)
-    };
-
-    f.render_widget(Paragraph::new(search_display).style(style), inner);
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(THEME.primary))
+        .style(Style::default().bg(ratatui::style::Color::Reset));
+    let search_widget = Paragraph::new(search_line).block(block);
+    f.render_widget(search_widget, search_area);
 }
 
 fn render_process_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let is_focused = app.sidebar_focus == crate::app::SidebarFocus::Left
-        && app.current_nav_view == crate::app::NavView::LibraryInspection;
-    let border_color = if is_focused {
+    let is_focused = app.sidebar_focus == SidebarFocus::Left
+        && app.current_nav_view == NavView::LibraryInspection;
+    let border_color = if app.libraries_loading {
+        THEME.warning
+    } else if is_focused {
         THEME.primary
     } else {
         THEME.secondary
@@ -126,11 +156,32 @@ fn render_process_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
         BorderType::Rounded
     };
 
+    let title_color = if app.libraries_loading {
+        THEME.warning
+    } else {
+        THEME.primary
+    };
+    let spinners = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+    let spinner_char = spinners[(app.frame_count as usize) % spinners.len()];
+    let loading_suffix = if app.libraries_loading {
+        format!(
+            " ({} {})",
+            spinner_char,
+            tr!(app.translator, "libraries.loading_libs")
+        )
+    } else {
+        String::new()
+    };
+
     let block = Block::default()
         .title(Span::styled(
-            format!(" {} ", tr!(app.translator, "libraries.processes")),
+            format!(
+                " {}{} ",
+                tr!(app.translator, "libraries.processes"),
+                loading_suffix
+            ),
             Style::default()
-                .fg(THEME.primary)
+                .fg(title_color)
                 .add_modifier(Modifier::BOLD),
         ))
         .borders(Borders::ALL)
@@ -142,12 +193,26 @@ fn render_process_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     let groups = group_by_process(app);
     if groups.is_empty() {
-        f.render_widget(
-            Paragraph::new(tr!(app.translator, "libraries.no_data"))
-                .alignment(Alignment::Center)
-                .style(Style::default().fg(THEME.text_dim)),
-            inner,
-        );
+        let msg = if app.libraries_loading {
+            Line::from(vec![
+                Span::styled(
+                    spinner_char,
+                    Style::default()
+                        .fg(THEME.warning)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    format!(" {}", tr!(app.translator, "libraries.loading_libs")),
+                    Style::default().fg(THEME.text_dim),
+                ),
+            ])
+        } else {
+            Line::from(Span::styled(
+                tr!(app.translator, "libraries.no_data"),
+                Style::default().fg(THEME.text_dim),
+            ))
+        };
+        f.render_widget(Paragraph::new(msg).alignment(Alignment::Center), inner);
         return;
     }
 
@@ -158,9 +223,18 @@ fn render_process_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let risk_map = build_risk_map(app);
 
     let mut rows: Vec<Row> = vec![Row::new(vec![
-        Cell::from(Span::styled("Process", header_style)),
-        Cell::from(Span::styled("Libs", header_style)),
-        Cell::from(Span::styled("!", header_style)),
+        Cell::from(Span::styled(
+            tr!(app.translator, "libraries.column_process"),
+            header_style,
+        )),
+        Cell::from(Span::styled(
+            tr!(app.translator, "libraries.column_libs"),
+            header_style,
+        )),
+        Cell::from(Span::styled(
+            tr!(app.translator, "libraries.column_risk"),
+            header_style,
+        )),
     ])];
 
     for (i, (pname, pcount)) in groups.iter().enumerate() {
@@ -213,21 +287,11 @@ fn render_process_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
             [
                 Constraint::Min(10),
                 Constraint::Length(5),
-                Constraint::Length(3),
+                Constraint::Length(5),
             ],
         ),
         inner,
     );
-}
-
-fn render_library_right_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Min(0), Constraint::Length(10)])
-        .split(area);
-
-    render_library_table(f, app, chunks[0]);
-    render_selected_library_info(f, app, chunks[1]);
 }
 
 fn render_library_table(f: &mut ratatui::Frame, app: &App, area: Rect) {
@@ -261,9 +325,9 @@ fn render_library_table(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let libs = get_libs_for_selected_process(app);
     if libs.is_empty() {
         let msg = if !app.library_search_query.is_empty() || app.library_risk_filter.is_some() {
-            "No libraries match current filter"
+            tr!(app.translator, "libraries.filter_none")
         } else {
-            "No libraries found for this process"
+            tr!(app.translator, "libraries.filter_none_proc")
         };
         f.render_widget(
             Paragraph::new(msg)
@@ -287,8 +351,14 @@ fn render_library_table(f: &mut ratatui::Frame, app: &App, area: Rect) {
             tr!(app.translator, "libraries.size"),
             header_style,
         )),
-        Cell::from(Span::styled("Origin", header_style)),
-        Cell::from(Span::styled("Sign", header_style)),
+        Cell::from(Span::styled(
+            tr!(app.translator, "libraries.origin"),
+            header_style,
+        )),
+        Cell::from(Span::styled(
+            tr!(app.translator, "libraries.sign"),
+            header_style,
+        )),
         Cell::from(Span::styled(
             tr!(app.translator, "libraries.risk"),
             header_style,
@@ -307,17 +377,18 @@ fn render_library_table(f: &mut ratatui::Frame, app: &App, area: Rect) {
             lib.name.clone()
         };
 
-        let base_style = if selected {
+        let row_style = if selected {
             Style::default()
-                .fg(THEME.primary)
-                .add_modifier(Modifier::REVERSED)
+                .fg(THEME.background)
+                .bg(THEME.primary)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default().fg(THEME.text_main)
         };
 
-        let risk_style = risk_color_style(lib);
-        let sign_style = signature_color_style(lib);
-        let origin_style = origin_color_style(lib);
+        let _risk_style = risk_color_style(lib);
+        let _sign_style = signature_color_style(lib);
+        let _origin_style = origin_color_style(lib);
 
         let size_str = format_size(lib.size);
         let risk_label = risk_display_label(app, lib);
@@ -325,11 +396,11 @@ fn render_library_table(f: &mut ratatui::Frame, app: &App, area: Rect) {
         let origin_label = lib.origin.as_str();
 
         rows.push(Row::new(vec![
-            Cell::from(Span::styled(truncate_str(&name_display, 30), base_style)),
-            Cell::from(Span::styled(size_str, Style::default().fg(THEME.text_dim))),
-            Cell::from(Span::styled(origin_label, origin_style)),
-            Cell::from(Span::styled(sign_label, sign_style)),
-            Cell::from(Span::styled(risk_label, risk_style)),
+            Cell::from(Span::styled(truncate_str(&name_display, 30), row_style)),
+            Cell::from(Span::styled(size_str, row_style)),
+            Cell::from(Span::styled(origin_label, row_style)),
+            Cell::from(Span::styled(sign_label, row_style)),
+            Cell::from(Span::styled(risk_label, row_style)),
         ]));
     }
 
@@ -350,6 +421,130 @@ fn render_library_table(f: &mut ratatui::Frame, app: &App, area: Rect) {
         ),
         inner,
     );
+}
+
+fn render_library_actions_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
+    let is_focused = app.sidebar_focus == SidebarFocus::Right
+        && app.current_nav_view == NavView::LibraryInspection;
+    let border_color = if is_focused {
+        THEME.primary
+    } else {
+        THEME.secondary
+    };
+    let border_type = if is_focused {
+        BorderType::Thick
+    } else {
+        BorderType::Rounded
+    };
+
+    let t = &app.translator;
+    let actions: Vec<(&str, String, &str, ratatui::style::Color)> = vec![
+        (
+            "󰑐",
+            tr!(t, "libraries.action_refresh").to_string(),
+            "R",
+            THEME.primary,
+        ),
+        (
+            "󰒓",
+            tr!(t, "libraries.action_filter").to_string(),
+            "F",
+            THEME.warning,
+        ),
+        (
+            "󰅍",
+            tr!(t, "libraries.action_copy").to_string(),
+            "Enter",
+            THEME.secondary,
+        ),
+        (
+            "󰒈",
+            tr!(t, "libraries.action_export_json").to_string(),
+            "J",
+            THEME.secondary,
+        ),
+        (
+            "󰈸",
+            tr!(t, "libraries.action_export_csv").to_string(),
+            "C",
+            THEME.secondary,
+        ),
+        (
+            "󰄉",
+            tr!(t, "libraries.action_hash").to_string(),
+            "H",
+            THEME.accent,
+        ),
+        (
+            "󰈔",
+            tr!(t, "libraries.action_view_binary").to_string(),
+            "V",
+            THEME.primary,
+        ),
+    ];
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(format!(" 󰬒 {} ", tr!(&app.translator, "actions.title")))
+        .title_style(
+            Style::default()
+                .fg(border_color)
+                .add_modifier(Modifier::BOLD),
+        )
+        .border_style(Style::default().fg(border_color))
+        .border_type(border_type);
+    f.render_widget(block.clone(), area);
+
+    let inner_area = block.inner(area);
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Min(0),
+            Constraint::Length(config::SCROLLBAR_WIDTH),
+        ])
+        .split(inner_area);
+    let list_area = chunks[0];
+    let scrollbar_area = chunks[1];
+
+    let items: Vec<ListItem> = actions
+        .iter()
+        .enumerate()
+        .map(|(i, (icon, title, key, color))| {
+            let is_selected = i == app.selected_action_index;
+            let prefix = if is_selected { " ▎" } else { "  " };
+            let prefix_style = if is_selected {
+                Style::default().fg(THEME.primary)
+            } else {
+                Style::default()
+            };
+            let title_style = if is_selected {
+                Style::default()
+                    .fg(THEME.background)
+                    .bg(THEME.primary)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(THEME.text_main)
+            };
+            let content = vec![
+                Line::from(vec![
+                    Span::styled(prefix, prefix_style),
+                    Span::styled(format!(" {} ", icon), Style::default().fg(*color)),
+                    Span::styled(title.as_str(), title_style),
+                ]),
+                Line::from(vec![
+                    Span::raw("    "),
+                    Span::styled(format!("[ {} ]", key), Style::default().fg(THEME.text_dim)),
+                ]),
+            ];
+            ListItem::new(content)
+        })
+        .collect();
+
+    let mut list_state = ListState::default();
+    list_state.select(Some(app.selected_action_index));
+    let list = List::new(items).block(Block::default());
+    f.render_stateful_widget(list, list_area, &mut list_state);
+    widgets::render_scrollbar(f, scrollbar_area, actions.len(), app.selected_action_index);
 }
 
 fn render_selected_library_info(f: &mut ratatui::Frame, app: &App, area: Rect) {
@@ -376,7 +571,7 @@ fn render_selected_library_info(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
         let hash_display = if l.sha256.is_empty() {
             Span::styled(
-                "(not computed — press H)",
+                tr!(app.translator, "libraries.hash_not_computed"),
                 Style::default().fg(THEME.text_dim),
             )
         } else {
@@ -388,7 +583,7 @@ fn render_selected_library_info(f: &mut ratatui::Frame, app: &App, area: Rect) {
         vec![
             Line::from(vec![
                 Span::styled(
-                    " Name:  ",
+                    tr!(app.translator, "libraries.detail_name"),
                     Style::default()
                         .fg(THEME.secondary)
                         .add_modifier(Modifier::BOLD),
@@ -407,7 +602,7 @@ fn render_selected_library_info(f: &mut ratatui::Frame, app: &App, area: Rect) {
             ]),
             Line::from(vec![
                 Span::styled(
-                    " Path:  ",
+                    tr!(app.translator, "libraries.detail_path"),
                     Style::default()
                         .fg(THEME.secondary)
                         .add_modifier(Modifier::BOLD),
@@ -419,7 +614,7 @@ fn render_selected_library_info(f: &mut ratatui::Frame, app: &App, area: Rect) {
             ]),
             Line::from(vec![
                 Span::styled(
-                    " Size:  ",
+                    tr!(app.translator, "libraries.detail_size"),
                     Style::default()
                         .fg(THEME.secondary)
                         .add_modifier(Modifier::BOLD),
@@ -427,7 +622,7 @@ fn render_selected_library_info(f: &mut ratatui::Frame, app: &App, area: Rect) {
                 Span::styled(size_str, Style::default().fg(THEME.text_main)),
                 Span::raw("   "),
                 Span::styled(
-                    "Origin: ",
+                    tr!(app.translator, "libraries.detail_origin"),
                     Style::default()
                         .fg(THEME.secondary)
                         .add_modifier(Modifier::BOLD),
@@ -435,7 +630,7 @@ fn render_selected_library_info(f: &mut ratatui::Frame, app: &App, area: Rect) {
                 Span::styled(l.origin.as_str(), origin_style),
                 Span::raw("   "),
                 Span::styled(
-                    "Sign: ",
+                    tr!(app.translator, "libraries.detail_sign"),
                     Style::default()
                         .fg(THEME.secondary)
                         .add_modifier(Modifier::BOLD),
@@ -444,7 +639,7 @@ fn render_selected_library_info(f: &mut ratatui::Frame, app: &App, area: Rect) {
             ]),
             Line::from(vec![
                 Span::styled(
-                    " PID:   ",
+                    tr!(app.translator, "libraries.detail_pid"),
                     Style::default()
                         .fg(THEME.secondary)
                         .add_modifier(Modifier::BOLD),
@@ -456,7 +651,7 @@ fn render_selected_library_info(f: &mut ratatui::Frame, app: &App, area: Rect) {
             ]),
             Line::from(vec![
                 Span::styled(
-                    " Hash:  ",
+                    tr!(app.translator, "libraries.detail_hash"),
                     Style::default()
                         .fg(THEME.secondary)
                         .add_modifier(Modifier::BOLD),
@@ -464,7 +659,7 @@ fn render_selected_library_info(f: &mut ratatui::Frame, app: &App, area: Rect) {
                 hash_display,
             ]),
             Line::from(vec![Span::styled(
-                " [Enter] Copy path   [H] Compute hash   [J] Export JSON   [C] Export CSV",
+                tr!(app.translator, "libraries.hint_actions"),
                 Style::default().fg(THEME.text_dim),
             )]),
         ]
@@ -593,5 +788,201 @@ fn truncate_str(s: &str, max: usize) -> String {
         chars[..end].iter().collect::<String>() + "…"
     } else {
         s.to_string()
+    }
+}
+
+pub fn render_library_hash_modal(f: &mut ratatui::Frame, app: &App) {
+    let popup_area = Rect {
+        x: f.area().width / 5,
+        y: f.area().height / 3,
+        width: f.area().width * 3 / 5,
+        height: 13,
+    };
+    let t = &app.translator;
+    let dialog = vec![
+        Line::from(""),
+        Line::from(vec![Span::styled(
+            format!("  󰄉  {} ", tr!(t, "libraries.hash_modal_title")),
+            Style::default()
+                .fg(THEME.warning)
+                .add_modifier(Modifier::BOLD),
+        )]),
+        Line::from(""),
+        Line::from(vec![Span::styled(
+            format!("  {} ", tr!(t, "libraries.hash_modal_desc1")),
+            Style::default().fg(THEME.text_main),
+        )]),
+        Line::from(vec![Span::styled(
+            format!("  {} ", tr!(t, "libraries.hash_modal_desc2")),
+            Style::default().fg(THEME.text_main),
+        )]),
+        Line::from(vec![Span::styled(
+            format!("  {} ", tr!(t, "libraries.hash_modal_desc3")),
+            Style::default().fg(THEME.text_main),
+        )]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("   ", Style::default()),
+            Span::styled(
+                format!(" {} ", tr!(t, "libraries.hash_modal_continue")),
+                Style::default()
+                    .fg(THEME.background)
+                    .bg(THEME.success)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("  [Enter]  ", Style::default().fg(THEME.text_dim)),
+            Span::styled(
+                format!(" {} ", tr!(t, "libraries.hash_modal_cancel")),
+                Style::default()
+                    .fg(THEME.background)
+                    .bg(THEME.danger)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("  [Esc]", Style::default().fg(THEME.text_dim)),
+        ]),
+    ];
+    let p = Paragraph::new(dialog)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(format!(" 󰄉 {} ", tr!(t, "libraries.hash_modal_title")))
+                .title_style(
+                    Style::default()
+                        .fg(THEME.warning)
+                        .add_modifier(Modifier::BOLD),
+                )
+                .border_style(Style::default().fg(THEME.warning))
+                .border_type(BorderType::Thick),
+        )
+        .style(Style::default())
+        .alignment(Alignment::Left);
+    f.render_widget(Clear, popup_area);
+    f.render_widget(p, popup_area);
+}
+
+pub fn render_library_binary_viewer(f: &mut ratatui::Frame, app: &App) {
+    let popup_area = Rect {
+        x: f.area().width / 10,
+        y: f.area().height / 10,
+        width: f.area().width * 8 / 10,
+        height: f.area().height * 8 / 10,
+    };
+    f.render_widget(Clear, popup_area);
+
+    let t = &app.translator;
+    let tab_labels = [
+        ("󰈔", tr!(t, "libraries.binary_viewer_hex")),
+        ("󰌠", tr!(t, "libraries.binary_viewer_disasm")),
+    ];
+    let mut title_spans = vec![Span::raw(" ")];
+    for (i, (icon, label)) in tab_labels.iter().enumerate() {
+        let active = i == app.library_binary_tab;
+        if i > 0 {
+            title_spans.push(Span::raw("  "));
+        }
+        title_spans.push(Span::styled(
+            if active {
+                format!("▎[{}] {} ", icon, label)
+            } else {
+                format!(" [{}] {} ", icon, label)
+            },
+            if active {
+                Style::default()
+                    .fg(THEME.background)
+                    .bg(THEME.primary)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(THEME.text_dim)
+            },
+        ));
+    }
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Thick)
+        .border_style(Style::default().fg(THEME.primary))
+        .title(Line::from(title_spans))
+        .title_style(Style::default().fg(THEME.primary));
+    let inner = block.inner(popup_area);
+    f.render_widget(block, popup_area);
+
+    let lines = if app.library_binary_tab == 0 {
+        &app.library_binary_hex_lines
+    } else {
+        &app.library_binary_disasm_lines
+    };
+
+    if lines.is_empty() {
+        f.render_widget(
+            Paragraph::new("No data")
+                .style(Style::default().fg(THEME.text_dim))
+                .alignment(Alignment::Center),
+            inner,
+        );
+        return;
+    }
+
+    let total = lines.len();
+    let visible_height = inner.height.saturating_sub(2) as usize;
+    let scroll = app
+        .library_binary_scroll
+        .min(total.saturating_sub(visible_height).max(0));
+
+    let mut rendered = Vec::with_capacity(visible_height + 2);
+    rendered.push(Line::from(vec![Span::styled(
+        format!(" {} ({}) ", tr!(t, "libraries.binary_viewer_scroll"), total),
+        Style::default().fg(THEME.background).bg(THEME.primary),
+    )]));
+
+    for i in scroll..(scroll + visible_height).min(total) {
+        if let Some(line) = lines.get(i) {
+            if app.library_binary_tab == 0 {
+                rendered.push(Line::from(Span::styled(
+                    line.clone(),
+                    Style::default().fg(THEME.text_main),
+                )));
+            } else {
+                if line.starts_with(';') {
+                    rendered.push(Line::from(Span::styled(
+                        line.clone(),
+                        Style::default()
+                            .fg(THEME.text_dim)
+                            .add_modifier(Modifier::ITALIC),
+                    )));
+                } else if line.contains("  ret ")
+                    || line.contains("  jmp ")
+                    || line.contains("  call ")
+                {
+                    rendered.push(Line::from(Span::styled(
+                        line.clone(),
+                        Style::default().fg(THEME.primary),
+                    )));
+                } else {
+                    rendered.push(Line::from(Span::styled(
+                        line.clone(),
+                        Style::default().fg(THEME.text_main),
+                    )));
+                }
+            }
+        }
+    }
+
+    f.render_widget(Paragraph::new(rendered).style(Style::default()), inner);
+
+    if total > visible_height {
+        let scrollbar = ratatui::widgets::Scrollbar::default()
+            .orientation(ratatui::widgets::ScrollbarOrientation::VerticalRight)
+            .track_symbol(Some("│"))
+            .thumb_symbol("█")
+            .style(Style::default().fg(THEME.primary));
+        let mut scrollbar_state = ratatui::widgets::ScrollbarState::new(total).position(scroll);
+        f.render_stateful_widget(
+            scrollbar,
+            inner.inner(ratatui::layout::Margin {
+                vertical: 1,
+                horizontal: 0,
+            }),
+            &mut scrollbar_state,
+        );
     }
 }

@@ -332,12 +332,7 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
         sort_str
     );
     let header_path = Paragraph::new(path_str)
-        .style(
-            Style::default()
-                .fg(THEME.text_main)
-                .bg(THEME.secondary)
-                .dim(),
-        )
+        .style(Style::default().fg(THEME.background).bg(THEME.primary))
         .alignment(Alignment::Left);
 
     if inner.height > 2 {
@@ -610,7 +605,7 @@ fn styled_block_storage<'a>(
 }
 
 pub fn render_file_viewer_modal(f: &mut ratatui::Frame, app: &App) {
-    let area = centered_rect(f.area(), 85, 85);
+    let area = centered_rect(f.area(), 70, 60);
     f.render_widget(Clear, area);
 
     let path = app.current_directory.join(
@@ -658,7 +653,7 @@ pub fn render_file_viewer_modal(f: &mut ratatui::Frame, app: &App) {
         Line::from(vec![
             Span::styled(
                 format!(
-                    " 📑 {} ",
+                    " {} ",
                     tr!(
                         app.translator,
                         "storage.viewer_lines",
@@ -666,17 +661,14 @@ pub fn render_file_viewer_modal(f: &mut ratatui::Frame, app: &App) {
                         total_lines
                     )
                 ),
-                Style::default().fg(THEME.text_dim),
+                Style::default().fg(THEME.background),
             ),
             Span::styled(
                 format!(" ({})", tr!(app.translator, "storage.viewer_scroll_hint")),
-                Style::default()
-                    .fg(THEME.text_dim)
-                    .add_modifier(Modifier::ITALIC),
+                Style::default().fg(THEME.background),
             ),
         ])
-        .bg(THEME.secondary)
-        .dim(),
+        .bg(THEME.primary),
     );
     lines.push(Line::from(""));
 
@@ -904,38 +896,68 @@ pub fn render_file_search_modal(f: &mut ratatui::Frame, app: &App) {
 
     let btn_chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .constraints([Constraint::Fill(1), Constraint::Fill(1)])
         .split(chunks[3]);
 
     let cont_focused = state.focused_field == 3;
-    let cont_text = format!(" ✔ {} ", tr!(app.translator, "dialog.continue"));
     f.render_widget(
-        Paragraph::new(Line::from(Span::raw(&cont_text)))
-            .alignment(Alignment::Center)
-            .style(if cont_focused {
-                Style::default()
-                    .fg(THEME.background)
-                    .bg(THEME.success)
-                    .add_modifier(Modifier::BOLD)
-            } else {
-                Style::default().fg(THEME.success)
-            }),
+        Paragraph::new(Line::from(vec![
+            Span::styled(
+                " ✔ ",
+                Style::default().fg(if cont_focused {
+                    THEME.background
+                } else {
+                    THEME.success
+                }),
+            ),
+            Span::styled(
+                tr!(app.translator, "dialog.continue"),
+                Style::default().fg(if cont_focused {
+                    THEME.background
+                } else {
+                    THEME.success
+                }),
+            ),
+        ]))
+        .alignment(Alignment::Center)
+        .style(if cont_focused {
+            Style::default()
+                .bg(THEME.success)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default()
+        }),
         btn_chunks[0],
     );
 
     let cancel_focused = state.focused_field == 4;
-    let cancel_text = format!(" ✘ {} ", tr!(app.translator, "dialog.cancel"));
     f.render_widget(
-        Paragraph::new(Line::from(Span::raw(&cancel_text)))
-            .alignment(Alignment::Center)
-            .style(if cancel_focused {
-                Style::default()
-                    .fg(THEME.background)
-                    .bg(THEME.danger)
-                    .add_modifier(Modifier::BOLD)
-            } else {
-                Style::default().fg(THEME.danger)
-            }),
+        Paragraph::new(Line::from(vec![
+            Span::styled(
+                " ✘ ",
+                Style::default().fg(if cancel_focused {
+                    THEME.background
+                } else {
+                    THEME.danger
+                }),
+            ),
+            Span::styled(
+                tr!(app.translator, "dialog.cancel"),
+                Style::default().fg(if cancel_focused {
+                    THEME.background
+                } else {
+                    THEME.danger
+                }),
+            ),
+        ]))
+        .alignment(Alignment::Center)
+        .style(if cancel_focused {
+            Style::default()
+                .bg(THEME.danger)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default()
+        }),
         btn_chunks[1],
     );
 }
