@@ -174,9 +174,7 @@ fn get_libraries_windows(pids: &[u32]) -> Vec<LibraryInfo> {
         .map(|p| p.to_string())
         .collect::<Vec<_>>()
         .join(",");
-
-    // CORRECCIÓN: Se usa $procId para evitar colisión con la variable automática $PID de PowerShell.
-    // Las llaves dobles {{ }} escapan correctamente para el macro format! de Rust.
+        
     let script = format!(
         r#"
         $ErrorActionPreference = 'SilentlyContinue';
