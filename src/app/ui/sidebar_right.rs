@@ -18,20 +18,20 @@ pub fn render_right_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
     render_app_icon(f, app, chunks[1]);
 }
 fn render_actions_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let border_color = if app.sidebar_focus == SidebarFocus::Right {
+    let border_color = if app.ui.sidebar_focus == SidebarFocus::Right {
         THEME.primary
     } else {
         THEME.secondary
     };
-    let border_type = if app.sidebar_focus == SidebarFocus::Right {
+    let border_type = if app.ui.sidebar_focus == SidebarFocus::Right {
         BorderType::Thick
     } else {
         BorderType::Rounded
     };
-    let t = &app.translator;
-    let actions: Vec<(&str, String, &str, ratatui::style::Color)> = if app.show_map {
+    let t = &app.ui.translator;
+    let actions: Vec<(&str, String, &str, ratatui::style::Color)> = if app.ui.show_map {
         vec![("󰩈", tr!(t, "actions.close_map"), "Esc", THEME.secondary)]
-    } else if app.investigation_report.is_some() {
+    } else if app.investigation.investigation_report.is_some() {
         vec![
             ("📍", tr!(t, "actions.locatemap"), "Enter", THEME.primary),
             (
@@ -45,7 +45,7 @@ fn render_actions_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
         vec![
             (
                 "󰑐",
-                if app.analysis_paused {
+                if app.ui.analysis_paused {
                     tr!(t, "actions.resume")
                 } else {
                     tr!(t, "actions.pause")
@@ -63,7 +63,7 @@ fn render_actions_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
                 "󰒓",
                 tr!(t, "actions.filter_unsigned"),
                 "H",
-                if app.hunter_mode {
+                if app.ui.hunter_mode {
                     THEME.success
                 } else {
                     THEME.text_dim
@@ -75,7 +75,7 @@ fn render_actions_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
     };
     let block = Block::default()
         .borders(Borders::ALL)
-        .title(format!(" 󰬒 {} ", tr!(app.translator, "actions.title")))
+        .title(format!(" 󰬒 {} ", tr!(app.ui.translator, "actions.title")))
         .title_style(
             Style::default()
                 .fg(border_color)
@@ -98,7 +98,7 @@ fn render_actions_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .iter()
         .enumerate()
         .map(|(i, (icon, title, key, color))| {
-            let is_selected = i == app.selected_action_index;
+            let is_selected = i == app.ui.selected_action_index;
             let prefix = if is_selected { " ▎" } else { "  " };
             let prefix_style = if is_selected {
                 Style::default().fg(THEME.primary)
@@ -128,17 +128,17 @@ fn render_actions_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
         })
         .collect();
     let mut list_state = ListState::default();
-    list_state.select(Some(app.selected_action_index));
+    list_state.select(Some(app.ui.selected_action_index));
     let list = List::new(items).block(Block::default());
     f.render_stateful_widget(list, list_area, &mut list_state);
-    widgets::render_scrollbar(f, scrollbar_area, actions.len(), app.selected_action_index);
+    widgets::render_scrollbar(f, scrollbar_area, actions.len(), app.ui.selected_action_index);
 }
 fn render_app_icon(f: &mut ratatui::Frame, app: &App, area: Rect) {
     if let Some(selected_app) = app.get_selected_app() {
         use ansi_to_tui::IntoText;
         let icon_block = Block::default()
             .borders(Borders::ALL)
-            .title(format!(" 󰰍 {} ", tr!(app.translator, "icon.title")))
+            .title(format!(" 󰰍 {} ", tr!(app.ui.translator, "icon.title")))
             .title_style(
                 Style::default()
                     .fg(THEME.primary)

@@ -10,7 +10,7 @@ use ratatui::{
 };
 
 pub fn render_header(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let header_content = match app.current_nav_view {
+    let header_content = match app.ui.current_nav_view {
         NavView::Containers => docker_header_content(app),
         NavView::Storage => storage_header_content(app),
         NavView::TrendGraphs => trends_header_content(app),
@@ -28,14 +28,14 @@ pub fn render_header(f: &mut ratatui::Frame, app: &App, area: Rect) {
 }
 
 fn network_header_content(app: &App) -> Line<'_> {
-    let (dot_text, dot_color, live_text) = if app.analysis_paused {
-        ("\u{f004} ", THEME.danger, tr!(app.translator, "app.paused"))
+    let (dot_text, dot_color, live_text) = if app.ui.analysis_paused {
+        ("\u{f004} ", THEME.danger, tr!(app.ui.translator, "app.paused"))
     } else {
-        let pulse = app.frame_count % 4 < 2;
+        let pulse = app.ui.frame_count % 4 < 2;
         (
             if pulse { "\u{f004} " } else { "  " },
             if pulse { THEME.success } else { THEME.text_dim },
-            tr!(app.translator, "app.live"),
+            tr!(app.ui.translator, "app.live"),
         )
     };
     Line::from(vec![
@@ -49,12 +49,12 @@ fn network_header_content(app: &App) -> Line<'_> {
         ),
         separator(),
         Span::styled(
-            if app.hunter_mode {
-                format!("\u{f493} {}", tr!(app.translator, "app.mode_hunter"))
+            if app.ui.hunter_mode {
+                format!("\u{f493} {}", tr!(app.ui.translator, "app.mode_hunter"))
             } else {
-                format!("\u{f493} {}", tr!(app.translator, "app.mode_normal"))
+                format!("\u{f493} {}", tr!(app.ui.translator, "app.mode_normal"))
             },
-            Style::default().fg(if app.hunter_mode {
+            Style::default().fg(if app.ui.hunter_mode {
                 THEME.success
             } else {
                 THEME.text_dim
@@ -64,7 +64,7 @@ fn network_header_content(app: &App) -> Line<'_> {
         Span::styled(
             format!(
                 " \u{f0c0}  {} ",
-                tr!(app.translator, "app.apps_count", app.app_connections.len())
+                tr!(app.ui.translator, "app.apps_count", app.network.app_connections.len())
             ),
             Style::default().fg(THEME.secondary),
         ),
@@ -72,9 +72,9 @@ fn network_header_content(app: &App) -> Line<'_> {
             format!(
                 " \u{f0c1}  {} ",
                 tr!(
-                    app.translator,
+                    app.ui.translator,
                     "app.conns_count",
-                    app.network_connections.len()
+                    app.network.network_connections.len()
                 )
             ),
             Style::default().fg(THEME.secondary),
@@ -84,16 +84,16 @@ fn network_header_content(app: &App) -> Line<'_> {
 
 fn docker_header_content(app: &App) -> Line<'_> {
     let (label, color) = match app.docker_status() {
-        DockerStatus::On => (tr!(app.translator, "containers.header_on"), THEME.success),
+        DockerStatus::On => (tr!(app.ui.translator, "containers.header_on"), THEME.success),
         DockerStatus::Starting => (
-            tr!(app.translator, "containers.header_starting"),
+            tr!(app.ui.translator, "containers.header_starting"),
             THEME.warning,
         ),
         DockerStatus::Off | DockerStatus::Missing => {
-            (tr!(app.translator, "containers.header_off"), THEME.danger)
+            (tr!(app.ui.translator, "containers.header_off"), THEME.danger)
         }
         DockerStatus::Unknown => (
-            tr!(app.translator, "containers.header_unknown"),
+            tr!(app.ui.translator, "containers.header_unknown"),
             THEME.warning,
         ),
     };
@@ -112,9 +112,9 @@ fn docker_header_content(app: &App) -> Line<'_> {
             format!(
                 "\u{f308} {} ",
                 tr!(
-                    app.translator,
+                    app.ui.translator,
                     "containers.header_count",
-                    app.containers.len()
+                    app.containers.containers.len()
                 )
             ),
             Style::default().fg(THEME.secondary),
@@ -122,7 +122,7 @@ fn docker_header_content(app: &App) -> Line<'_> {
         Span::styled(
             app.get_selected_container()
                 .map(|container| format!("{} ", container.name))
-                .unwrap_or_else(|| tr!(app.translator, "containers.header_no_selection")),
+                .unwrap_or_else(|| tr!(app.ui.translator, "containers.header_no_selection")),
             Style::default().fg(THEME.text_dim),
         ),
     ])
@@ -133,7 +133,7 @@ fn storage_header_content(app: &App) -> Line<'_> {
     let disk_info = disk
         .map(|d| format!("{} {:.0}%", d.device, d.usage_pct()))
         .unwrap_or_default();
-    let path = app.current_directory.to_string_lossy().to_string();
+    let path = app.storage.current_directory.to_string_lossy().to_string();
     Line::from(vec![
         app_title(app),
         app_subtitle(app),
@@ -155,8 +155,8 @@ fn storage_header_content(app: &App) -> Line<'_> {
         Span::styled(
             format!(
                 "{} {}",
-                tr!(app.translator, "storage.col_size").to_lowercase(),
-                app.file_entries.len()
+                tr!(app.ui.translator, "storage.col_size").to_lowercase(),
+                app.storage.file_entries.len()
             ),
             Style::default().fg(THEME.secondary),
         ),
@@ -165,18 +165,18 @@ fn storage_header_content(app: &App) -> Line<'_> {
 
 fn trends_header_content(app: &App) -> Line<'_> {
     let active_conns: u64 = app
-        .app_connections
+        .network.app_connections
         .iter()
         .map(|a| a.connections.len() as u64)
         .sum();
-    let total_cpu: f64 = app.app_connections.iter().map(|a| a.cpu_usage as f64).sum();
+    let total_cpu: f64 = app.network.app_connections.iter().map(|a| a.cpu_usage as f64).sum();
     let total_mem_mb: u64 = app
-        .app_connections
+        .network.app_connections
         .iter()
         .map(|a| a.memory_usage / 1024 / 1024)
         .sum();
     let high_risk = app
-        .app_connections
+        .network.app_connections
         .iter()
         .filter(|a| a.risk_level.contains("HIGH") || a.risk_level.contains("CRITICAL"))
         .count();
@@ -187,7 +187,7 @@ fn trends_header_content(app: &App) -> Line<'_> {
         Span::styled(
             format!(
                 " \u{f0c1} {} ",
-                tr!(app.translator, "app.conns_count", active_conns)
+                tr!(app.ui.translator, "app.conns_count", active_conns)
             ),
             Style::default().fg(THEME.primary),
         ),
@@ -217,15 +217,15 @@ fn trends_header_content(app: &App) -> Line<'_> {
 }
 
 fn libraries_header_content(app: &App) -> Line<'_> {
-    let total = app.libraries.len();
+    let total = app.libraries.libraries.len();
     let suspicious = app
-        .libraries
+        .libraries.libraries
         .iter()
         .filter(|l| l.risk == "Suspicious")
         .count();
     let process_count = {
         let mut pids = std::collections::HashSet::new();
-        for l in &app.libraries {
+        for l in &app.libraries.libraries {
             pids.insert(l.pid);
         }
         pids.len()
@@ -237,7 +237,7 @@ fn libraries_header_content(app: &App) -> Line<'_> {
         Span::styled(
             format!(
                 " \u{f0e7} {} ",
-                tr!(app.translator, "libraries.header_count", total)
+                tr!(app.ui.translator, "libraries.header_count", total)
             ),
             Style::default().fg(THEME.primary),
         ),
@@ -245,7 +245,7 @@ fn libraries_header_content(app: &App) -> Line<'_> {
         Span::styled(
             format!(
                 " \u{f493} {} ",
-                tr!(app.translator, "libraries.header_procs", process_count)
+                tr!(app.ui.translator, "libraries.header_procs", process_count)
             ),
             Style::default().fg(THEME.secondary),
         ),
@@ -262,7 +262,7 @@ fn libraries_header_content(app: &App) -> Line<'_> {
 
 fn app_title(app: &App) -> Span<'_> {
     Span::styled(
-        format!(" {} ", tr!(app.translator, "app.title")),
+        format!(" {} ", tr!(app.ui.translator, "app.title")),
         Style::default()
             .fg(THEME.background)
             .bg(THEME.primary)
@@ -272,7 +272,7 @@ fn app_title(app: &App) -> Span<'_> {
 
 fn app_subtitle(app: &App) -> Span<'_> {
     Span::styled(
-        format!(" {} ", tr!(app.translator, "app.subtitle")),
+        format!(" {} ", tr!(app.ui.translator, "app.subtitle")),
         Style::default()
             .fg(THEME.primary)
             .bg(THEME.background)

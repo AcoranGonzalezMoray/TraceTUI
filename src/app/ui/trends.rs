@@ -13,16 +13,16 @@ pub fn render_trends_view(f: &mut ratatui::Frame, app: &App, area: Rect) {
         return;
     }
 
-    if !app.auto_analysis_complete {
+    if !app.ui.auto_analysis_complete {
         let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-        let s = spinner[(app.frame_count as usize) % spinner.len()];
+        let s = spinner[(app.ui.frame_count as usize) % spinner.len()];
         let block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .border_style(Style::default().fg(THEME.secondary));
         f.render_widget(block.clone(), area);
         let inner = block.inner(area);
-        let msg = format!(" {} {}...", s, tr!(app.translator, "status.auto_analyzing"));
+        let msg = format!(" {} {}...", s, tr!(app.ui.translator, "status.auto_analyzing"));
         f.render_widget(
             Paragraph::new(Line::from(Span::styled(
                 msg,
@@ -67,22 +67,25 @@ fn render_summary_cards(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .split(area);
 
     let active_conns: u64 = app
+        .network
         .app_connections
         .iter()
         .map(|a| a.connections.len() as u64)
         .sum();
 
-    let peak_conn = app.conn_count_history.iter().max().copied().unwrap_or(0);
+    let peak_conn = app.trend.conn_count_history.iter().max().copied().unwrap_or(0);
 
-    let current_cpu = app.cpu_history.last().copied().unwrap_or(0.0);
+    let current_cpu = app.trend.cpu_history.last().copied().unwrap_or(0.0);
 
     let total_mem_mb: u64 = app
+        .network
         .app_connections
         .iter()
         .map(|a| a.memory_usage / 1024 / 1024)
         .sum();
 
     let high_risk_count = app
+        .network
         .app_connections
         .iter()
         .filter(|a| a.risk_level.contains("HIGH") || a.risk_level.contains("CRITICAL"))
@@ -91,7 +94,7 @@ fn render_summary_cards(f: &mut ratatui::Frame, app: &App, area: Rect) {
     render_kpi_card(
         f,
         cards[0],
-        &tr!(app.translator, "trends.connections"),
+        &tr!(app.ui.translator, "trends.connections"),
         &fmt_num(active_conns),
         THEME.primary,
         "▲",
@@ -99,7 +102,7 @@ fn render_summary_cards(f: &mut ratatui::Frame, app: &App, area: Rect) {
     render_kpi_card(
         f,
         cards[1],
-        &tr!(app.translator, "trends.peak_conns"),
+        &tr!(app.ui.translator, "trends.peak_conns"),
         &fmt_num(peak_conn),
         THEME.success,
         "◆",
@@ -107,7 +110,7 @@ fn render_summary_cards(f: &mut ratatui::Frame, app: &App, area: Rect) {
     render_kpi_card(
         f,
         cards[2],
-        &tr!(app.translator, "trends.cpu_usage"),
+        &tr!(app.ui.translator, "trends.cpu_usage"),
         &format!("{:.1}%", current_cpu),
         cpu_color(current_cpu),
         "◈",
@@ -115,7 +118,7 @@ fn render_summary_cards(f: &mut ratatui::Frame, app: &App, area: Rect) {
     render_kpi_card(
         f,
         cards[3],
-        &tr!(app.translator, "trends.mem_usage"),
+        &tr!(app.ui.translator, "trends.mem_usage"),
         &format!("{} MB", fmt_num(total_mem_mb)),
         THEME.secondary,
         "▣",
@@ -123,7 +126,7 @@ fn render_summary_cards(f: &mut ratatui::Frame, app: &App, area: Rect) {
     render_kpi_card(
         f,
         cards[4],
-        &tr!(app.translator, "trends.high_risk"),
+        &tr!(app.ui.translator, "trends.high_risk"),
         &fmt_num(high_risk_count),
         if high_risk_count > 0 {
             THEME.danger
@@ -199,16 +202,16 @@ fn render_sparkline_row(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(area);
 
-    let cpu_history_label = tr!(app.translator, "trends.cpu_history");
-    let conn_history_label = tr!(app.translator, "trends.conn_history");
+    let cpu_history_label = tr!(app.ui.translator, "trends.cpu_history");
+    let conn_history_label = tr!(app.ui.translator, "trends.conn_history");
     render_sparkline_panel(
         f,
         app,
         cols[0],
         &cpu_history_label,
-        &cpu_to_u64(&app.cpu_history),
+        &cpu_to_u64(&app.trend.cpu_history),
         THEME.warning,
-        app.cpu_history
+        app.trend.cpu_history
             .last()
             .copied()
             .map(|v| format!("{:.1}%", v)),
@@ -218,9 +221,9 @@ fn render_sparkline_row(f: &mut ratatui::Frame, app: &App, area: Rect) {
         app,
         cols[1],
         &conn_history_label,
-        &app.conn_count_history,
+        &app.trend.conn_count_history,
         THEME.primary,
-        app.conn_count_history
+        app.trend.conn_count_history
             .last()
             .copied()
             .map(|v| format!("{} active", v)),
@@ -279,17 +282,17 @@ fn render_sparkline_panel(
         f.render_widget(
             Paragraph::new(Line::from(vec![
                 Span::styled(
-                    tr!(app.translator, "trends.min"),
+                    tr!(app.ui.translator, "trends.min"),
                     Style::default().fg(THEME.text_dim),
                 ),
                 Span::styled(format!("{} ", min), Style::default().fg(THEME.success)),
                 Span::styled(
-                    tr!(app.translator, "trends.avg"),
+                    tr!(app.ui.translator, "trends.avg"),
                     Style::default().fg(THEME.text_dim),
                 ),
                 Span::styled(format!("{} ", avg), Style::default().fg(THEME.warning)),
                 Span::styled(
-                    tr!(app.translator, "trends.max"),
+                    tr!(app.ui.translator, "trends.max"),
                     Style::default().fg(THEME.text_dim),
                 ),
                 Span::styled(format!("{}", max), Style::default().fg(THEME.danger)),
@@ -328,7 +331,7 @@ fn render_middle_row(f: &mut ratatui::Frame, app: &App, area: Rect) {
 }
 
 fn render_risk_distribution(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let risk_distribution_title = tr!(app.translator, "trends.risk_distribution");
+    let risk_distribution_title = tr!(app.ui.translator, "trends.risk_distribution");
     let block = Block::default()
         .title(Span::styled(
             &risk_distribution_title,
@@ -352,7 +355,7 @@ fn render_risk_distribution(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let mut low = 0u64;
     let mut safe = 0u64;
 
-    for app_conn in &app.app_connections {
+    for app_conn in &app.network.app_connections {
         let rl = app_conn.risk_level.to_uppercase();
         if rl.contains("CRITICAL") {
             critical += 1;
@@ -370,14 +373,14 @@ fn render_risk_distribution(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let total = (critical + high + medium + low + safe).max(1);
     let items = [
         (
-            tr!(app.translator, "trends.critical"),
+            tr!(app.ui.translator, "trends.critical"),
             critical,
             THEME.danger,
         ),
-        (tr!(app.translator, "trends.high"), high, THEME.danger),
-        (tr!(app.translator, "trends.medium"), medium, THEME.warning),
-        (tr!(app.translator, "trends.low"), low, THEME.success),
-        (tr!(app.translator, "trends.safe"), safe, THEME.primary),
+        (tr!(app.ui.translator, "trends.high"), high, THEME.danger),
+        (tr!(app.ui.translator, "trends.medium"), medium, THEME.warning),
+        (tr!(app.ui.translator, "trends.low"), low, THEME.success),
+        (tr!(app.ui.translator, "trends.safe"), safe, THEME.primary),
     ];
 
     let bar_max = inner.width.saturating_sub(16) as usize;
@@ -411,7 +414,7 @@ fn render_risk_distribution(f: &mut ratatui::Frame, app: &App, area: Rect) {
 }
 
 fn render_top_processes_cpu(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let top_cpu_title = tr!(app.translator, "trends.top_cpu");
+    let top_cpu_title = tr!(app.ui.translator, "trends.top_cpu");
     let block = Block::default()
         .title(Span::styled(
             &top_cpu_title,
@@ -430,6 +433,7 @@ fn render_top_processes_cpu(f: &mut ratatui::Frame, app: &App, area: Rect) {
     }
 
     let mut procs: Vec<(&str, f32)> = app
+        .network
         .app_connections
         .iter()
         .map(|a| (a.process_name.as_str(), a.cpu_usage))
@@ -439,7 +443,7 @@ fn render_top_processes_cpu(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     if procs.is_empty() {
         f.render_widget(
-            Paragraph::new(tr!(app.translator, "trends.no_data"))
+            Paragraph::new(tr!(app.ui.translator, "trends.no_data"))
                 .alignment(Alignment::Center)
                 .style(Style::default().fg(THEME.text_dim)),
             inner,
@@ -457,13 +461,13 @@ fn render_top_processes_cpu(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     let header = Row::new(vec![
         Cell::from(Span::styled(
-            tr!(app.translator, "trends.process_header"),
+            tr!(app.ui.translator, "trends.process_header"),
             Style::default()
                 .fg(THEME.secondary)
                 .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
         )),
         Cell::from(Span::styled(
-            tr!(app.translator, "trends.cpu_pct"),
+            tr!(app.ui.translator, "trends.cpu_pct"),
             Style::default()
                 .fg(THEME.secondary)
                 .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
@@ -504,7 +508,7 @@ fn render_top_processes_cpu(f: &mut ratatui::Frame, app: &App, area: Rect) {
 }
 
 fn render_top_processes_mem(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let top_mem_title = tr!(app.translator, "trends.top_mem");
+    let top_mem_title = tr!(app.ui.translator, "trends.top_mem");
     let block = Block::default()
         .title(Span::styled(
             &top_mem_title,
@@ -523,6 +527,7 @@ fn render_top_processes_mem(f: &mut ratatui::Frame, app: &App, area: Rect) {
     }
 
     let mut procs: Vec<(&str, u64)> = app
+        .network
         .app_connections
         .iter()
         .map(|a| (a.process_name.as_str(), a.memory_usage / 1024 / 1024))
@@ -532,7 +537,7 @@ fn render_top_processes_mem(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     if procs.is_empty() {
         f.render_widget(
-            Paragraph::new(tr!(app.translator, "trends.no_data"))
+            Paragraph::new(tr!(app.ui.translator, "trends.no_data"))
                 .alignment(Alignment::Center)
                 .style(Style::default().fg(THEME.text_dim)),
             inner,
@@ -546,13 +551,13 @@ fn render_top_processes_mem(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     let header = Row::new(vec![
         Cell::from(Span::styled(
-            tr!(app.translator, "trends.process_header"),
+            tr!(app.ui.translator, "trends.process_header"),
             Style::default()
                 .fg(THEME.secondary)
                 .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
         )),
         Cell::from(Span::styled(
-            tr!(app.translator, "trends.mem_mb"),
+            tr!(app.ui.translator, "trends.mem_mb"),
             Style::default()
                 .fg(THEME.secondary)
                 .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
@@ -598,7 +603,7 @@ fn render_bottom_row(f: &mut ratatui::Frame, app: &App, area: Rect) {
         return;
     }
 
-    let show_containers = !app.containers.is_empty() || app.containers_loaded_once;
+    let show_containers = !app.containers.containers.is_empty() || app.containers.containers_loaded_once;
 
     let constraints = if show_containers {
         vec![
@@ -624,7 +629,7 @@ fn render_bottom_row(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
 fn render_protocol_dist(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let mut counts: std::collections::HashMap<String, u64> = std::collections::HashMap::new();
-    for app_conn in &app.app_connections {
+    for app_conn in &app.network.app_connections {
         for conn in &app_conn.connections {
             *counts.entry(conn.protocol.clone()).or_insert(0) += 1;
         }
@@ -633,9 +638,9 @@ fn render_protocol_dist(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let mut items: Vec<(String, u64)> = counts.into_iter().collect();
     items.sort_by(|a, b| b.1.cmp(&a.1));
 
-    let proto_title = tr!(app.translator, "trends.protocols");
-    let proto_col1 = tr!(app.translator, "trends.proto");
-    let proto_col2 = tr!(app.translator, "trends.conns");
+    let proto_title = tr!(app.ui.translator, "trends.protocols");
+    let proto_col1 = tr!(app.ui.translator, "trends.proto");
+    let proto_col2 = tr!(app.ui.translator, "trends.conns");
     render_dist_table(
         f,
         app,
@@ -650,13 +655,13 @@ fn render_protocol_dist(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
 fn render_country_dist(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let mut counts: std::collections::HashMap<String, u64> = std::collections::HashMap::new();
-    for app_conn in &app.app_connections {
+    for app_conn in &app.network.app_connections {
         for conn in &app_conn.connections {
             let key = conn
                 .location
                 .as_deref()
                 .map(|s| s.split(',').last().unwrap_or(s).trim().to_string())
-                .unwrap_or_else(|| tr!(app.translator, "trends.unknown").to_string());
+                .unwrap_or_else(|| tr!(app.ui.translator, "trends.unknown").to_string());
             *counts.entry(key).or_insert(0) += 1;
         }
     }
@@ -665,9 +670,9 @@ fn render_country_dist(f: &mut ratatui::Frame, app: &App, area: Rect) {
     items.sort_by(|a, b| b.1.cmp(&a.1));
     items.truncate(10);
 
-    let dest_title = tr!(app.translator, "trends.destinations");
-    let dest_col1 = tr!(app.translator, "trends.country_ip");
-    let dest_col2 = tr!(app.translator, "trends.conns");
+    let dest_title = tr!(app.ui.translator, "trends.destinations");
+    let dest_col1 = tr!(app.ui.translator, "trends.country_ip");
+    let dest_col2 = tr!(app.ui.translator, "trends.conns");
     render_dist_table(
         f,
         app,
@@ -681,7 +686,7 @@ fn render_country_dist(f: &mut ratatui::Frame, app: &App, area: Rect) {
 }
 
 fn render_containers_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let containers_title = tr!(app.translator, "trends.containers");
+    let containers_title = tr!(app.ui.translator, "trends.containers");
     let block = Block::default()
         .title(Span::styled(
             &containers_title,
@@ -699,11 +704,11 @@ fn render_containers_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
         return;
     }
 
-    if app.containers.is_empty() {
-        let msg = if app.containers_loading {
-            tr!(app.translator, "trends.containers_loading")
+    if app.containers.containers.is_empty() {
+        let msg = if app.containers.containers_loading {
+            tr!(app.ui.translator, "trends.containers_loading")
         } else {
-            tr!(app.translator, "trends.no_containers")
+            tr!(app.ui.translator, "trends.no_containers")
         };
         f.render_widget(
             Paragraph::new(msg)
@@ -716,12 +721,13 @@ fn render_containers_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     let running = app
         .containers
+        .containers
         .iter()
         .filter(|c| {
             c.status.to_lowercase().contains("running") || c.status.to_lowercase().contains("up")
         })
         .count();
-    let total = app.containers.len();
+    let total = app.containers.containers.len();
     let stopped = total - running;
 
     let summary_area = Rect {
@@ -733,7 +739,7 @@ fn render_containers_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
     f.render_widget(
         Paragraph::new(Line::from(vec![
             Span::styled(
-                tr!(app.translator, "trends.running"),
+                tr!(app.ui.translator, "trends.running"),
                 Style::default().fg(THEME.text_dim),
             ),
             Span::styled(
@@ -743,7 +749,7 @@ fn render_containers_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
-                tr!(app.translator, "trends.stopped"),
+                tr!(app.ui.translator, "trends.stopped"),
                 Style::default().fg(THEME.text_dim),
             ),
             Span::styled(
@@ -774,13 +780,13 @@ fn render_containers_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let name_w = (inner.width.saturating_sub(12)) as usize;
     let header = Row::new(vec![
         Cell::from(Span::styled(
-            tr!(app.translator, "trends.status_header"),
+            tr!(app.ui.translator, "trends.status_header"),
             Style::default()
                 .fg(THEME.secondary)
                 .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
         )),
         Cell::from(Span::styled(
-            tr!(app.translator, "trends.name_header"),
+            tr!(app.ui.translator, "trends.name_header"),
             Style::default()
                 .fg(THEME.secondary)
                 .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
@@ -789,6 +795,7 @@ fn render_containers_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     let mut rows: Vec<Row> = vec![header];
     for container in app
+        .containers
         .containers
         .iter()
         .take(list_area.height.saturating_sub(1) as usize)
@@ -846,7 +853,7 @@ fn render_dist_table(
 
     if items.is_empty() {
         f.render_widget(
-            Paragraph::new(tr!(app.translator, "trends.no_data"))
+            Paragraph::new(tr!(app.ui.translator, "trends.no_data"))
                 .alignment(Alignment::Center)
                 .style(Style::default().fg(THEME.text_dim)),
             inner,

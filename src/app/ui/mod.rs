@@ -46,7 +46,7 @@ pub use storage::render_storage_view;
 pub use theme::THEME;
 pub use trends::render_trends_view;
 pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
-    let search_bar_height = if app.search_mode { config::SEARCH_BAR_HEIGHT } else { 0 };
+    let search_bar_height = if app.ui.search_mode { config::SEARCH_BAR_HEIGHT } else { 0 };
     let main_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -58,16 +58,16 @@ pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
         ])
         .split(f.area());
     render_header(f, app, main_chunks[0]);
-    if app.search_mode {
+    if app.ui.search_mode {
         render_search_bar(f, app, main_chunks[1]);
     }
-    if app.firewall_mode {
+    if app.firewall.firewall_mode {
         render_firewall_mode(f, app, main_chunks[2]);
     } else {
         render_main_layout_with_nav(f, app, main_chunks[2]);
     }
-    let t = &app.translator;
-    let hint_spans = if app.firewall_mode {
+    let t = &app.ui.translator;
+    let hint_spans = if app.firewall.firewall_mode {
         vec![
             Span::styled(
                 " Esc/Q ",
@@ -103,7 +103,7 @@ pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
                 Style::default().fg(THEME.text_dim),
             ),
         ]
-    } else if app.search_mode {
+    } else if app.ui.search_mode {
         vec![
             Span::styled(
                 " ESC ",
@@ -139,7 +139,7 @@ pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
                 Style::default().fg(THEME.text_dim),
             ),
         ]
-    } else if app.current_nav_view == NavView::Containers {
+    } else if app.ui.current_nav_view == NavView::Containers {
         vec![
             Span::styled(
                 " R ",
@@ -197,7 +197,7 @@ pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
                 Style::default().fg(THEME.text_dim),
             ),
         ]
-    } else if app.current_nav_view == NavView::TrendGraphs {
+    } else if app.ui.current_nav_view == NavView::TrendGraphs {
         vec![
             Span::styled(
                 " Q ",
@@ -306,9 +306,9 @@ pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
     let help_hint = Paragraph::new(Line::from(hint_spans)).alignment(Alignment::Center);
     f.render_widget(help_hint, main_chunks[3]);
     render_footer(f, app, main_chunks[4]);
-    if app.show_welcome_dialog {
+    if app.ui.show_welcome_dialog {
         render_welcome_dialog(f, app);
-    } else if app.show_language_modal {
+    } else if app.ui.show_language_modal {
         render_language_modal(f, app);
     } else if app.install.show_password_modal {
         render_password_modal(f, app);
@@ -316,27 +316,27 @@ pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
         render_nerdfont_dialog(f, app);
     } else if app.install.show_dialog {
         render_install_dialog(f, app);
-    } else if app.show_confirmation {
+    } else if app.ui.show_confirmation {
         render_confirmation_dialog(f, app);
-    } else if app.show_update_dialog {
+    } else if app.update.show_update_dialog {
         render_update_dialog(f, app);
     }
-    if app.current_nav_view == NavView::Storage && app.show_file_search_modal {
+    if app.ui.current_nav_view == NavView::Storage && app.ui.show_file_search_modal {
         crate::app::ui::storage::render_file_search_modal(f, app);
     }
-    if app.current_nav_view == NavView::Containers && app.show_container_logs_modal {
+    if app.ui.current_nav_view == NavView::Containers && app.containers.show_container_logs_modal {
         render_container_logs_modal(f, app);
     }
-    if app.current_nav_view == NavView::Containers && app.show_container_console_modal {
+    if app.ui.current_nav_view == NavView::Containers && app.containers.show_container_console_modal {
         render_container_console_modal(f, app);
     }
-    if app.current_nav_view == NavView::Containers && app.show_docker_hub_modal {
+    if app.ui.current_nav_view == NavView::Containers && app.containers.show_docker_hub_modal {
         render_docker_hub_modal(f, app);
     }
-    if app.current_nav_view == NavView::LibraryInspection && app.show_hash_info_modal {
+    if app.ui.current_nav_view == NavView::LibraryInspection && app.libraries.show_hash_info_modal {
         render_library_hash_modal(f, app);
     }
-    if app.current_nav_view == NavView::LibraryInspection && app.show_library_binary_viewer {
+    if app.ui.current_nav_view == NavView::LibraryInspection && app.libraries.show_library_binary_viewer {
         render_library_binary_viewer(f, app);
     }
 }
@@ -352,7 +352,7 @@ fn render_search_bar(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .split(area);
     let search_area = h_chunks[1];
     let count = app.get_filtered_apps().len();
-    let cursor = if app.frame_count.is_multiple_of(2) {
+    let cursor = if app.ui.frame_count.is_multiple_of(2) {
         "█"
     } else {
         " "
@@ -367,14 +367,14 @@ fn render_search_bar(f: &mut ratatui::Frame, app: &App, area: Rect) {
         ),
         Span::styled(" ", Style::default()),
         Span::styled(
-            &app.search_query,
+            &app.ui.search_query,
             Style::default()
                 .fg(THEME.text_main)
                 .add_modifier(Modifier::BOLD),
         ),
         Span::styled(cursor, Style::default().fg(THEME.primary)),
         Span::styled(
-            format!("  ({})", tr!(app.translator, "search.matches", count)),
+            format!("  ({})", tr!(app.ui.translator, "search.matches", count)),
             Style::default().fg(if count > 0 {
                 THEME.success
             } else {
@@ -391,7 +391,7 @@ fn render_search_bar(f: &mut ratatui::Frame, app: &App, area: Rect) {
     f.render_widget(search_widget, search_area);
 }
 fn render_main_layout_with_nav(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let nav_width = if app.nav_sidebar_expanded { config::NAV_SIDEBAR_EXPANDED_WIDTH } else { config::NAV_SIDEBAR_COLLAPSED_WIDTH };
+    let nav_width = if app.ui.nav_sidebar_expanded { config::NAV_SIDEBAR_EXPANDED_WIDTH } else { config::NAV_SIDEBAR_COLLAPSED_WIDTH };
 
     let main_layout = Layout::default()
         .direction(Direction::Horizontal)
@@ -400,8 +400,8 @@ fn render_main_layout_with_nav(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     render_nav_sidebar(f, app, main_layout[0]);
 
-    match app.current_nav_view {
-        NavView::Main => match app.current_state {
+    match app.ui.current_nav_view {
+        NavView::Main => match app.ui.current_state {
             AppState::Dashboard => render_ide_layout(f, app, main_layout[1]),
         },
         NavView::TrendGraphs => render_trends_view(f, app, main_layout[1]),

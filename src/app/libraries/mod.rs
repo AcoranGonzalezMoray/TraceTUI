@@ -515,36 +515,36 @@ impl crate::app::App {
     pub fn process_libraries_results(&mut self) {
         use std::sync::mpsc::TryRecvError;
 
-        if let Some(ref rx) = self.libraries_rx {
+        if let Some(ref rx) = self.libraries.libraries_rx {
             loop {
                 match rx.try_recv() {
                     Ok(libs) => {
-                        self.libraries.extend(libs);
+                        self.libraries.libraries.extend(libs);
                     }
                     Err(TryRecvError::Empty) => break,
                     Err(TryRecvError::Disconnected) => {
-                        self.libraries.sort_by(|a, b| {
+                        self.libraries.libraries.sort_by(|a, b| {
                             crate::app::libraries::risk_sort_key(&b.risk)
                                 .cmp(&crate::app::libraries::risk_sort_key(&a.risk))
                                 .then_with(|| b.pid.cmp(&a.pid))
                                 .then_with(|| b.size.cmp(&a.size))
                         });
-                        self.libraries_loading = false;
-                        self.libraries_loaded_once = true;
-                        self.libraries_rx = None;
+                        self.libraries.libraries_loading = false;
+                        self.libraries.libraries_loaded_once = true;
+                        self.libraries.libraries_rx = None;
                         break;
                     }
                 }
             }
-        } else if self.libraries_loading && !self.processes.is_empty() {
-            self.libraries_loading = false;
+        } else if self.libraries.libraries_loading && !self.network.processes.is_empty() {
+            self.libraries.libraries_loading = false;
             self.refresh_libraries();
         }
     }
 
     pub fn group_libs_by_process(&self) -> Vec<(String, usize)> {
         let mut map: HashMap<String, usize> = HashMap::new();
-        for lib in &self.libraries {
+        for lib in &self.libraries.libraries {
             *map.entry(lib.process_name.clone()).or_insert(0) += 1;
         }
         let mut result: Vec<(String, usize)> = map.into_iter().collect();
@@ -559,11 +559,11 @@ impl crate::app::App {
     ) -> Vec<LibraryInfo> {
         let groups = self.group_libs_by_process();
         let pname = groups
-            .get(self.selected_library_process_index)
+            .get(self.libraries.selected_library_process_index)
             .map(|(n, _)| n.as_str())
             .unwrap_or("");
         let sq = search_query.to_lowercase();
-        self.libraries
+        self.libraries.libraries
             .iter()
             .filter(|l| {
                 l.process_name == pname
@@ -580,7 +580,7 @@ impl crate::app::App {
     }
 
     pub fn rehash_suspicious_libraries(&mut self) {
-        for lib in self.libraries.iter_mut() {
+        for lib in self.libraries.libraries.iter_mut() {
             if lib.risk != "Safe" && lib.sha256.is_empty() {
                 lib.sha256 = compute_sha256_partial(&lib.path);
             }
@@ -609,7 +609,7 @@ impl crate::app::App {
                 match export_libraries_json(&libs) {
                     Ok(s) => s,
                     Err(e) => {
-                        self.status_message = format!("Export error: {}", e);
+                        self.ui.status_message = format!("Export error: {}", e);
                         return;
                     }
                 },
@@ -636,14 +636,14 @@ impl crate::app::App {
         match std::fs::File::create(&path) {
             Ok(mut file) => {
                 if let Err(e) = file.write_all(content.as_bytes()) {
-                    self.status_message = format!("Write error: {}", e);
+                    self.ui.status_message = format!("Write error: {}", e);
                 } else {
-                    self.status_message =
+                    self.ui.status_message =
                         format!("Exported {} libs → {}", libs.len(), path.display());
                 }
             }
             Err(e) => {
-                self.status_message = format!("Create error: {}", e);
+                self.ui.status_message = format!("Create error: {}", e);
             }
         }
     }

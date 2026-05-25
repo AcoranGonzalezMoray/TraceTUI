@@ -9,7 +9,7 @@ use ratatui::{
 };
 
 pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let is_focused = app.sidebar_focus == SidebarFocus::Nav;
+    let is_focused = app.ui.sidebar_focus == SidebarFocus::Nav;
     let border_color = if is_focused {
         THEME.primary
     } else {
@@ -31,35 +31,35 @@ pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     let spinners = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
-    let storage_icon = if app.search_progress_running && app.current_nav_view != NavView::Storage {
-        spinners[(app.frame_count as usize) % spinners.len()]
+    let storage_icon = if app.storage.search_progress_running && app.ui.current_nav_view != NavView::Storage {
+        spinners[(app.ui.frame_count as usize) % spinners.len()]
     } else {
         "󰋊"
     };
 
-    let libs_icon = if app.libraries_loading && app.current_nav_view != NavView::LibraryInspection {
-        spinners[(app.frame_count as usize) % spinners.len()]
+    let libs_icon = if app.libraries.libraries_loading && app.ui.current_nav_view != NavView::LibraryInspection {
+        spinners[(app.ui.frame_count as usize) % spinners.len()]
     } else {
         "󰅩"
     };
 
     let nav_items = vec![
-        (NavView::Main, "󰞶", tr!(app.translator, "nav.main")),
-        (NavView::TrendGraphs, "󰄪", tr!(app.translator, "nav.trends")),
+        (NavView::Main, "󰞶", tr!(app.ui.translator, "nav.main")),
+        (NavView::TrendGraphs, "󰄪", tr!(app.ui.translator, "nav.trends")),
         (
             NavView::Storage,
             storage_icon,
-            tr!(app.translator, "nav.storage"),
+            tr!(app.ui.translator, "nav.storage"),
         ),
         (
             NavView::LibraryInspection,
             libs_icon,
-            tr!(app.translator, "nav.libs"),
+            tr!(app.ui.translator, "nav.libs"),
         ),
         (
             NavView::Containers,
             "󰡨",
-            tr!(app.translator, "nav.containers"),
+            tr!(app.ui.translator, "nav.containers"),
         ),
     ];
 
@@ -74,7 +74,7 @@ pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .split(inner_area);
 
     for (i, (view, icon, name)) in nav_items.into_iter().enumerate() {
-        let is_selected = app.current_nav_view == view;
+        let is_selected = app.ui.current_nav_view == view;
         let area = item_chunks[i * 2];
 
         let style = if is_selected {
@@ -94,7 +94,7 @@ pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
             Block::default().padding(ratatui::widgets::Padding::new(1, 1, 1, 1))
         };
 
-        let content = if app.nav_sidebar_expanded {
+        let content = if app.ui.nav_sidebar_expanded {
             Paragraph::new(Line::from(vec![
                 Span::styled(format!(" {} ", icon), style),
                 Span::styled(name, style),

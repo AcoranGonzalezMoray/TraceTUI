@@ -23,10 +23,10 @@ fn os_name(translator: &crate::i18n::Translator) -> String {
 }
 
 pub fn render_footer(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let status_color = if app.status_message.contains("[!]") || app.status_message.contains("[-] ")
+    let status_color = if app.ui.status_message.contains("[!]") || app.ui.status_message.contains("[-] ")
     {
         THEME.danger
-    } else if app.status_message.contains("[*]") {
+    } else if app.ui.status_message.contains("[*]") {
         THEME.warning
     } else {
         THEME.success
@@ -34,30 +34,30 @@ pub fn render_footer(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     let mut status_spans = vec![
         Span::styled(
-            format!(" {} ", tr!(app.translator, "footer.status")),
+            format!(" {} ", tr!(app.ui.translator, "footer.status")),
             Style::default()
                 .fg(THEME.background)
                 .bg(status_color)
                 .add_modifier(Modifier::BOLD),
         ),
         Span::styled(
-            format!(" > {} ", app.status_message),
+            format!(" > {} ", app.ui.status_message),
             Style::default().fg(status_color),
         ),
     ];
 
-    if app.current_nav_view == NavView::Main && app.pending_geo_lookups > 0 {
+    if app.ui.current_nav_view == NavView::Main && app.geo.pending_geo_lookups > 0 {
         status_spans.push(separator());
         status_spans.push(Span::styled(
             format!(
                 " \u{f0ac} {} ",
-                tr!(app.translator, "status.geo_lookup", app.pending_geo_lookups)
+                tr!(app.ui.translator, "status.geo_lookup", app.geo.pending_geo_lookups)
             ),
             Style::default().fg(THEME.warning),
         ));
     }
 
-    let mut right_spans = match app.current_nav_view {
+    let mut right_spans = match app.ui.current_nav_view {
         NavView::Containers => container_footer_spans(app),
         NavView::Storage => storage_footer_spans(app),
         NavView::TrendGraphs => trends_footer_spans(app),
@@ -66,13 +66,13 @@ pub fn render_footer(f: &mut ratatui::Frame, app: &App, area: Rect) {
     };
     right_spans.push(separator());
     right_spans.push(Span::styled(
-        format!(" {} ", tr!(app.translator, "app.version", APP_VERSION)),
+        format!(" {} ", tr!(app.ui.translator, "app.version", APP_VERSION)),
         Style::default().fg(THEME.text_dim),
     ));
     right_spans.push(Span::styled(
         format!(
             " {} ",
-            tr!(app.translator, "app.os", os_name(&app.translator))
+            tr!(app.ui.translator, "app.os", os_name(&app.ui.translator))
         ),
         Style::default().fg(THEME.secondary),
     ));
@@ -104,15 +104,15 @@ fn container_footer_spans(app: &App) -> Vec<Span<'_>> {
     let selected = app
         .get_selected_container()
         .map(|container| container.name.clone())
-        .unwrap_or_else(|| tr!(app.translator, "containers.footer_no_container"));
+        .unwrap_or_else(|| tr!(app.ui.translator, "containers.footer_no_container"));
     vec![
         Span::styled(
             format!(
                 " {} ",
                 tr!(
-                    app.translator,
+                    app.ui.translator,
                     "containers.footer_count",
-                    app.containers.len()
+                    app.containers.containers.len()
                 )
             ),
             Style::default().fg(THEME.secondary),
@@ -122,9 +122,9 @@ fn container_footer_spans(app: &App) -> Vec<Span<'_>> {
             format!(
                 " {} ",
                 tr!(
-                    app.translator,
+                    app.ui.translator,
                     "containers.footer_logs",
-                    app.container_logs.len()
+                    app.containers.container_logs.len()
                 )
             ),
             Style::default().fg(THEME.text_dim),
@@ -140,7 +140,7 @@ fn storage_footer_spans(app: &App) -> Vec<Span<'_>> {
         Span::styled(
             format!(
                 " {} ",
-                tr!(app.translator, "storage.col_size").to_lowercase()
+                tr!(app.ui.translator, "storage.col_size").to_lowercase()
             ),
             Style::default().fg(THEME.secondary),
         ),
@@ -148,7 +148,7 @@ fn storage_footer_spans(app: &App) -> Vec<Span<'_>> {
         Span::styled(
             format!(
                 " {} ",
-                tr!(app.translator, "sidebar.items", app.file_entries.len())
+                tr!(app.ui.translator, "sidebar.items", app.storage.file_entries.len())
             ),
             Style::default().fg(THEME.text_dim),
         ),
@@ -168,11 +168,11 @@ fn storage_footer_spans(app: &App) -> Vec<Span<'_>> {
 }
 
 fn trends_footer_spans(app: &App) -> Vec<Span<'_>> {
-    let peak_conn = app.conn_count_history.iter().max().copied().unwrap_or(0);
-    let current_cpu = app.cpu_history.last().copied().unwrap_or(0.0);
+    let peak_conn = app.trend.conn_count_history.iter().max().copied().unwrap_or(0);
+    let current_cpu = app.trend.cpu_history.last().copied().unwrap_or(0.0);
     vec![
         Span::styled(
-            format!(" {} ", tr!(app.translator, "trends.peak_connections")),
+            format!(" {} ", tr!(app.ui.translator, "trends.peak_connections")),
             Style::default().fg(THEME.secondary),
         ),
         separator(),
@@ -193,15 +193,15 @@ fn trends_footer_spans(app: &App) -> Vec<Span<'_>> {
 }
 
 fn libraries_footer_spans(app: &App) -> Vec<Span<'_>> {
-    let total = app.libraries.len();
+    let total = app.libraries.libraries.len();
     let suspicious = app
-        .libraries
+        .libraries.libraries
         .iter()
         .filter(|l| l.risk == "Suspicious")
         .count();
     vec![
         Span::styled(
-            format!(" {} ", tr!(app.translator, "libraries.footer_count", total)),
+            format!(" {} ", tr!(app.ui.translator, "libraries.footer_count", total)),
             Style::default().fg(THEME.secondary),
         ),
         separator(),
@@ -209,9 +209,9 @@ fn libraries_footer_spans(app: &App) -> Vec<Span<'_>> {
             format!(
                 " {} ",
                 if suspicious > 0 {
-                    tr!(app.translator, "libraries.footer_risk", suspicious)
+                    tr!(app.ui.translator, "libraries.footer_risk", suspicious)
                 } else {
-                    tr!(app.translator, "libraries.footer_safe")
+                    tr!(app.ui.translator, "libraries.footer_safe")
                 }
             ),
             Style::default().fg(if suspicious > 0 {
@@ -228,7 +228,7 @@ fn network_footer_spans(app: &App) -> Vec<Span<'_>> {
         Span::styled(
             format!(
                 " {} ",
-                tr!(app.translator, "app.apps_count", app.app_connections.len())
+                tr!(app.ui.translator, "app.apps_count", app.network.app_connections.len())
             ),
             Style::default().fg(THEME.secondary),
         ),
@@ -237,9 +237,9 @@ fn network_footer_spans(app: &App) -> Vec<Span<'_>> {
             format!(
                 " {} ",
                 tr!(
-                    app.translator,
+                    app.ui.translator,
                     "app.conns_count",
-                    app.network_connections.len()
+                    app.network.network_connections.len()
                 )
             ),
             Style::default().fg(THEME.text_dim),

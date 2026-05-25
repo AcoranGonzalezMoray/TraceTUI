@@ -103,11 +103,11 @@ pub const CONTAINER_RIGHT_ACTION_COUNT: usize = ContainerAction::COUNT + DockerA
 
 impl App {
     pub fn docker_status(&self) -> DockerStatus {
-        if self.containers_loading {
+        if self.containers.containers_loading {
             DockerStatus::Starting
-        } else if let Some(err) = &self.containers_error {
+        } else if let Some(err) = &self.containers.containers_error {
             ContainerManager::classify_error(err)
-        } else if self.containers_loaded_once {
+        } else if self.containers.containers_loaded_once {
             DockerStatus::On
         } else {
             DockerStatus::Unknown
@@ -115,26 +115,26 @@ impl App {
     }
 
     pub fn refresh_containers_async(&mut self) {
-        if self.containers_loading {
+        if self.containers.containers_loading {
             return;
         }
         let (tx, rx) = std::sync::mpsc::channel();
         std::thread::spawn(move || {
             let _ = tx.send(ContainerManager::list());
         });
-        self.container_rx = Some(rx);
-        self.containers_loading = true;
-        self.containers_error = None;
-        self.status_message = tr!(self.translator, "containers.status.refreshing").to_string();
+        self.containers.container_rx = Some(rx);
+        self.containers.containers_loading = true;
+        self.containers.containers_error = None;
+        self.ui.status_message = tr!(self.ui.translator, "containers.status.refreshing").to_string();
     }
 
     pub fn refresh_selected_container_logs_async(&mut self) {
-        if self.container_logs_loading {
+        if self.containers.container_logs_loading {
             return;
         }
         let Some(container) = self.get_selected_container() else {
-            self.status_message =
-                tr!(self.translator, "containers.status.no_selection").to_string();
+            self.ui.status_message =
+                tr!(self.ui.translator, "containers.status.no_selection").to_string();
             return;
         };
         let id = container.id.clone();
@@ -142,25 +142,25 @@ impl App {
         std::thread::spawn(move || {
             let _ = tx.send(ContainerManager::logs(&id));
         });
-        self.container_logs_rx = Some(rx);
-        self.container_logs_loading = true;
-        self.container_logs_scroll = 0;
-        self.show_container_logs_modal = true;
-        self.status_message = tr!(self.translator, "containers.status.loading_logs").to_string();
+        self.containers.container_logs_rx = Some(rx);
+        self.containers.container_logs_loading = true;
+        self.containers.container_logs_scroll = 0;
+        self.containers.show_container_logs_modal = true;
+        self.ui.status_message = tr!(self.ui.translator, "containers.status.loading_logs").to_string();
     }
 
     pub fn open_selected_container_console(&mut self) {
         let Some(container) = self.get_selected_container() else {
-            self.status_message =
-                tr!(self.translator, "containers.status.no_selection").to_string();
+            self.ui.status_message =
+                tr!(self.ui.translator, "containers.status.no_selection").to_string();
             return;
         };
         let name = container.name.clone();
-        self.show_container_console_modal = true;
-        self.container_console_scroll = 0;
-        if self.container_console_output.is_empty() {
-            self.container_console_output.push(tr!(
-                self.translator,
+        self.containers.show_container_console_modal = true;
+        self.containers.container_console_scroll = 0;
+        if self.containers.container_console_output.is_empty() {
+            self.containers.container_console_output.push(tr!(
+                self.ui.translator,
                 "containers.console_welcome",
                 name
             ));
@@ -168,53 +168,53 @@ impl App {
     }
 
     pub fn execute_container_console_command_async(&mut self) {
-        if self.container_console_loading {
+        if self.containers.container_console_loading {
             return;
         }
-        let command = self.container_console_input.trim().to_string();
+        let command = self.containers.container_console_input.trim().to_string();
         if command.is_empty() {
             return;
         }
         let Some(container) = self.get_selected_container() else {
-            self.status_message =
-                tr!(self.translator, "containers.status.no_selection").to_string();
+            self.ui.status_message =
+                tr!(self.ui.translator, "containers.status.no_selection").to_string();
             return;
         };
         let id = container.id.clone();
-        self.container_console_output
+        self.containers.container_console_output
             .push(format!("$ {}", command.as_str()));
-        self.container_console_input.clear();
+        self.containers.container_console_input.clear();
         let (tx, rx) = std::sync::mpsc::channel();
         std::thread::spawn(move || {
             let _ = tx.send(ContainerManager::exec_shell_command(&id, &command));
         });
-        self.container_console_rx = Some(rx);
-        self.container_console_loading = true;
-        self.status_message = tr!(self.translator, "containers.status.console_running").to_string();
+        self.containers.container_console_rx = Some(rx);
+        self.containers.container_console_loading = true;
+        self.ui.status_message = tr!(self.ui.translator, "containers.status.console_running").to_string();
     }
 
     pub fn process_container_results(&mut self) {
-        if let Some(rx) = &self.container_rx {
+        if let Some(rx) = &self.containers.container_rx {
             if let Ok(result) = rx.try_recv() {
-                self.containers_loading = false;
-                self.container_rx = None;
-                self.containers_loaded_once = true;
+                self.containers.containers_loading = false;
+                self.containers.container_rx = None;
+                self.containers.containers_loaded_once = true;
                 match result {
                     Ok(containers) => {
                         let count = containers.len();
-                        self.containers = containers;
-                        if self.selected_container_index >= count {
-                            self.selected_container_index = count.saturating_sub(1);
+                        self.containers.containers = containers;
+                        if self.containers.selected_container_index >= count {
+                            self.containers.selected_container_index = count.saturating_sub(1);
                         }
-                        self.containers_error = None;
-                        self.status_message =
-                            tr!(self.translator, "containers.status.ready", count);
+                        self.containers.containers_error = None;
+                        self.ui.status_message =
+                            tr!(self.ui.translator, "containers.status.ready", count);
                     }
                     Err(err) => {
-                        self.containers.clear();
-                        self.containers_error = Some(err.clone());
-                        self.status_message = self
-                            .translator
+                        self.containers.containers.clear();
+                        self.containers.containers_error = Some(err.clone());
+                        self.ui.status_message = self
+                            .ui.translator
                             .get(docker_status_key(ContainerManager::classify_error(&err)))
                             .to_string();
                     }
@@ -222,88 +222,88 @@ impl App {
             }
         }
 
-        if let Some(rx) = &self.container_logs_rx {
+        if let Some(rx) = &self.containers.container_logs_rx {
             if let Ok(result) = rx.try_recv() {
-                self.container_logs_loading = false;
-                self.container_logs_rx = None;
+                self.containers.container_logs_loading = false;
+                self.containers.container_logs_rx = None;
                 match result {
                     Ok(logs) => {
                         let count = logs.len();
-                        self.container_logs = logs;
-                        self.status_message =
-                            tr!(self.translator, "containers.status.logs_ready", count);
+                        self.containers.container_logs = logs;
+                        self.ui.status_message =
+                            tr!(self.ui.translator, "containers.status.logs_ready", count);
                     }
                     Err(err) => {
-                        self.container_logs.clear();
-                        self.status_message = tr!(self.translator, "containers.status.error", err);
+                        self.containers.container_logs.clear();
+                        self.ui.status_message = tr!(self.ui.translator, "containers.status.error", err);
                     }
                 }
             }
         }
 
-        if let Some(rx) = &self.container_console_rx {
+        if let Some(rx) = &self.containers.container_console_rx {
             if let Ok(result) = rx.try_recv() {
-                self.container_console_loading = false;
-                self.container_console_rx = None;
+                self.containers.container_console_loading = false;
+                self.containers.container_console_rx = None;
                 match result {
                     Ok(lines) => {
                         if lines.is_empty() {
-                            self.container_console_output
-                                .push(tr!(self.translator, "containers.console_empty_output"));
+                            self.containers.container_console_output
+                                .push(tr!(self.ui.translator, "containers.console_empty_output"));
                         } else {
-                            self.container_console_output.extend(lines);
+                            self.containers.container_console_output.extend(lines);
                         }
-                        self.status_message =
-                            tr!(self.translator, "containers.status.console_done").to_string();
+                        self.ui.status_message =
+                            tr!(self.ui.translator, "containers.status.console_done").to_string();
                     }
                     Err(err) => {
-                        self.container_console_output.push(err.clone());
-                        self.status_message = tr!(self.translator, "containers.status.error", err);
+                        self.containers.container_console_output.push(err.clone());
+                        self.ui.status_message = tr!(self.ui.translator, "containers.status.error", err);
                     }
                 }
             }
         }
 
-        if let Some(rx) = &self.docker_hub_search_rx {
+        if let Some(rx) = &self.containers.docker_hub_search_rx {
             if let Ok(result) = rx.try_recv() {
-                self.docker_hub_search_rx = None;
+                self.containers.docker_hub_search_rx = None;
                 match result {
                     Ok(images) => {
-                        self.docker_hub_search.results = images;
-                        self.docker_hub_search.selected_result_index = 0;
-                        let count = self.docker_hub_search.results.len();
-                        self.status_message = tr!(
-                            self.translator,
+                        self.containers.docker_hub_search.results = images;
+                        self.containers.docker_hub_search.selected_result_index = 0;
+                        let count = self.containers.docker_hub_search.results.len();
+                        self.ui.status_message = tr!(
+                            self.ui.translator,
                             "containers.docker_hub_results_found",
                             count
                         );
                     }
                     Err(err) => {
-                        self.docker_hub_search.results.clear();
-                        self.status_message =
-                            tr!(self.translator, "containers.docker_hub_error", err);
+                        self.containers.docker_hub_search.results.clear();
+                        self.ui.status_message =
+                            tr!(self.ui.translator, "containers.docker_hub_error", err);
                     }
                 }
             }
         }
 
-        if let Some(rx) = &self.docker_hub_create_rx {
+        if let Some(rx) = &self.containers.docker_hub_create_rx {
             if let Ok(result) = rx.try_recv() {
-                self.docker_hub_create_rx = None;
+                self.containers.docker_hub_create_rx = None;
                 match result {
                     Ok(container_id) => {
-                        self.status_message = tr!(
-                            self.translator,
+                        self.ui.status_message = tr!(
+                            self.ui.translator,
                             "containers.docker_hub_created",
                             container_id
                         );
-                        self.show_docker_hub_modal = false;
-                        self.docker_hub_search = DockerHubSearchState::default();
+                        self.containers.show_docker_hub_modal = false;
+                        self.containers.docker_hub_search = DockerHubSearchState::default();
                         self.refresh_containers_async();
                     }
                     Err(err) => {
-                        self.status_message =
-                            tr!(self.translator, "containers.docker_hub_error", err);
+                        self.ui.status_message =
+                            tr!(self.ui.translator, "containers.docker_hub_error", err);
                     }
                 }
             }
@@ -311,108 +311,108 @@ impl App {
     }
 
     pub fn execute_container_right_action(&mut self) {
-        if self.selected_container_action_index >= DOCKER_ACTION_OFFSET {
+        if self.containers.selected_container_action_index >= DOCKER_ACTION_OFFSET {
             let docker_index = self
-                .selected_container_action_index
+                .containers.selected_container_action_index
                 .saturating_sub(DOCKER_ACTION_OFFSET);
             let action = DockerAction::from_index(docker_index);
             match action {
                 DockerAction::SearchDockerHub => {
-                    self.show_docker_hub_modal = true;
-                    self.docker_hub_search = DockerHubSearchState::default();
+                    self.containers.show_docker_hub_modal = true;
+                    self.containers.docker_hub_search = DockerHubSearchState::default();
                 }
                 DockerAction::StartDocker => {
-                    self.pending_docker_action = Some(DockerAction::StartDocker);
-                    self.pending_container_action = None;
-                    self.confirmation_message =
-                        tr!(self.translator, "dialog.start_docker_confirm").to_string();
-                    self.show_confirmation = true;
+                    self.containers.pending_docker_action = Some(DockerAction::StartDocker);
+                    self.containers.pending_container_action = None;
+                    self.ui.confirmation_message =
+                        tr!(self.ui.translator, "dialog.start_docker_confirm").to_string();
+                    self.ui.show_confirmation = true;
                 }
                 DockerAction::StopDocker => {
-                    self.pending_docker_action = Some(DockerAction::StopDocker);
-                    self.pending_container_action = None;
-                    self.confirmation_message =
-                        tr!(self.translator, "dialog.stop_docker_confirm").to_string();
-                    self.show_confirmation = true;
+                    self.containers.pending_docker_action = Some(DockerAction::StopDocker);
+                    self.containers.pending_container_action = None;
+                    self.ui.confirmation_message =
+                        tr!(self.ui.translator, "dialog.stop_docker_confirm").to_string();
+                    self.ui.show_confirmation = true;
                 }
             }
             return;
         }
 
-        match ContainerAction::from_index(self.selected_container_action_index) {
+        match ContainerAction::from_index(self.containers.selected_container_action_index) {
             ContainerAction::Refresh => self.refresh_containers_async(),
             ContainerAction::Logs => self.refresh_selected_container_logs_async(),
             ContainerAction::Console => self.open_selected_container_console(),
             ContainerAction::Start => {
                 if let Some(c) = self.get_selected_container() {
                     let container_name = c.name.clone();
-                    self.pending_docker_action = None;
-                    self.pending_container_action = Some(ContainerAction::Start);
-                    self.confirmation_message = tr!(
-                        self.translator,
+                    self.containers.pending_docker_action = None;
+                    self.containers.pending_container_action = Some(ContainerAction::Start);
+                    self.ui.confirmation_message = tr!(
+                        self.ui.translator,
                         "dialog.start_container_confirm",
                         &container_name
                     )
                     .to_string();
-                    self.show_confirmation = true;
+                    self.ui.show_confirmation = true;
                 } else {
-                    self.status_message =
-                        tr!(self.translator, "containers.status.no_selection").to_string();
+                    self.ui.status_message =
+                        tr!(self.ui.translator, "containers.status.no_selection").to_string();
                 }
             }
             ContainerAction::Stop => {
                 if let Some(c) = self.get_selected_container() {
                     let container_name = c.name.clone();
-                    self.pending_docker_action = None;
-                    self.pending_container_action = Some(ContainerAction::Stop);
-                    self.confirmation_message = tr!(
-                        self.translator,
+                    self.containers.pending_docker_action = None;
+                    self.containers.pending_container_action = Some(ContainerAction::Stop);
+                    self.ui.confirmation_message = tr!(
+                        self.ui.translator,
                         "dialog.stop_container_confirm",
                         &container_name
                     )
                     .to_string();
-                    self.show_confirmation = true;
+                    self.ui.show_confirmation = true;
                 } else {
-                    self.status_message =
-                        tr!(self.translator, "containers.status.no_selection").to_string();
+                    self.ui.status_message =
+                        tr!(self.ui.translator, "containers.status.no_selection").to_string();
                 }
             }
             ContainerAction::Restart => {
                 if let Some(c) = self.get_selected_container() {
                     let container_name = c.name.clone();
-                    self.pending_docker_action = None;
-                    self.pending_container_action = Some(ContainerAction::Restart);
-                    self.confirmation_message = tr!(
-                        self.translator,
+                    self.containers.pending_docker_action = None;
+                    self.containers.pending_container_action = Some(ContainerAction::Restart);
+                    self.ui.confirmation_message = tr!(
+                        self.ui.translator,
                         "dialog.restart_container_confirm",
                         &container_name
                     )
                     .to_string();
-                    self.show_confirmation = true;
+                    self.ui.show_confirmation = true;
                 } else {
-                    self.status_message =
-                        tr!(self.translator, "containers.status.no_selection").to_string();
+                    self.ui.status_message =
+                        tr!(self.ui.translator, "containers.status.no_selection").to_string();
                 }
             }
             ContainerAction::PauseToggle => {
                 if let Some(c) = self.get_selected_container() {
                     let container_name = c.name.clone();
                     let is_paused = c.state.eq_ignore_ascii_case("paused");
-                    self.pending_docker_action = None;
-                    self.pending_container_action = Some(ContainerAction::PauseToggle);
+                    self.containers.pending_docker_action = None;
+                    self.containers.pending_container_action = Some(ContainerAction::PauseToggle);
                     let key = if is_paused {
                         "dialog.unpause_container_confirm"
                     } else {
                         "dialog.pause_container_confirm"
                     };
-                    self.confirmation_message = self
-                        .translator
+                    self.ui.confirmation_message = self
+                        .ui.translator
                         .get_fmt(key, &[format!("{}", container_name)])
                         .to_string();
-                    self.show_confirmation = true;
+                    self.ui.show_confirmation = true;
                 } else {
-                    self.status_message =
-                        tr!(self.translator, "containers.status.no_selection").to_string();
+                    self.ui.status_message =
+                        tr!(self.ui.translator, "containers.status.no_selection").to_string();
                 }
             }
         }
@@ -427,28 +427,28 @@ impl App {
 
         match result {
             Ok(()) => {
-                self.containers_loaded_once = false;
-                self.status_message = match action {
+                self.containers.containers_loaded_once = false;
+                self.ui.status_message = match action {
                     DockerAction::StartDocker => {
-                        tr!(self.translator, "containers.status.docker_start_requested")
+                        tr!(self.ui.translator, "containers.status.docker_start_requested")
                     }
                     DockerAction::StopDocker => {
-                        tr!(self.translator, "containers.status.docker_stop_requested")
+                        tr!(self.ui.translator, "containers.status.docker_stop_requested")
                     }
                     _ => String::new(),
                 };
                 self.refresh_containers_async();
             }
             Err(err) => {
-                self.status_message = tr!(self.translator, "containers.status.error", err);
+                self.ui.status_message = tr!(self.ui.translator, "containers.status.error", err);
             }
         }
     }
 
     pub fn run_selected_container_action_confirmed(&mut self, action: ContainerAction) {
         let Some(container) = self.get_selected_container() else {
-            self.status_message =
-                tr!(self.translator, "containers.status.no_selection").to_string();
+            self.ui.status_message =
+                tr!(self.ui.translator, "containers.status.no_selection").to_string();
             return;
         };
         let id = container.id.clone();
@@ -467,11 +467,11 @@ impl App {
 
         match result {
             Ok(()) => {
-                self.status_message = tr!(self.translator, "containers.status.action_done", name);
+                self.ui.status_message = tr!(self.ui.translator, "containers.status.action_done", name);
                 self.refresh_containers_async();
             }
             Err(err) => {
-                self.status_message = tr!(self.translator, "containers.status.error", err);
+                self.ui.status_message = tr!(self.ui.translator, "containers.status.error", err);
             }
         }
     }

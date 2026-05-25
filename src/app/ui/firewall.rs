@@ -1,6 +1,7 @@
 use super::theme::THEME;
 use super::widgets;
 use crate::app::{App, FirewallPanel};
+use crate::app::services::input_service::{any_blocked_checked, any_conn_checked};
 use crate::config;
 use crate::tr;
 use ratatui::{
@@ -35,7 +36,7 @@ fn checkbox(enabled: bool, checked: bool) -> &'static str {
     }
 }
 fn render_connections_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let is_focused = app.firewall_focus == FirewallPanel::Connections;
+    let is_focused = app.firewall.firewall_focus == FirewallPanel::Connections;
     let border_color = if is_focused {
         THEME.primary
     } else {
@@ -46,11 +47,11 @@ fn render_connections_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
     } else {
         BorderType::Rounded
     };
-    if app.firewall_connections.is_empty() {
+    if app.firewall.firewall_connections.is_empty() {
         let empty = Paragraph::new(vec![
             Line::from(""),
             Line::from(vec![Span::styled(
-                format!(" 󱂇 {}", tr!(app.translator, "firewall.no_conns")),
+                format!(" 󱂇 {}", tr!(app.ui.translator, "firewall.no_conns")),
                 Style::default().fg(THEME.text_dim),
             )]),
         ])
@@ -60,9 +61,9 @@ fn render_connections_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
                 .title(format!(
                     " 󱂇 {} ",
                     tr!(
-                        app.translator,
+                        app.ui.translator,
                         "firewall.conns",
-                        &app.firewall_process_name,
+                        &app.firewall.firewall_process_name,
                         ""
                     )
                 ))
@@ -83,10 +84,10 @@ fn render_connections_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .title(format!(
             " 󱂇 {} ",
             tr!(
-                app.translator,
+                app.ui.translator,
                 "firewall.conns",
-                &app.firewall_process_name,
-                app.firewall_connections.len()
+                &app.firewall.firewall_process_name,
+                app.firewall.firewall_connections.len()
             )
         ))
         .title_style(
@@ -105,13 +106,13 @@ fn render_connections_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
             Constraint::Length(config::SCROLLBAR_WIDTH),
         ])
         .split(inner_area);
-    let items: Vec<ListItem> = app
+    let items: Vec<ListItem> = app.firewall
         .firewall_connections
         .iter()
         .enumerate()
         .map(|(i, conn)| {
-            let is_selected = i == app.firewall_conn_index && is_focused;
-            let boxed = app.firewall_conn_checked.get(i).copied().unwrap_or(false);
+            let is_selected = i == app.firewall.firewall_conn_index && is_focused;
+            let boxed = app.firewall.firewall_conn_checked.get(i).copied().unwrap_or(false);
             let chk = checkbox(true, boxed);
             let conn_style = if is_selected {
                 Style::default()
@@ -154,19 +155,19 @@ fn render_connections_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
         })
         .collect();
     let mut list_state = ListState::default();
-    list_state.select(Some(app.firewall_conn_index));
+    list_state.select(Some(app.firewall.firewall_conn_index));
     let list = List::new(items).block(Block::default());
     f.render_stateful_widget(list, chunks[0], &mut list_state);
     widgets::render_scrollbar(
         f,
         chunks[1],
-        app.firewall_connections.len(),
-        app.firewall_conn_index,
+        app.firewall.firewall_connections.len(),
+        app.firewall.firewall_conn_index,
     );
-    let count = app.firewall_conn_checked.iter().filter(|&&c| c).count();
+    let count = app.firewall.firewall_conn_checked.iter().filter(|&&c| c).count();
     let hint = Paragraph::new(Line::from(vec![
         Span::styled(
-            tr!(app.translator, "firewall.checked", count),
+            tr!(app.ui.translator, "firewall.checked", count),
             Style::default().fg(if count > 0 {
                 THEME.success
             } else {
@@ -174,7 +175,7 @@ fn render_connections_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
             }),
         ),
         Span::styled(
-            format!("  {}", tr!(app.translator, "firewall.hint_enter")),
+            format!("  {}", tr!(app.ui.translator, "firewall.hint_enter")),
             Style::default().fg(THEME.text_dim),
         ),
     ]))
@@ -188,7 +189,7 @@ fn render_connections_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
     f.render_widget(hint, hint_area);
 }
 fn render_blocked_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let is_focused = app.firewall_focus == FirewallPanel::BlockedList;
+    let is_focused = app.firewall.firewall_focus == FirewallPanel::BlockedList;
     let border_color = if is_focused {
         THEME.primary
     } else {
@@ -199,11 +200,11 @@ fn render_blocked_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
     } else {
         BorderType::Rounded
     };
-    if app.blocked_ips.is_empty() {
+    if app.firewall.blocked_ips.is_empty() {
         let empty = Paragraph::new(vec![
             Line::from(""),
             Line::from(vec![Span::styled(
-                format!(" 󰒘 {}", tr!(app.translator, "firewall.no_blocked")),
+                format!(" 󰒘 {}", tr!(app.ui.translator, "firewall.no_blocked")),
                 Style::default().fg(THEME.text_dim),
             )]),
         ])
@@ -212,7 +213,7 @@ fn render_blocked_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
                 .borders(Borders::ALL)
                 .title(format!(
                     " 󰒘 {} ",
-                    tr!(app.translator, "firewall.blocked", "")
+                    tr!(app.ui.translator, "firewall.blocked", "")
                 ))
                 .title_style(
                     Style::default()
@@ -230,7 +231,7 @@ fn render_blocked_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .borders(Borders::ALL)
         .title(format!(
             " 󰒘 {} ",
-            tr!(app.translator, "firewall.blocked", app.blocked_ips.len())
+            tr!(app.ui.translator, "firewall.blocked", app.firewall.blocked_ips.len())
         ))
         .title_style(
             Style::default()
@@ -248,13 +249,13 @@ fn render_blocked_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
             Constraint::Length(config::SCROLLBAR_WIDTH),
         ])
         .split(inner_area);
-    let items: Vec<ListItem> = app
+    let items: Vec<ListItem> = app.firewall
         .blocked_ips
         .iter()
         .enumerate()
         .map(|(i, (ip, pname, _))| {
-            let is_selected = i == app.firewall_blocked_index && is_focused;
-            let boxed = app
+            let is_selected = i == app.firewall.firewall_blocked_index && is_focused;
+            let boxed = app.firewall
                 .firewall_blocked_checked
                 .get(i)
                 .copied()
@@ -293,19 +294,19 @@ fn render_blocked_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
         })
         .collect();
     let mut list_state = ListState::default();
-    list_state.select(Some(app.firewall_blocked_index));
+    list_state.select(Some(app.firewall.firewall_blocked_index));
     let list = List::new(items).block(Block::default());
     f.render_stateful_widget(list, chunks[0], &mut list_state);
     widgets::render_scrollbar(
         f,
         chunks[1],
-        app.blocked_ips.len(),
-        app.firewall_blocked_index,
+        app.firewall.blocked_ips.len(),
+        app.firewall.firewall_blocked_index,
     );
-    let count = app.firewall_blocked_checked.iter().filter(|&&c| c).count();
+    let count = app.firewall.firewall_blocked_checked.iter().filter(|&&c| c).count();
     let hint = Paragraph::new(Line::from(vec![
         Span::styled(
-            tr!(app.translator, "firewall.checked", count),
+            tr!(app.ui.translator, "firewall.checked", count),
             Style::default().fg(if count > 0 {
                 THEME.success
             } else {
@@ -313,7 +314,7 @@ fn render_blocked_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
             }),
         ),
         Span::styled(
-            format!("  {}", tr!(app.translator, "firewall.hint_enter")),
+            format!("  {}", tr!(app.ui.translator, "firewall.hint_enter")),
             Style::default().fg(THEME.text_dim),
         ),
     ]))
@@ -327,7 +328,7 @@ fn render_blocked_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
     f.render_widget(hint, hint_area);
 }
 fn render_actions_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let is_focused = app.firewall_focus == FirewallPanel::Actions;
+    let is_focused = app.firewall.firewall_focus == FirewallPanel::Actions;
     let border_color = if is_focused {
         THEME.primary
     } else {
@@ -340,7 +341,7 @@ fn render_actions_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
     };
     let block = Block::default()
         .borders(Borders::ALL)
-        .title(format!(" 󰬒 {} ", tr!(app.translator, "actions.title")))
+        .title(format!(" 󰬒 {} ", tr!(app.ui.translator, "actions.title")))
         .title_style(
             Style::default()
                 .fg(border_color)
@@ -350,8 +351,8 @@ fn render_actions_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .border_type(border_type);
     f.render_widget(block.clone(), area);
     let inner_area = block.inner(area);
-    let any_conn = app.any_conn_checked();
-    let any_blocked = app.any_blocked_checked();
+    let any_conn = any_conn_checked(app);
+    let any_blocked = any_blocked_checked(app);
     struct ActionDef {
         icon: &'static str,
         title: String,
@@ -362,28 +363,28 @@ fn render_actions_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let actions = [
         ActionDef {
             icon: "󰄭",
-            title: tr!(app.translator, "firewall.action_select"),
+            title: tr!(app.ui.translator, "firewall.action_select"),
             key: "Space",
             color: THEME.primary,
             enabled: true,
         },
         ActionDef {
             icon: "󰒘",
-            title: tr!(app.translator, "firewall.action_block"),
+            title: tr!(app.ui.translator, "firewall.action_block"),
             key: "B",
             color: THEME.danger,
             enabled: any_conn,
         },
         ActionDef {
             icon: "󰅁",
-            title: tr!(app.translator, "firewall.action_unblock"),
+            title: tr!(app.ui.translator, "firewall.action_unblock"),
             key: "U",
             color: THEME.success,
             enabled: any_blocked,
         },
         ActionDef {
             icon: "󰩈",
-            title: tr!(app.translator, "firewall.action_exit"),
+            title: tr!(app.ui.translator, "firewall.action_exit"),
             key: "Esc",
             color: THEME.secondary,
             enabled: true,
@@ -393,7 +394,7 @@ fn render_actions_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .iter()
         .enumerate()
         .map(|(i, a)| {
-            let is_selected = i == app.firewall_action_index && is_focused;
+            let is_selected = i == app.firewall.firewall_action_index && is_focused;
             let icon_style = if a.enabled {
                 Style::default().fg(a.color)
             } else {
@@ -432,7 +433,7 @@ fn render_actions_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
         })
         .collect();
     let mut list_state = ListState::default();
-    list_state.select(Some(app.firewall_action_index));
+    list_state.select(Some(app.firewall.firewall_action_index));
     let list = List::new(items).block(Block::default());
     f.render_stateful_widget(list, inner_area, &mut list_state);
 }

@@ -92,11 +92,46 @@ pub struct UiState {
     pub language_scroll_offset: usize,
     pub show_welcome_dialog: bool,
     pub welcome_index: usize,
-    pub show_update_dialog: bool,
     pub show_file_search_modal: bool,
     pub file_search_state: FileSearchState,
     pub translator: Translator,
     pub hunter_mode: bool,
+}
+
+impl UiState {
+    pub fn new(translator: Translator) -> Self {
+        Self {
+            should_quit: false,
+            current_state: AppState::Dashboard,
+            sidebar_focus: SidebarFocus::Left,
+            frame_count: 0,
+            needs_clear: false,
+            search_query: String::new(),
+            search_mode: false,
+            filter_high_risk_only: false,
+            status_message: String::new(),
+            show_confirmation: false,
+            confirmation_message: String::new(),
+            auto_analysis_complete: false,
+            is_initial_loading: true,
+            analysis_paused: false,
+            continuous_refresh_counter: 0,
+            center_tab: 0,
+            current_nav_view: NavView::Main,
+            nav_sidebar_expanded: false,
+            selected_action_index: 0,
+            show_map: false,
+            show_language_modal: false,
+            language_selection_index: 0,
+            language_scroll_offset: 0,
+            show_welcome_dialog: false,
+            welcome_index: 0,
+            show_file_search_modal: false,
+            file_search_state: FileSearchState::default(),
+            translator,
+            hunter_mode: false,
+        }
+    }
 }
 
 pub struct NetworkDataState {
@@ -112,6 +147,23 @@ pub struct NetworkDataState {
     pub cached_filtered_indices: Vec<usize>,
 }
 
+impl NetworkDataState {
+    pub fn new() -> Self {
+        Self {
+            network_connections: Vec::new(),
+            processes: Vec::new(),
+            app_connections: Vec::new(),
+            selected_app_index: 0,
+            selected_connection_index: 0,
+            icon_cache: IconCache::new(),
+            data_rx: None,
+            grouping_rx: None,
+            icon_extraction_rx: None,
+            cached_filtered_indices: Vec::new(),
+        }
+    }
+}
+
 pub struct GeoState {
     pub geoip: GeoIpService,
     pub geo_tx: mpsc::UnboundedSender<(u32, String, GeoInfo)>,
@@ -122,11 +174,39 @@ pub struct GeoState {
     pub user_info_tx: mpsc::UnboundedSender<GeoInfo>,
 }
 
+impl GeoState {
+    pub fn new() -> Self {
+        let (geo_tx, geo_rx) = mpsc::unbounded_channel();
+        let (user_info_tx, user_info_rx) = mpsc::unbounded_channel();
+        Self {
+            geoip: GeoIpService::new().expect("Failed to initialize GeoIpService"),
+            geo_tx,
+            geo_rx,
+            pending_geo_lookups: 0,
+            user_geo: None,
+            user_info_rx,
+            user_info_tx,
+        }
+    }
+}
+
 pub struct InvestigationState {
     pub investigation_report: Option<InvestigationReport>,
     pub is_investigating: bool,
     pub inv_tx: mpsc::UnboundedSender<InvestigationReport>,
     pub inv_rx: mpsc::UnboundedReceiver<InvestigationReport>,
+}
+
+impl InvestigationState {
+    pub fn new() -> Self {
+        let (inv_tx, inv_rx) = mpsc::unbounded_channel();
+        Self {
+            investigation_report: None,
+            is_investigating: false,
+            inv_tx,
+            inv_rx,
+        }
+    }
 }
 
 pub struct FirewallState {
@@ -142,6 +222,23 @@ pub struct FirewallState {
     pub firewall_blocked_checked: Vec<bool>,
 }
 
+impl FirewallState {
+    pub fn new() -> Self {
+        Self {
+            firewall_mode: false,
+            firewall_focus: FirewallPanel::Connections,
+            firewall_connections: Vec::new(),
+            firewall_process_name: String::new(),
+            blocked_ips: Vec::new(),
+            firewall_conn_index: 0,
+            firewall_blocked_index: 0,
+            firewall_action_index: 0,
+            firewall_conn_checked: Vec::new(),
+            firewall_blocked_checked: Vec::new(),
+        }
+    }
+}
+
 pub struct UpdateState {
     pub show_update_dialog: bool,
     pub latest_remote_version: String,
@@ -152,6 +249,22 @@ pub struct UpdateState {
     pub update_success: bool,
     pub update_message: String,
     pub update_progress: f64,
+}
+
+impl UpdateState {
+    pub fn new() -> Self {
+        Self {
+            show_update_dialog: false,
+            latest_remote_version: String::new(),
+            update_rx: None,
+            update_task_rx: None,
+            is_updating: false,
+            update_done: false,
+            update_success: false,
+            update_message: String::new(),
+            update_progress: 0.0,
+        }
+    }
 }
 
 pub struct StorageState {
@@ -178,6 +291,36 @@ pub struct StorageState {
     pub search_progress_rx: Option<std::sync::mpsc::Receiver<Vec<FileEntry>>>,
     pub search_progress_count: Option<std::sync::Arc<std::sync::atomic::AtomicUsize>>,
     pub search_progress_abort: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
+}
+
+impl StorageState {
+    pub fn new() -> Self {
+        Self {
+            disks: Vec::new(),
+            selected_disk_index: 0,
+            disks_loading: false,
+            current_directory: std::path::PathBuf::from("/"),
+            file_entries: Vec::new(),
+            file_scroll: 0,
+            show_file_viewer: false,
+            file_viewer_content: Vec::new(),
+            file_viewer_scroll: 0,
+            file_viewer_is_ansi: false,
+            storage_focus: 0,
+            file_search_query: String::new(),
+            file_search_mode: false,
+            file_search_recursive: false,
+            file_search_extension_idx: 0,
+            selected_storage_action_index: 0,
+            file_sort_mode: FileSortMode::ByName,
+            last_storage_refresh: std::time::Instant::now(),
+            search_progress_running: false,
+            search_progress_found: 0,
+            search_progress_rx: None,
+            search_progress_count: None,
+            search_progress_abort: None,
+        }
+    }
 }
 
 pub struct ContainerState {
@@ -208,6 +351,46 @@ pub struct ContainerState {
     pub pending_docker_action: Option<DockerAction>,
 }
 
+impl ContainerState {
+    pub fn new() -> Self {
+        Self {
+            containers: Vec::new(),
+            selected_container_index: 0,
+            selected_container_action_index: 0,
+            container_detail_scroll: 0,
+            containers_loading: false,
+            containers_loaded_once: false,
+            containers_error: None,
+            container_rx: None,
+            container_logs: Vec::new(),
+            container_logs_loading: false,
+            container_logs_rx: None,
+            show_container_logs_modal: false,
+            show_container_console_modal: false,
+            container_logs_scroll: 0,
+            container_console_input: String::new(),
+            container_console_output: Vec::new(),
+            container_console_loading: false,
+            container_console_scroll: 0,
+            container_console_rx: None,
+            show_docker_hub_modal: false,
+            docker_hub_search: DockerHubSearchState {
+                search_query: String::new(),
+                results: Vec::new(),
+                selected_result_index: 0,
+                container_name: String::new(),
+                ports: String::new(),
+                env_vars: String::new(),
+                focused_field: 0,
+            },
+            docker_hub_search_rx: None,
+            docker_hub_create_rx: None,
+            pending_container_action: None,
+            pending_docker_action: None,
+        }
+    }
+}
+
 pub struct LibraryState {
     pub libraries: Vec<LibraryInfo>,
     pub libraries_loading: bool,
@@ -229,7 +412,41 @@ pub struct LibraryState {
     pub libraries_rx: Option<std::sync::mpsc::Receiver<Vec<LibraryInfo>>>,
 }
 
+impl LibraryState {
+    pub fn new() -> Self {
+        Self {
+            libraries: Vec::new(),
+            libraries_loading: false,
+            selected_library_process_index: 0,
+            selected_library_index: 0,
+            library_process_scroll: 0,
+            library_lib_scroll: 0,
+            libraries_loaded_once: false,
+            library_search_query: String::new(),
+            library_search_active: false,
+            library_risk_filter: None,
+            show_hash_info_modal: false,
+            show_library_binary_viewer: false,
+            library_binary_path: String::new(),
+            library_binary_hex_lines: Vec::new(),
+            library_binary_disasm_lines: Vec::new(),
+            library_binary_scroll: 0,
+            library_binary_tab: 0,
+            libraries_rx: None,
+        }
+    }
+}
+
 pub struct TrendState {
     pub cpu_history: Vec<f64>,
     pub conn_count_history: Vec<u64>,
+}
+
+impl TrendState {
+    pub fn new() -> Self {
+        Self {
+            cpu_history: Vec::new(),
+            conn_count_history: Vec::new(),
+        }
+    }
 }

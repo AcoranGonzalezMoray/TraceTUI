@@ -16,7 +16,7 @@ pub fn render_storage_view(f: &mut ratatui::Frame, app: &App, area: Rect) {
     if area.height < 10 || area.width < 50 {
         return;
     }
-    if app.show_file_viewer {
+    if app.storage.show_file_viewer {
         render_file_viewer_modal(f, app);
         return;
     }
@@ -42,7 +42,7 @@ pub fn render_storage_view(f: &mut ratatui::Frame, app: &App, area: Rect) {
 }
 
 fn render_disk_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let is_focused = app.storage_focus == 0;
+    let is_focused = app.storage.storage_focus == 0;
 
     let border_color = if is_focused {
         THEME.primary
@@ -66,7 +66,7 @@ fn render_disk_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .title(Line::from(vec![
             Span::raw(" "),
             Span::styled(
-                tr!(app.translator, "storage.disks"),
+                tr!(app.ui.translator, "storage.disks"),
                 Style::default().fg(THEME.primary).bold(),
             ),
             Span::raw(" "),
@@ -75,11 +75,11 @@ fn render_disk_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let inner = block.inner(area);
     f.render_widget(block, area);
 
-    if app.disks.is_empty() {
-        let msg = if app.disks_loading {
-            tr!(app.translator, "storage.loading")
+    if app.storage.disks.is_empty() {
+        let msg = if app.storage.disks_loading {
+            tr!(app.ui.translator, "storage.loading")
         } else {
-            tr!(app.translator, "storage.no_disks")
+            tr!(app.ui.translator, "storage.no_disks")
         };
         f.render_widget(
             Paragraph::new(msg)
@@ -90,12 +90,11 @@ fn render_disk_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
         return;
     }
 
-    let items: Vec<ListItem> = app
-        .disks
+    let items: Vec<ListItem> = app.storage.disks
         .iter()
         .enumerate()
         .map(|(i, disk)| {
-            let is_selected = i == app.selected_disk_index;
+            let is_selected = i == app.storage.selected_disk_index;
             let pct = disk.usage_pct();
 
             let bar_len = 8;
@@ -149,7 +148,7 @@ fn render_disk_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .collect();
 
     let mut state = ListState::default();
-    state.select(Some(app.selected_disk_index));
+    state.select(Some(app.storage.selected_disk_index));
     f.render_stateful_widget(List::new(items), inner, &mut state);
 }
 
@@ -161,7 +160,7 @@ fn render_disk_properties(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .title(Line::from(vec![
             Span::raw(" "),
             Span::styled(
-                tr!(app.translator, "storage.properties"),
+                tr!(app.ui.translator, "storage.properties"),
                 Style::default().fg(THEME.accent).bold(),
             ),
             Span::raw(" "),
@@ -172,7 +171,7 @@ fn render_disk_properties(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let Some(disk) = app.get_selected_disk() else {
         f.render_widget(
             Paragraph::new(Line::from(Span::styled(
-                tr!(app.translator, "storage.no_disk_selected"),
+                tr!(app.ui.translator, "storage.no_disk_selected"),
                 Style::default().fg(THEME.text_dim),
             ))),
             inner,
@@ -185,7 +184,7 @@ fn render_disk_properties(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let free = crate::app::storage::fmt_size(disk.free_bytes);
     let pct = disk.usage_pct();
 
-    let p = |k: &str| -> String { format!("{} ", app.translator.get(k)) };
+    let p = |k: &str| -> String { format!("{} ", app.ui.translator.get(k)) };
     let mut lines = vec![
         Line::from(vec![
             Span::styled("  ", Style::default()),
@@ -291,7 +290,7 @@ fn file_color(entry: &FileEntry) -> ratatui::style::Color {
 }
 
 fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let is_focused = app.storage_focus == 1;
+    let is_focused = app.storage.storage_focus == 1;
 
     let border_color = if is_focused {
         THEME.primary
@@ -315,7 +314,7 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .title(Line::from(vec![
             Span::raw(" "),
             Span::styled(
-                tr!(app.translator, "storage.file_browser"),
+                tr!(app.ui.translator, "storage.file_browser"),
                 Style::default().fg(THEME.primary).bold(),
             ),
             Span::raw(" "),
@@ -324,11 +323,11 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let inner = block.inner(area);
     f.render_widget(block, area);
 
-    let sort_label = app.file_sort_mode.label();
-    let sort_str = format!(" {}", tr!(app.translator, "storage.sort_label", sort_label));
+    let sort_label = app.storage.file_sort_mode.label();
+    let sort_str = format!(" {}", tr!(app.ui.translator, "storage.sort_label", sort_label));
     let path_str = format!(
         " 📁 {} {}",
-        app.current_directory.to_string_lossy(),
+        app.storage.current_directory.to_string_lossy(),
         sort_str
     );
     let header_path = Paragraph::new(path_str)
@@ -346,28 +345,28 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
         inner.height.saturating_sub(1),
     );
 
-    if app.search_progress_running {
+    if app.storage.search_progress_running {
         let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-        let s = spinner[(app.frame_count as usize) % spinner.len()];
+        let s = spinner[(app.ui.frame_count as usize) % spinner.len()];
         let mut lines = vec![Line::from("")];
 
         let files_label = tr!(
-            app.translator,
+            app.ui.translator,
             "storage.files_count",
-            app.search_progress_found
+            app.storage.search_progress_found
         );
-        let loading_msg = if app.file_search_recursive {
+        let loading_msg = if app.storage.file_search_recursive {
             format!(
                 " {} {} {}",
                 s,
-                tr!(app.translator, "status.search_recursive_on"),
+                tr!(app.ui.translator, "status.search_recursive_on"),
                 files_label
             )
         } else {
             format!(
                 " {} {} {}",
                 s,
-                tr!(app.translator, "storage.loading"),
+                tr!(app.ui.translator, "storage.loading"),
                 files_label
             )
         };
@@ -380,10 +379,10 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
         return;
     }
 
-    let total_items = app.cached_filtered_indices.len();
+    let total_items = app.network.cached_filtered_indices.len();
     if total_items == 0 {
         f.render_widget(
-            Paragraph::new(tr!(app.translator, "storage.empty_dir"))
+            Paragraph::new(tr!(app.ui.translator, "storage.empty_dir"))
                 .alignment(Alignment::Center)
                 .style(Style::default().fg(THEME.text_dim)),
             rest,
@@ -391,7 +390,7 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
         return;
     }
 
-    let current_scroll = app.file_scroll.min(total_items.saturating_sub(1));
+    let current_scroll = app.storage.file_scroll.min(total_items.saturating_sub(1));
     let visible_rows = rest.height.saturating_sub(1).max(1) as usize;
     let scroll_start = current_scroll;
     let scroll_end = (scroll_start + visible_rows).min(total_items);
@@ -405,14 +404,14 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let header_row = Row::new(vec![
         Cell::from(Line::from(vec![
             Span::raw("  "),
-            Span::raw(tr!(app.translator, "storage.col_name")),
+            Span::raw(tr!(app.ui.translator, "storage.col_name")),
         ])),
         Cell::from(Line::from(vec![Span::raw(tr!(
-            app.translator,
+            app.ui.translator,
             "storage.col_size"
         ))])),
         Cell::from(Line::from(vec![Span::raw(tr!(
-            app.translator,
+            app.ui.translator,
             "storage.col_modified"
         ))])),
     ])
@@ -423,14 +422,14 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
     )
     .bottom_margin(1);
 
-    let rows: Vec<Row> = app.cached_filtered_indices[scroll_start..scroll_end]
+    let rows: Vec<Row> = app.network.cached_filtered_indices[scroll_start..scroll_end]
         .iter()
         .map(|&idx| {
-            let entry = &app.file_entries[idx];
+            let entry = &app.storage.file_entries[idx];
             let icon = file_icon(entry);
             let fg_color = file_color(entry);
             let size_str = if entry.is_dir {
-                format!("  {}", tr!(app.translator, "storage.dir_label"))
+                format!("  {}", tr!(app.ui.translator, "storage.dir_label"))
             } else {
                 fmt_size(entry.size)
             };
@@ -493,52 +492,52 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
 }
 
 fn render_storage_actions(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let focused = app.storage_focus == 2;
+    let focused = app.storage.storage_focus == 2;
     let border_color = focus_color_storage(focused);
 
     let block = styled_block_storage(
-        format!(" {} ", tr!(app.translator, "storage.actions")),
+        format!(" {} ", tr!(app.ui.translator, "storage.actions")),
         border_color,
         focused,
     );
     f.render_widget(block.clone(), area);
     let inner = block.inner(area);
 
-    let sort_mode_label = app.file_sort_mode.label();
+    let sort_mode_label = app.storage.file_sort_mode.label();
     let items: Vec<(&str, String, &str, ratatui::style::Color)> = vec![
         (
             "\u{f021}",
-            tr!(app.translator, "storage.refresh"),
+            tr!(app.ui.translator, "storage.refresh"),
             "R",
             THEME.success,
         ),
         (
             "\u{f15b}",
-            tr!(app.translator, "storage.open"),
+            tr!(app.ui.translator, "storage.open"),
             "Enter",
             THEME.primary,
         ),
         (
             "\u{f0ca}",
-            tr!(app.translator, "storage.properties"),
+            tr!(app.ui.translator, "storage.properties"),
             "P",
             THEME.warning,
         ),
         (
             "\u{f07c}",
-            tr!(app.translator, "storage.parent_dir"),
+            tr!(app.ui.translator, "storage.parent_dir"),
             "Backspace",
             THEME.accent,
         ),
         (
             "\u{f015}",
-            tr!(app.translator, "storage.go_home"),
+            tr!(app.ui.translator, "storage.go_home"),
             "H",
             THEME.danger,
         ),
         (
             "\u{f0dc}",
-            tr!(app.translator, "storage.sort_label", sort_mode_label),
+            tr!(app.ui.translator, "storage.sort_label", sort_mode_label),
             "S",
             THEME.accent,
         ),
@@ -548,7 +547,7 @@ fn render_storage_actions(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .iter()
         .enumerate()
         .map(|(i, (icon, lbl, key, color))| {
-            let selected = i == app.selected_storage_action_index;
+            let selected = i == app.storage.selected_storage_action_index;
             let prefix = if selected { " \u{258e}" } else { "  " };
             let name_style = if selected {
                 Style::default()
@@ -573,7 +572,7 @@ fn render_storage_actions(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .collect();
 
     let mut state = ListState::default();
-    state.select(Some(app.selected_storage_action_index));
+    state.select(Some(app.storage.selected_storage_action_index));
     f.render_stateful_widget(List::new(list_items), inner, &mut state);
 }
 
@@ -608,8 +607,8 @@ pub fn render_file_viewer_modal(f: &mut ratatui::Frame, app: &App) {
     let area = centered_rect(f.area(), 70, 60);
     f.render_widget(Clear, area);
 
-    let path = app.current_directory.join(
-        app.file_entries
+    let path = app.storage.current_directory.join(
+        app.storage.file_entries
             .get(0)
             .map(|e| e.name.as_str())
             .unwrap_or(""),
@@ -631,9 +630,9 @@ pub fn render_file_viewer_modal(f: &mut ratatui::Frame, app: &App) {
     let inner = block.inner(area);
     f.render_widget(block, area);
 
-    if app.file_viewer_content.is_empty() {
+    if app.storage.file_viewer_content.is_empty() {
         f.render_widget(
-            Paragraph::new(tr!(app.translator, "storage.viewer_empty"))
+            Paragraph::new(tr!(app.ui.translator, "storage.viewer_empty"))
                 .alignment(Alignment::Center)
                 .style(Style::default().fg(THEME.text_dim)),
             inner,
@@ -641,10 +640,9 @@ pub fn render_file_viewer_modal(f: &mut ratatui::Frame, app: &App) {
         return;
     }
 
-    let total_lines = app.file_viewer_content.len();
+    let total_lines = app.storage.file_viewer_content.len();
     let visible_height = inner.height.saturating_sub(2) as usize;
-    let scroll_pos = app
-        .file_viewer_scroll
+    let scroll_pos = app.storage.file_viewer_scroll
         .min(total_lines.saturating_sub(visible_height).max(0));
 
     let mut lines: Vec<Line> = Vec::with_capacity(visible_height + 1);
@@ -655,7 +653,7 @@ pub fn render_file_viewer_modal(f: &mut ratatui::Frame, app: &App) {
                 format!(
                     " {} ",
                     tr!(
-                        app.translator,
+                        app.ui.translator,
                         "storage.viewer_lines",
                         (scroll_pos + visible_height).min(total_lines),
                         total_lines
@@ -664,7 +662,7 @@ pub fn render_file_viewer_modal(f: &mut ratatui::Frame, app: &App) {
                 Style::default().fg(THEME.background),
             ),
             Span::styled(
-                format!(" ({})", tr!(app.translator, "storage.viewer_scroll_hint")),
+                format!(" ({})", tr!(app.ui.translator, "storage.viewer_scroll_hint")),
                 Style::default().fg(THEME.background),
             ),
         ])
@@ -672,8 +670,8 @@ pub fn render_file_viewer_modal(f: &mut ratatui::Frame, app: &App) {
     );
     lines.push(Line::from(""));
 
-    if app.file_viewer_is_ansi {
-        let raw: Vec<u8> = app.file_viewer_content.join("\n").into_bytes();
+    if app.storage.file_viewer_is_ansi {
+        let raw: Vec<u8> = app.storage.file_viewer_content.join("\n").into_bytes();
         match ansi_to_tui::IntoText::into_text(&raw) {
             Ok(text) => {
                 f.render_widget(Paragraph::new(text).alignment(Alignment::Center), inner);
@@ -681,7 +679,7 @@ pub fn render_file_viewer_modal(f: &mut ratatui::Frame, app: &App) {
             Err(_) => {
                 f.render_widget(
                     Paragraph::new(Line::from(Span::styled(
-                        tr!(app.translator, "storage.viewer_empty"),
+                        tr!(app.ui.translator, "storage.viewer_empty"),
                         Style::default().fg(THEME.text_dim),
                     )))
                     .alignment(Alignment::Center),
@@ -693,7 +691,7 @@ pub fn render_file_viewer_modal(f: &mut ratatui::Frame, app: &App) {
     }
 
     for i in scroll_pos..(scroll_pos + visible_height).min(total_lines) {
-        if let Some(line) = app.file_viewer_content.get(i) {
+        if let Some(line) = app.storage.file_viewer_content.get(i) {
             let line_num = i + 1;
             lines.push(Line::from(vec![
                 Span::styled(
@@ -730,7 +728,7 @@ pub fn render_file_search_modal(f: &mut ratatui::Frame, app: &App) {
     let area = centered_rect(f.area(), 55, 45);
     f.render_widget(Clear, area);
 
-    let state = &app.file_search_state;
+    let state = &app.ui.file_search_state;
     let block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
@@ -738,7 +736,7 @@ pub fn render_file_search_modal(f: &mut ratatui::Frame, app: &App) {
         .title(Line::from(vec![
             Span::raw(" 🔍 "),
             Span::styled(
-                tr!(app.translator, "storage.search_title"),
+                tr!(app.ui.translator, "storage.search_title"),
                 Style::default().fg(THEME.warning).bold(),
             ),
             Span::raw(" "),
@@ -758,9 +756,9 @@ pub fn render_file_search_modal(f: &mut ratatui::Frame, app: &App) {
 
     let q_focused = state.focused_field == 0;
     let q_text = if state.query.is_empty() {
-        tr!(app.translator, "storage.type_to_filter")
+        tr!(app.ui.translator, "storage.type_to_filter")
     } else {
-        let cursor = if q_focused && app.frame_count % 2 == 0 {
+        let cursor = if q_focused && app.ui.frame_count % 2 == 0 {
             "█"
         } else {
             ""
@@ -784,7 +782,7 @@ pub fn render_file_search_modal(f: &mut ratatui::Frame, app: &App) {
         .border_type(BorderType::Rounded)
         .border_style(border_style_q)
         .title(Span::styled(
-            tr!(app.translator, "storage.search_query"),
+            tr!(app.ui.translator, "storage.search_query"),
             Style::default().fg(if q_focused {
                 THEME.primary
             } else {
@@ -808,9 +806,9 @@ pub fn render_file_search_modal(f: &mut ratatui::Frame, app: &App) {
     let r_focused = state.focused_field == 1;
     let r_icon = if state.recursive { " ✅ " } else { " ❌ " };
     let r_label = if state.recursive {
-        tr!(app.translator, "status.search_recursive_on")
+        tr!(app.ui.translator, "status.search_recursive_on")
     } else {
-        tr!(app.translator, "status.search_recursive_off")
+        tr!(app.ui.translator, "status.search_recursive_off")
     };
 
     let border_color_r = if r_focused {
@@ -829,7 +827,7 @@ pub fn render_file_search_modal(f: &mut ratatui::Frame, app: &App) {
         .border_type(BorderType::Rounded)
         .border_style(border_style_r)
         .title(Span::styled(
-            tr!(app.translator, "storage.search_recursive"),
+            tr!(app.ui.translator, "storage.search_recursive"),
             Style::default().fg(if r_focused {
                 THEME.primary
             } else {
@@ -852,7 +850,7 @@ pub fn render_file_search_modal(f: &mut ratatui::Frame, app: &App) {
         .min(FILE_EXTENSION_FILTERS.len().saturating_sub(1));
     let (ext_icon, _) = FILE_EXTENSION_FILTERS[ext_idx];
     let ext_name = app
-        .translator
+        .ui.translator
         .get(crate::app::storage::extension_filter_label(ext_idx));
 
     let border_color_e = if e_focused {
@@ -871,7 +869,7 @@ pub fn render_file_search_modal(f: &mut ratatui::Frame, app: &App) {
         .border_type(BorderType::Rounded)
         .border_style(border_style_e)
         .title(Span::styled(
-            tr!(app.translator, "storage.search_filetype"),
+            tr!(app.ui.translator, "storage.search_filetype"),
             Style::default().fg(if e_focused {
                 THEME.primary
             } else {
@@ -911,7 +909,7 @@ pub fn render_file_search_modal(f: &mut ratatui::Frame, app: &App) {
                 }),
             ),
             Span::styled(
-                tr!(app.translator, "dialog.continue"),
+                tr!(app.ui.translator, "dialog.continue"),
                 Style::default().fg(if cont_focused {
                     THEME.background
                 } else {
@@ -942,7 +940,7 @@ pub fn render_file_search_modal(f: &mut ratatui::Frame, app: &App) {
                 }),
             ),
             Span::styled(
-                tr!(app.translator, "dialog.cancel"),
+                tr!(app.ui.translator, "dialog.cancel"),
                 Style::default().fg(if cancel_focused {
                     THEME.background
                 } else {
