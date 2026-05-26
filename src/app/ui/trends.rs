@@ -405,7 +405,7 @@ fn render_risk_distribution(f: &mut ratatui::Frame, app: &App, area: Rect) {
     for (label, count, color) in &items {
         let pct = *count as f64 / total as f64;
         let bar_len = (pct * bar_max as f64) as usize;
-        let bar: String = std::iter::repeat('█').take(bar_len).collect();
+        let bar: String = std::iter::repeat_n('█', bar_len).collect();
         let pct_str = format!("{:>3.0}%", pct * 100.0);
 
         rows.push(Row::new(vec![
@@ -472,7 +472,7 @@ fn render_top_processes_cpu(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .map(|(_, c)| *c)
         .fold(0.0f32, f32::max)
         .max(0.01);
-    let name_w = (inner.width as usize / 3).max(8).min(22);
+    let name_w = (inner.width as usize / 3).clamp(8, 22);
     let bar_max = inner.width.saturating_sub(name_w as u16 + 10) as usize;
 
     let header = Row::new(vec![
@@ -493,9 +493,7 @@ fn render_top_processes_cpu(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let mut rows: Vec<Row> = vec![header];
     for (name, cpu) in &procs {
         let bar_len = ((*cpu / max_cpu) as f64 * bar_max as f64) as usize;
-        let bar: String = std::iter::repeat(bar_char(*cpu / max_cpu))
-            .take(bar_len)
-            .collect();
+        let bar: String = std::iter::repeat_n(bar_char(*cpu / max_cpu), bar_len).collect();
         let color = cpu_color(*cpu as f64);
         let short_name = truncate_str(name, name_w);
 
@@ -548,7 +546,7 @@ fn render_top_processes_mem(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .iter()
         .map(|a| (a.process_name.as_str(), a.memory_usage / 1024 / 1024))
         .collect();
-    procs.sort_by(|a, b| b.1.cmp(&a.1));
+    procs.sort_by_key(|b| std::cmp::Reverse(b.1));
     procs.truncate(inner.height as usize);
 
     if procs.is_empty() {
@@ -562,7 +560,7 @@ fn render_top_processes_mem(f: &mut ratatui::Frame, app: &App, area: Rect) {
     }
 
     let max_mem = procs.iter().map(|(_, m)| *m).max().unwrap_or(1).max(1);
-    let name_w = (inner.width as usize / 3).max(8).min(22);
+    let name_w = (inner.width as usize / 3).clamp(8, 22);
     let bar_max = inner.width.saturating_sub(name_w as u16 + 10) as usize;
 
     let header = Row::new(vec![
@@ -584,9 +582,7 @@ fn render_top_processes_mem(f: &mut ratatui::Frame, app: &App, area: Rect) {
     for (name, mem_mb) in &procs {
         let ratio = *mem_mb as f64 / max_mem as f64;
         let bar_len = (ratio * bar_max as f64) as usize;
-        let bar: String = std::iter::repeat(bar_char(ratio as f32))
-            .take(bar_len)
-            .collect();
+        let bar: String = std::iter::repeat_n(bar_char(ratio as f32), bar_len).collect();
         let color = mem_color(*mem_mb);
         let short_name = truncate_str(name, name_w);
 
@@ -653,7 +649,7 @@ fn render_protocol_dist(f: &mut ratatui::Frame, app: &App, area: Rect) {
     }
 
     let mut items: Vec<(String, u64)> = counts.into_iter().collect();
-    items.sort_by(|a, b| b.1.cmp(&a.1));
+    items.sort_by_key(|b| std::cmp::Reverse(b.1));
 
     let proto_title = tr!(app.ui.translator, "trends.protocols");
     let proto_col1 = tr!(app.ui.translator, "trends.proto");
@@ -677,14 +673,14 @@ fn render_country_dist(f: &mut ratatui::Frame, app: &App, area: Rect) {
             let key = conn
                 .location
                 .as_deref()
-                .map(|s| s.split(',').last().unwrap_or(s).trim().to_string())
+                .map(|s| s.split(',').next_back().unwrap_or(s).trim().to_string())
                 .unwrap_or_else(|| tr!(app.ui.translator, "trends.unknown").to_string());
             *counts.entry(key).or_insert(0) += 1;
         }
     }
 
     let mut items: Vec<(String, u64)> = counts.into_iter().collect();
-    items.sort_by(|a, b| b.1.cmp(&a.1));
+    items.sort_by_key(|b| std::cmp::Reverse(b.1));
     items.truncate(10);
 
     let dest_title = tr!(app.ui.translator, "trends.destinations");
@@ -843,6 +839,7 @@ fn render_containers_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
     );
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_dist_table(
     f: &mut ratatui::Frame,
     app: &App,
@@ -901,9 +898,7 @@ fn render_dist_table(
     for (label, value) in items.iter().take(inner.height.saturating_sub(1) as usize) {
         let ratio = *value as f64 / max_val as f64;
         let bar_len = (ratio * bar_max as f64) as usize;
-        let bar: String = std::iter::repeat(bar_char(ratio as f32))
-            .take(bar_len)
-            .collect();
+        let bar: String = std::iter::repeat_n(bar_char(ratio as f32), bar_len).collect();
         let short_label = truncate_str(label, label_w);
 
         rows.push(Row::new(vec![

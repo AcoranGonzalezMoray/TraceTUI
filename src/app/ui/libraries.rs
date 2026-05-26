@@ -688,7 +688,7 @@ fn group_by_process(app: &App) -> Vec<(String, usize)> {
     app.group_libs_by_process()
 }
 
-pub fn get_libs_for_selected_process<'a>(app: &'a App) -> Vec<&'a LibraryInfo> {
+pub fn get_libs_for_selected_process(app: &App) -> Vec<&LibraryInfo> {
     let groups = app.group_libs_by_process();
     let pname = groups
         .get(app.libraries.selected_library_process_index)
@@ -714,7 +714,7 @@ pub fn get_libs_for_selected_process<'a>(app: &'a App) -> Vec<&'a LibraryInfo> {
         .collect()
 }
 
-fn build_risk_map<'a>(app: &'a App) -> std::collections::HashMap<&'a str, usize> {
+fn build_risk_map(app: &App) -> std::collections::HashMap<&str, usize> {
     let mut map = std::collections::HashMap::new();
     for lib in &app.libraries.libraries {
         if lib.risk == "Suspicious" || lib.risk == "Critical" {
@@ -939,7 +939,7 @@ pub fn render_library_binary_viewer(f: &mut ratatui::Frame, app: &App) {
     let scroll = app
         .libraries
         .library_binary_scroll
-        .min(total.saturating_sub(visible_height).max(0));
+        .min(total.saturating_sub(visible_height));
 
     let mut rendered = Vec::with_capacity(visible_height + 2);
     rendered.push(Line::from(vec![Span::styled(

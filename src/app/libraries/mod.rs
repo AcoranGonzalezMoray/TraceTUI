@@ -548,7 +548,7 @@ impl crate::app::App {
             *map.entry(lib.process_name.clone()).or_insert(0) += 1;
         }
         let mut result: Vec<(String, usize)> = map.into_iter().collect();
-        result.sort_by(|a, b| b.1.cmp(&a.1));
+        result.sort_by_key(|b| std::cmp::Reverse(b.1));
         result
     }
 
@@ -931,7 +931,7 @@ pub fn load_binary_disasm(path: &str) -> Vec<String> {
         output.clear();
         formatter.format(&instr, &mut output);
         let addr = instr.ip();
-        let len = instr.len() as usize;
+        let len = instr.len();
         let bytes_hex: String = code[pos..pos + len]
             .iter()
             .map(|b| format!("{:02X}", b))

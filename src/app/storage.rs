@@ -133,6 +133,7 @@ impl StorageManager {
             use std::ffi::OsStr;
             use std::iter;
             use std::os::windows::ffi::OsStrExt;
+            #[allow(clippy::upper_case_acronyms)]
             type BOOL = i32;
             #[allow(non_camel_case_types)]
             type ULARGE_INTEGER = u64;

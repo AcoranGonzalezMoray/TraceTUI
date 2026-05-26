@@ -638,29 +638,30 @@ fn handle_docker_hub_keys(app: &mut App, key: KeyEvent) {
                     app.containers.docker_hub_search.focused_field - 1
                 };
         }
-        KeyCode::Up | KeyCode::Down if app.containers.docker_hub_search.focused_field == 0 => {
-            if !app.containers.docker_hub_search.results.is_empty() {
-                match key.code {
-                    KeyCode::Up => {
-                        app.containers.docker_hub_search.selected_result_index = app
-                            .containers
-                            .docker_hub_search
-                            .selected_result_index
-                            .saturating_sub(1);
-                    }
-                    KeyCode::Down => {
-                        let max = app
-                            .containers
-                            .docker_hub_search
-                            .results
-                            .len()
-                            .saturating_sub(1);
-                        if app.containers.docker_hub_search.selected_result_index < max {
-                            app.containers.docker_hub_search.selected_result_index += 1;
-                        }
-                    }
-                    _ => {}
+        KeyCode::Up | KeyCode::Down
+            if app.containers.docker_hub_search.focused_field == 0
+                && !app.containers.docker_hub_search.results.is_empty() =>
+        {
+            match key.code {
+                KeyCode::Up => {
+                    app.containers.docker_hub_search.selected_result_index = app
+                        .containers
+                        .docker_hub_search
+                        .selected_result_index
+                        .saturating_sub(1);
                 }
+                KeyCode::Down => {
+                    let max = app
+                        .containers
+                        .docker_hub_search
+                        .results
+                        .len()
+                        .saturating_sub(1);
+                    if app.containers.docker_hub_search.selected_result_index < max {
+                        app.containers.docker_hub_search.selected_result_index += 1;
+                    }
+                }
+                _ => {}
             }
         }
         KeyCode::Char(c)
@@ -942,12 +943,13 @@ fn handle_libraries_keys(app: &mut App, key: KeyEvent) {
             app.libraries.library_lib_scroll = 0;
         }
 
-        KeyCode::Up if app.ui.sidebar_focus == SidebarFocus::Center => {
-            if app.libraries.selected_library_index > 0 {
-                app.libraries.selected_library_index -= 1;
-                if app.libraries.selected_library_index < app.libraries.library_lib_scroll {
-                    app.libraries.library_lib_scroll = app.libraries.selected_library_index;
-                }
+        KeyCode::Up
+            if app.ui.sidebar_focus == SidebarFocus::Center
+                && app.libraries.selected_library_index > 0 =>
+        {
+            app.libraries.selected_library_index -= 1;
+            if app.libraries.selected_library_index < app.libraries.library_lib_scroll {
+                app.libraries.library_lib_scroll = app.libraries.selected_library_index;
             }
         }
         KeyCode::Down if app.ui.sidebar_focus == SidebarFocus::Center => {
@@ -977,15 +979,17 @@ fn handle_libraries_keys(app: &mut App, key: KeyEvent) {
             app.libraries.selected_library_index = libs.len().saturating_sub(1);
         }
 
-        KeyCode::Up if app.ui.sidebar_focus == SidebarFocus::Right => {
-            if app.ui.selected_action_index > 0 {
-                app.ui.selected_action_index -= 1;
-            }
+        KeyCode::Up
+            if app.ui.sidebar_focus == SidebarFocus::Right && app.ui.selected_action_index > 0 =>
+        {
+            app.ui.selected_action_index -= 1;
         }
-        KeyCode::Down if app.ui.sidebar_focus == SidebarFocus::Right => {
-            if app.ui.selected_action_index + 1 < crate::app::libraries::LIBRARY_ACTION_COUNT {
-                app.ui.selected_action_index += 1;
-            }
+        KeyCode::Down
+            if app.ui.sidebar_focus == SidebarFocus::Right
+                && app.ui.selected_action_index + 1
+                    < crate::app::libraries::LIBRARY_ACTION_COUNT =>
+        {
+            app.ui.selected_action_index += 1;
         }
         KeyCode::Enter if app.ui.sidebar_focus == SidebarFocus::Right => {
             execute_library_action(app);
@@ -1203,62 +1207,52 @@ fn handle_storage_keys(app: &mut App, key: KeyEvent) {
                 open_selected_file(app);
             }
         }
-        KeyCode::Backspace => {
-            if app.storage.storage_focus == 1 {
-                if let Some(parent) = app.storage.current_directory.parent() {
-                    app.storage.current_directory = parent.to_path_buf();
-                    app.storage.file_scroll = 0;
-                    app.storage.file_search_mode = false;
-                    app.storage.file_search_query.clear();
-                    load_directory(app);
-                }
-            }
-        }
-        KeyCode::Char('r') | KeyCode::Char('R') => {
-            refresh_disks(app);
-        }
-        KeyCode::Char('h') | KeyCode::Char('H') => {
-            if app.storage.storage_focus == 1 {
-                #[cfg(windows)]
-                {
-                    let root = app
-                        .storage
-                        .current_directory
-                        .components()
-                        .next()
-                        .map(|c| c.as_os_str().to_os_string())
-                        .unwrap_or_else(|| std::ffi::OsString::from("C:\\"));
-                    app.storage.current_directory = std::path::PathBuf::from(root);
-                }
-                #[cfg(unix)]
-                {
-                    app.storage.current_directory = std::path::PathBuf::from("/");
-                }
+        KeyCode::Backspace if app.storage.storage_focus == 1 => {
+            if let Some(parent) = app.storage.current_directory.parent() {
+                app.storage.current_directory = parent.to_path_buf();
                 app.storage.file_scroll = 0;
                 app.storage.file_search_mode = false;
                 app.storage.file_search_query.clear();
                 load_directory(app);
             }
         }
-        KeyCode::Char('p') | KeyCode::Char('P') => {
-            if app.storage.storage_focus == 1 {
-                open_selected_file(app);
-            }
+        KeyCode::Char('r') | KeyCode::Char('R') => {
+            refresh_disks(app);
         }
-        KeyCode::Char('s') | KeyCode::Char('S') => {
-            if app.storage.storage_focus == 1 {
-                app.storage.file_sort_mode = app.storage.file_sort_mode.next();
-                sort_file_entries(app);
-                app.storage.file_scroll = 0;
-                app.compute_filtered_indices();
-                app.ui.status_message = format!("Sort: {}", app.storage.file_sort_mode.label());
+        KeyCode::Char('h') | KeyCode::Char('H') if app.storage.storage_focus == 1 => {
+            #[cfg(windows)]
+            {
+                let root = app
+                    .storage
+                    .current_directory
+                    .components()
+                    .next()
+                    .map(|c| c.as_os_str().to_os_string())
+                    .unwrap_or_else(|| std::ffi::OsString::from("C:\\"));
+                app.storage.current_directory = std::path::PathBuf::from(root);
             }
+            #[cfg(unix)]
+            {
+                app.storage.current_directory = std::path::PathBuf::from("/");
+            }
+            app.storage.file_scroll = 0;
+            app.storage.file_search_mode = false;
+            app.storage.file_search_query.clear();
+            load_directory(app);
         }
-        KeyCode::Char('/') => {
-            if app.storage.storage_focus == 1 {
-                app.ui.show_file_search_modal = true;
-                app.ui.file_search_state = crate::app::types::FileSearchState::default();
-            }
+        KeyCode::Char('p') | KeyCode::Char('P') if app.storage.storage_focus == 1 => {
+            open_selected_file(app);
+        }
+        KeyCode::Char('s') | KeyCode::Char('S') if app.storage.storage_focus == 1 => {
+            app.storage.file_sort_mode = app.storage.file_sort_mode.next();
+            sort_file_entries(app);
+            app.storage.file_scroll = 0;
+            app.compute_filtered_indices();
+            app.ui.status_message = format!("Sort: {}", app.storage.file_sort_mode.label());
+        }
+        KeyCode::Char('/') if app.storage.storage_focus == 1 => {
+            app.ui.show_file_search_modal = true;
+            app.ui.file_search_state = crate::app::types::FileSearchState::default();
         }
         KeyCode::Char('q') | KeyCode::Char('Q') | KeyCode::Esc => {
             switch_nav_view(app, NavView::Main);
@@ -2460,25 +2454,7 @@ fn pick_save_path(_app: &App, default_name: &str) -> Option<std::path::PathBuf> 
             Some(std::path::PathBuf::from(path))
         }
     }
-    #[cfg(target_os = "macos")]
-    {
-        use std::process::Command;
-        let script = format!(
-            r#"return POSIX path of (choose file name with prompt "Export Network Analysis" default name "{}")"#,
-            default_name
-        );
-        let output = Command::new("osascript")
-            .args(["-e", &script])
-            .output()
-            .ok()?;
-        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        if path.is_empty() {
-            None
-        } else {
-            Some(std::path::PathBuf::from(path))
-        }
-    }
-    #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
     {
         None
     }

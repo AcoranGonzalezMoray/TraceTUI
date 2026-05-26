@@ -42,6 +42,7 @@ pub enum UpdateEvent {
     Finished(bool, String),
 }
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[allow(clippy::enum_variant_names)]
 pub enum FileSortMode {
     ByName,
     BySize,
@@ -63,20 +64,10 @@ impl FileSortMode {
         }
     }
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct FileSearchState {
     pub query: String,
     pub recursive: bool,
     pub extension_idx: usize,
     pub focused_field: usize,
-}
-impl Default for FileSearchState {
-    fn default() -> Self {
-        Self {
-            query: String::new(),
-            recursive: false,
-            extension_idx: 0,
-            focused_field: 0,
-        }
-    }
 }

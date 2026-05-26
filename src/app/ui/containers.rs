@@ -646,7 +646,7 @@ fn render_docker_actions(f: &mut ratatui::Frame, app: &App, area: Rect) {
     f.render_widget(block.clone(), area);
     let inner = block.inner(area);
 
-    let actions = vec![
+    let actions = [
         (
             "\u{f011}",
             tr!(app.ui.translator, "containers.docker_action_start"),
@@ -700,12 +700,9 @@ pub fn render_container_logs_modal(f: &mut ratatui::Frame, app: &App) {
 
     let total_lines = app.containers.container_logs.len();
     let visible = area.height.saturating_sub(4) as usize;
-    let scroll_pct = if total_lines == 0 {
-        0u16
-    } else {
-        ((app.containers.container_logs_scroll + visible).min(total_lines) * 100 / total_lines)
-            as u16
-    };
+    let scroll_pct = ((app.containers.container_logs_scroll + visible).min(total_lines) * 100)
+        .checked_div(total_lines)
+        .unwrap_or(0) as u16;
 
     let block = Block::default()
         .borders(Borders::ALL)
@@ -855,7 +852,7 @@ pub fn render_container_console_modal(f: &mut ratatui::Frame, app: &App) {
 
     f.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), chunks[0]);
 
-    let cursor = if app.ui.frame_count % 2 == 0 {
+    let cursor = if app.ui.frame_count.is_multiple_of(2) {
         "\u{258c}"
     } else {
         " "

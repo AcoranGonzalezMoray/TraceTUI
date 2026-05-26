@@ -417,7 +417,7 @@ impl App {
                     self.ui.confirmation_message = self
                         .ui
                         .translator
-                        .get_fmt(key, &[format!("{}", container_name)])
+                        .get_fmt(key, &[container_name.to_string()])
                         .to_string();
                     self.ui.show_confirmation = true;
                 } else {
@@ -777,18 +777,7 @@ fn docker_service_command(start: bool) -> Result<(), String> {
         Command::new("systemctl").args([action, "docker"]).output()
     };
 
-    #[cfg(target_os = "macos")]
-    let output = {
-        if start {
-            Command::new("open").args(["-a", "Docker"]).output()
-        } else {
-            Command::new("osascript")
-                .args(["-e", "quit app \"Docker\""])
-                .output()
-        }
-    };
-
-    #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
     let output: Result<std::process::Output, std::io::Error> = Err(std::io::Error::new(
         std::io::ErrorKind::Other,
         "unsupported OS",

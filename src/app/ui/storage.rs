@@ -101,9 +101,8 @@ fn render_disk_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
             let bar_len = 8;
             let filled = ((pct / 100.0) * bar_len as f64).round() as usize;
-            let bar: String = std::iter::repeat('■')
-                .take(filled.min(bar_len))
-                .chain(std::iter::repeat('▱').take(bar_len.saturating_sub(filled)))
+            let bar: String = std::iter::repeat_n('■', filled.min(bar_len))
+                .chain(std::iter::repeat_n('▱', bar_len.saturating_sub(filled)))
                 .collect();
 
             let label_line = vec![
@@ -240,9 +239,8 @@ fn render_disk_properties(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     let bar_w = inner.width.saturating_sub(4).max(4) as usize;
     let filled = ((pct / 100.0) * bar_w as f64).round() as usize;
-    let bar: String = std::iter::repeat('█')
-        .take(filled.min(bar_w))
-        .chain(std::iter::repeat('░').take(bar_w.saturating_sub(filled)))
+    let bar: String = std::iter::repeat_n('█', filled.min(bar_w))
+        .chain(std::iter::repeat_n('░', bar_w.saturating_sub(filled)))
         .collect();
     lines.push(Line::from(vec![
         Span::styled("  ", Style::default()),
@@ -615,7 +613,7 @@ pub fn render_file_viewer_modal(f: &mut ratatui::Frame, app: &App) {
     let path = app.storage.current_directory.join(
         app.storage
             .file_entries
-            .get(0)
+            .first()
             .map(|e| e.name.as_str())
             .unwrap_or(""),
     );
@@ -651,7 +649,7 @@ pub fn render_file_viewer_modal(f: &mut ratatui::Frame, app: &App) {
     let scroll_pos = app
         .storage
         .file_viewer_scroll
-        .min(total_lines.saturating_sub(visible_height).max(0));
+        .min(total_lines.saturating_sub(visible_height));
 
     let mut lines: Vec<Line> = Vec::with_capacity(visible_height + 1);
 
@@ -769,7 +767,7 @@ pub fn render_file_search_modal(f: &mut ratatui::Frame, app: &App) {
     let q_text = if state.query.is_empty() {
         tr!(app.ui.translator, "storage.type_to_filter")
     } else {
-        let cursor = if q_focused && app.ui.frame_count % 2 == 0 {
+        let cursor = if q_focused && app.ui.frame_count.is_multiple_of(2) {
             "█"
         } else {
             ""

@@ -176,7 +176,7 @@ We want TraceTUI to be the de-facto terminal standard for system network inspect
 
 Make sure to run linting and tests before submitting:
 ```bash
-cargo fmt && cargo clippy
+cargo fmt && cargo clippy -- -D warnings 
 cargo test
 ```
 
