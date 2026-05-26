@@ -77,7 +77,7 @@ tracetui</code></pre>
 
             <div class="download-card">
                 <h3><span class="dl-icon">🔄</span> Updating from a previous version</h3>
-                <ol>
+                <ol id="updateList">
                     <li>Download the latest archive below</li>
                     <li>Extract the contents (overwrite existing files)</li>
                     <li>Run the install script again — it will update your existing installation</li>
@@ -121,7 +121,7 @@ tracetui</code></pre>
                 <div class="footer-links">
                     <h4>Legal</h4>
                     <ul>
-                        <li><a href="#">MIT License</a></li>
+                        <li><a href="https://github.com/AcoranGonzalezMoray/TraceTUI/blob/main/LICENSE" target="_blank">MIT License</a></li>
                     </ul>
                 </div>
             </div>
@@ -148,7 +148,7 @@ tracetui</code></pre>
             var DOWNLOADS = {
                 windows: {
                     label: 'Windows',
-                    icon: '⊞',
+                    icon: '<svg viewBox="0 0 88 88" fill="currentColor" style="width: 1em; height: 1em; display: inline-block; vertical-align: middle;"><path d="M0 12.4l35.68-4.86v33.91H0V12.4zm0 33.1h35.68v33.9L0 74.55V45.5zM39.69 6.84L88 0v41.45H39.69V6.84zm0 38.61H88V88L39.69 81.16V45.45z"/></svg>',
                     url: 'https://github.com/AcoranGonzalezMoray/TraceTUI/releases/latest/download/tracetui-x86_64-pc-windows-gnu.zip',
                     archive: 'tracetui-x86_64-pc-windows-gnu.zip',
                     steps: [
@@ -211,7 +211,7 @@ tracetui</code></pre>
             }
 
             var platformIcon = document.getElementById('platformIcon');
-            platformIcon.textContent = info.icon;
+            platformIcon.innerHTML = info.icon;
             document.getElementById('platformLabel').textContent = info.label;
             document.getElementById('dlTitle').textContent = 'Downloading ' + info.label + ' Build';
             document.getElementById('dlSubtitle').textContent = 'Your download of ' + info.archive + ' will start in a moment.';
@@ -225,9 +225,8 @@ tracetui</code></pre>
                 stepsList.appendChild(li);
             });
 
-            var updateCard = document.querySelectorAll('.download-card')[1];
-            if (updateCard) {
-                var updateList = updateCard.querySelector('ol');
+            var updateList = document.getElementById('updateList');
+            if (updateList) {
                 updateList.innerHTML = '';
                 info.updateSteps.forEach(function (s) {
                     var li = document.createElement('li');
@@ -250,6 +249,9 @@ tracetui</code></pre>
         })();
 
         (function () {
+            var params = new URLSearchParams(window.location.search);
+            var initPlatform = params.get('platform') || '';
+            
             var CLI_CODES = {
                 powershell: '# Windows PowerShell (Run as Administrator)\nInvoke-WebRequest -Uri "https://github.com/AcoranGonzalezMoray/TraceTUI/releases/latest/download/tracetui-x86_64-pc-windows-gnu.zip" -OutFile "$env:TEMP\\tracetui.zip"\nExpand-Archive -Path "$env:TEMP\\tracetui.zip" -DestinationPath "$env:TEMP\\tracetui" -Force\n& "$env:TEMP\\tracetui\\installOrUpdate.ps1"\ntracetui',
                 cmd: ':: Windows CMD (Run as Administrator)\npowershell -Command "Invoke-WebRequest -Uri \'https://github.com/AcoranGonzalezMoray/TraceTUI/releases/latest/download/tracetui-x86_64-pc-windows-gnu.zip\' -OutFile \'%TEMP%\\tracetui.zip\'"\npowershell -Command "Expand-Archive -Path \'%TEMP%\\tracetui.zip\' -DestinationPath \'%TEMP%\\tracetui\' -Force"\npowershell -Command "& \'%TEMP%\\tracetui\\installOrUpdate.ps1\'"\ntracetui',
@@ -270,6 +272,15 @@ tracetui</code></pre>
                         }
                     });
                 });
+
+                // Auto-select based on initial platform parameter
+                if (initPlatform === 'linux') {
+                    var linuxTab = document.querySelector('.cli-tab[data-platform="linux"]');
+                    if (linuxTab) linuxTab.click();
+                } else if (initPlatform === 'windows') {
+                    var psTab = document.querySelector('.cli-tab[data-platform="powershell"]');
+                    if (psTab) psTab.click();
+                }
             }
 
             window.copyCliCode = function () {
@@ -280,7 +291,13 @@ tracetui</code></pre>
                         var btn = document.getElementById('copyBtn');
                         var orig = btn.textContent;
                         btn.textContent = 'Copied!';
-                        setTimeout(function () { btn.textContent = orig; }, 2000);
+                        btn.style.borderColor = 'var(--success)';
+                        btn.style.color = 'var(--success)';
+                        setTimeout(function () { 
+                            btn.textContent = orig; 
+                            btn.style.borderColor = '';
+                            btn.style.color = '';
+                        }, 2000);
                     });
                 }
             };

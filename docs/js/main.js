@@ -210,6 +210,26 @@ function initScrollGuide() {
             tuiApp.classList.add(highlightClasses[index]);
         }
 
+        // Tab switching logic for center-tabs
+        const centerTabs = document.querySelectorAll('.center-tabs .tab');
+        if (centerTabs.length === 3) {
+            centerTabs.forEach(t => t.classList.remove('tab-active'));
+            centerTabs[0].textContent = '[1] Connections';
+            centerTabs[1].textContent = '[2] Risk Overview';
+            centerTabs[2].textContent = '[3] Timeline';
+
+            if (termStates[index] === 'risk') {
+                centerTabs[1].classList.add('tab-active');
+                centerTabs[1].textContent = '▎[2] Risk Overview';
+            } else if (termStates[index] === 'timeline') {
+                centerTabs[2].classList.add('tab-active');
+                centerTabs[2].textContent = '▎[3] Timeline';
+            } else {
+                centerTabs[0].classList.add('tab-active');
+                centerTabs[0].textContent = '▎[1] Connections';
+            }
+        }
+
         // Update TUI State
         delete tuiApp.dataset.termState;
         if (termStates[index]) tuiApp.dataset.termState = termStates[index];
