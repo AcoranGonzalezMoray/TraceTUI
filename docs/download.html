@@ -55,6 +55,26 @@
                 </ol>
             </div>
 
+            <div class="download-card" id="cliSteps">
+                <h3><span class="dl-icon">⌨</span> Command-line installation</h3>
+                <div id="cliContent">
+                    <p>Select your platform below for one-liner copy-paste install commands:</p>
+                    <div class="cli-tabs">
+                        <button class="cli-tab active" data-platform="powershell">PowerShell</button>
+                        <button class="cli-tab" data-platform="cmd">CMD</button>
+                        <button class="cli-tab" data-platform="linux">Linux</button>
+                    </div>
+                    <div class="cli-code">
+                        <pre id="cliPre"><code id="cliCode"># Windows PowerShell (Run as Administrator)
+Invoke-WebRequest -Uri "https://github.com/AcoranGonzalezMoray/TraceTUI/releases/latest/download/tracetui-x86_64-pc-windows-gnu.zip" -OutFile "$env:TEMP\tracetui.zip"
+Expand-Archive -Path "$env:TEMP\tracetui.zip" -DestinationPath "$env:TEMP\tracetui" -Force
+& "$env:TEMP\tracetui\installOrUpdate.ps1"
+tracetui</code></pre>
+                        <button class="btn btn-sm btn-outline" id="copyBtn" onclick="copyCliCode()">Copy</button>
+                    </div>
+                </div>
+            </div>
+
             <div class="download-card">
                 <h3><span class="dl-icon">🔄</span> Updating from a previous version</h3>
                 <ol>
@@ -227,6 +247,43 @@
                     window.location.href = info.url;
                 }
             }, 1000);
+        })();
+
+        (function () {
+            var CLI_CODES = {
+                powershell: '# Windows PowerShell (Run as Administrator)\nInvoke-WebRequest -Uri "https://github.com/AcoranGonzalezMoray/TraceTUI/releases/latest/download/tracetui-x86_64-pc-windows-gnu.zip" -OutFile "$env:TEMP\\tracetui.zip"\nExpand-Archive -Path "$env:TEMP\\tracetui.zip" -DestinationPath "$env:TEMP\\tracetui" -Force\n& "$env:TEMP\\tracetui\\installOrUpdate.ps1"\ntracetui',
+                cmd: ':: Windows CMD (Run as Administrator)\npowershell -Command "Invoke-WebRequest -Uri \'https://github.com/AcoranGonzalezMoray/TraceTUI/releases/latest/download/tracetui-x86_64-pc-windows-gnu.zip\' -OutFile \'%TEMP%\\tracetui.zip\'"\npowershell -Command "Expand-Archive -Path \'%TEMP%\\tracetui.zip\' -DestinationPath \'%TEMP%\\tracetui\' -Force"\npowershell -Command "& \'%TEMP%\\tracetui\\installOrUpdate.ps1\'"\ntracetui',
+                linux: '# Linux (curl)\ncurl -L -o /tmp/tracetui.tar.gz "https://github.com/AcoranGonzalezMoray/TraceTUI/releases/latest/download/tracetui-x86_64-unknown-linux-gnu.tar.gz"\ntar xzf /tmp/tracetui.tar.gz -C /tmp\nchmod +x /tmp/installOrUpdate.sh\nsudo sh /tmp/installOrUpdate.sh\ntracetui'
+            };
+
+            var tabs = document.querySelectorAll('.cli-tab');
+            var codeEl = document.getElementById('cliCode');
+
+            if (tabs.length > 0 && codeEl) {
+                tabs.forEach(function (tab) {
+                    tab.addEventListener('click', function () {
+                        tabs.forEach(function (t) { t.classList.remove('active'); });
+                        this.classList.add('active');
+                        var platform = this.getAttribute('data-platform');
+                        if (CLI_CODES[platform]) {
+                            codeEl.textContent = CLI_CODES[platform];
+                        }
+                    });
+                });
+            }
+
+            window.copyCliCode = function () {
+                var codeEl = document.getElementById('cliCode');
+                var text = codeEl.textContent;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(function () {
+                        var btn = document.getElementById('copyBtn');
+                        var orig = btn.textContent;
+                        btn.textContent = 'Copied!';
+                        setTimeout(function () { btn.textContent = orig; }, 2000);
+                    });
+                }
+            };
         })();
     </script>
 </body>

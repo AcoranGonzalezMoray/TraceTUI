@@ -125,7 +125,8 @@ impl App {
         self.containers.container_rx = Some(rx);
         self.containers.containers_loading = true;
         self.containers.containers_error = None;
-        self.ui.status_message = tr!(self.ui.translator, "containers.status.refreshing").to_string();
+        self.ui.status_message =
+            tr!(self.ui.translator, "containers.status.refreshing").to_string();
     }
 
     pub fn refresh_selected_container_logs_async(&mut self) {
@@ -146,7 +147,8 @@ impl App {
         self.containers.container_logs_loading = true;
         self.containers.container_logs_scroll = 0;
         self.containers.show_container_logs_modal = true;
-        self.ui.status_message = tr!(self.ui.translator, "containers.status.loading_logs").to_string();
+        self.ui.status_message =
+            tr!(self.ui.translator, "containers.status.loading_logs").to_string();
     }
 
     pub fn open_selected_container_console(&mut self) {
@@ -181,7 +183,8 @@ impl App {
             return;
         };
         let id = container.id.clone();
-        self.containers.container_console_output
+        self.containers
+            .container_console_output
             .push(format!("$ {}", command.as_str()));
         self.containers.container_console_input.clear();
         let (tx, rx) = std::sync::mpsc::channel();
@@ -190,7 +193,8 @@ impl App {
         });
         self.containers.container_console_rx = Some(rx);
         self.containers.container_console_loading = true;
-        self.ui.status_message = tr!(self.ui.translator, "containers.status.console_running").to_string();
+        self.ui.status_message =
+            tr!(self.ui.translator, "containers.status.console_running").to_string();
     }
 
     pub fn process_container_results(&mut self) {
@@ -214,7 +218,8 @@ impl App {
                         self.containers.containers.clear();
                         self.containers.containers_error = Some(err.clone());
                         self.ui.status_message = self
-                            .ui.translator
+                            .ui
+                            .translator
                             .get(docker_status_key(ContainerManager::classify_error(&err)))
                             .to_string();
                     }
@@ -235,7 +240,8 @@ impl App {
                     }
                     Err(err) => {
                         self.containers.container_logs.clear();
-                        self.ui.status_message = tr!(self.ui.translator, "containers.status.error", err);
+                        self.ui.status_message =
+                            tr!(self.ui.translator, "containers.status.error", err);
                     }
                 }
             }
@@ -248,7 +254,8 @@ impl App {
                 match result {
                     Ok(lines) => {
                         if lines.is_empty() {
-                            self.containers.container_console_output
+                            self.containers
+                                .container_console_output
                                 .push(tr!(self.ui.translator, "containers.console_empty_output"));
                         } else {
                             self.containers.container_console_output.extend(lines);
@@ -258,7 +265,8 @@ impl App {
                     }
                     Err(err) => {
                         self.containers.container_console_output.push(err.clone());
-                        self.ui.status_message = tr!(self.ui.translator, "containers.status.error", err);
+                        self.ui.status_message =
+                            tr!(self.ui.translator, "containers.status.error", err);
                     }
                 }
             }
@@ -313,7 +321,8 @@ impl App {
     pub fn execute_container_right_action(&mut self) {
         if self.containers.selected_container_action_index >= DOCKER_ACTION_OFFSET {
             let docker_index = self
-                .containers.selected_container_action_index
+                .containers
+                .selected_container_action_index
                 .saturating_sub(DOCKER_ACTION_OFFSET);
             let action = DockerAction::from_index(docker_index);
             match action {
@@ -406,7 +415,8 @@ impl App {
                         "dialog.pause_container_confirm"
                     };
                     self.ui.confirmation_message = self
-                        .ui.translator
+                        .ui
+                        .translator
                         .get_fmt(key, &[format!("{}", container_name)])
                         .to_string();
                     self.ui.show_confirmation = true;
@@ -430,10 +440,16 @@ impl App {
                 self.containers.containers_loaded_once = false;
                 self.ui.status_message = match action {
                     DockerAction::StartDocker => {
-                        tr!(self.ui.translator, "containers.status.docker_start_requested")
+                        tr!(
+                            self.ui.translator,
+                            "containers.status.docker_start_requested"
+                        )
                     }
                     DockerAction::StopDocker => {
-                        tr!(self.ui.translator, "containers.status.docker_stop_requested")
+                        tr!(
+                            self.ui.translator,
+                            "containers.status.docker_stop_requested"
+                        )
                     }
                     _ => String::new(),
                 };
@@ -467,7 +483,8 @@ impl App {
 
         match result {
             Ok(()) => {
-                self.ui.status_message = tr!(self.ui.translator, "containers.status.action_done", name);
+                self.ui.status_message =
+                    tr!(self.ui.translator, "containers.status.action_done", name);
                 self.refresh_containers_async();
             }
             Err(err) => {

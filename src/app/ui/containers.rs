@@ -250,7 +250,10 @@ fn render_identity(f: &mut ratatui::Frame, app: &App, container: &ContainerInfo,
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(state_color))
         .title(Span::styled(
-            format!(" {} ", tr!(app.ui.translator, "containers.identity_section")),
+            format!(
+                " {} ",
+                tr!(app.ui.translator, "containers.identity_section")
+            ),
             Style::default()
                 .fg(state_color)
                 .add_modifier(Modifier::BOLD),
@@ -673,7 +676,8 @@ fn render_docker_actions(f: &mut ratatui::Frame, app: &App, area: Rect) {
                 lbl.clone(),
                 key,
                 *color,
-                app.containers.selected_container_action_index >= DOCKER_ACTION_OFFSET && i == selected,
+                app.containers.selected_container_action_index >= DOCKER_ACTION_OFFSET
+                    && i == selected,
             )
         })
         .collect();
@@ -699,7 +703,8 @@ pub fn render_container_logs_modal(f: &mut ratatui::Frame, app: &App) {
     let scroll_pct = if total_lines == 0 {
         0u16
     } else {
-        ((app.containers.container_logs_scroll + visible).min(total_lines) * 100 / total_lines) as u16
+        ((app.containers.container_logs_scroll + visible).min(total_lines) * 100 / total_lines)
+            as u16
     };
 
     let block = Block::default()
@@ -766,7 +771,10 @@ pub fn render_container_logs_modal(f: &mut ratatui::Frame, app: &App) {
             };
             Line::from(vec![
                 Span::styled(
-                    format!("{:>4} \u{2502} ", app.containers.container_logs_scroll + idx + 1),
+                    format!(
+                        "{:>4} \u{2502} ",
+                        app.containers.container_logs_scroll + idx + 1
+                    ),
                     Style::default().fg(THEME.text_dim),
                 ),
                 Span::styled(line.as_str(), Style::default().fg(line_color)),
@@ -863,7 +871,10 @@ pub fn render_container_console_modal(f: &mut ratatui::Frame, app: &App) {
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(THEME.success))
         .title(Span::styled(
-            format!(" {} ", tr!(app.ui.translator, "containers.console_input_hint")),
+            format!(
+                " {} ",
+                tr!(app.ui.translator, "containers.console_input_hint")
+            ),
             Style::default().fg(THEME.text_dim),
         ));
 
@@ -965,7 +976,8 @@ fn render_docker_hub_search_input(f: &mut ratatui::Frame, app: &App, area: Rect)
     let inner = block.inner(area);
 
     let query_text = if is_focused && app.containers.docker_hub_search.search_query.is_empty() {
-        app.ui.translator
+        app.ui
+            .translator
             .get("containers.docker_hub_search_placeholder")
             .to_string()
     } else {
@@ -1223,7 +1235,10 @@ fn render_docker_hub_buttons(f: &mut ratatui::Frame, app: &App, area: Rect) {
                     tr!(app.ui.translator, "containers.button_create")
                 )
             } else {
-                format!("[   {} ]", tr!(app.ui.translator, "containers.button_create"))
+                format!(
+                    "[   {} ]",
+                    tr!(app.ui.translator, "containers.button_create")
+                )
             },
             if create_focused {
                 Style::default()
@@ -1246,7 +1261,10 @@ fn render_docker_hub_buttons(f: &mut ratatui::Frame, app: &App, area: Rect) {
                     tr!(app.ui.translator, "containers.button_cancel")
                 )
             } else {
-                format!("[   {} ]", tr!(app.ui.translator, "containers.button_cancel"))
+                format!(
+                    "[   {} ]",
+                    tr!(app.ui.translator, "containers.button_cancel")
+                )
             },
             if cancel_focused {
                 Style::default()
@@ -1402,12 +1420,18 @@ fn label<'a>(app: &'a App, key: &'a str) -> Span<'a> {
 fn state_badge_styled(app: &App, container: &ContainerInfo) -> (String, ratatui::style::Color) {
     if container.state.eq_ignore_ascii_case("running") {
         (
-            format!("\u{25b6} {}  ", tr!(app.ui.translator, "containers.state_run")),
+            format!(
+                "\u{25b6} {}  ",
+                tr!(app.ui.translator, "containers.state_run")
+            ),
             THEME.success,
         )
     } else if container.state.eq_ignore_ascii_case("paused") {
         (
-            format!("\u{23f8} {}", tr!(app.ui.translator, "containers.state_pause")),
+            format!(
+                "\u{23f8} {}",
+                tr!(app.ui.translator, "containers.state_pause")
+            ),
             THEME.warning,
         )
     } else if container.state.is_empty() {

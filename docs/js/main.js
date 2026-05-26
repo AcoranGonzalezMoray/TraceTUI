@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initPulsingDot();
     initScrollGuide();
     initHeaderToggles();
+    initNavViewSwitching();
 });
 
 function initMobileMenu() {
@@ -166,7 +167,7 @@ function initScrollGuide() {
 
     
     if (stepDotsEl) {
-        for (var i = 0; i < 10; i++) {
+        for (var i = 0; i < 15; i++) {
             var dot = document.createElement('span');
             dot.className = 'step-dot';
             stepDotsEl.appendChild(dot);
@@ -180,16 +181,59 @@ function initScrollGuide() {
     var transitioning = false;
 
     var highlightClasses = [
+        'highlight-nav-sidebar',
         'highlight-header',
         'highlight-processes',
         'highlight-center',
         'highlight-risk',
         'highlight-timeline',
         'highlight-actions',
+        'highlight-trends',
+        'highlight-storage',
+        'highlight-libraries',
+        'highlight-containers',
         'highlight-firewall',
         'highlight-search',
         'highlight-language',
         'highlight-investigation'
+    ];
+
+    var stepTargets = [
+        'tuiNavSidebar',
+        'tuiHeader',
+        'tuiLeft',
+        'tuiCenter',
+        'tuiCenter',
+        'tuiCenter',
+        'tuiRight',
+        'navViewTrends',
+        'navViewStorage',
+        'navViewLibraries',
+        'navViewContainers',
+        'firewallLayout',
+        'searchOverlay',
+        'langOverlay',
+        'investigationView'
+    ];
+
+    var termStates = ['', '', '', '', 'risk', 'timeline', '', 'trends', 'storage', 'libraries', 'containers', 'firewall', 'search', 'language', 'investigation'];
+
+    var stepLabels = [
+        'Navigation Sidebar',
+        'Dashboard Overview',
+        'Process List',
+        'Connections Table',
+        'Risk Overview',
+        'Timeline Chart',
+        'Actions Panel',
+        'Trends & Analytics',
+        'Storage / Files',
+        'Library Inspection',
+        'Containers',
+        'Firewall Manager',
+        'Live Search',
+        'Multi-Language',
+        'Connection Analysis'
     ];
 
     var stepTargets = [
@@ -334,12 +378,31 @@ function initScrollGuide() {
             tuiApp.dataset.termState = termStates[stepIndex];
         }
 
+        // Set active nav view based on tour step
+        var tuiBody = document.getElementById('tuiBody');
+        var navMap = { 0: 'main', 7: 'trends', 8: 'storage', 9: 'libraries', 10: 'containers' };
+        if (tuiBody) {
+            var targetNav = navMap[stepIndex];
+            if (targetNav) {
+                tuiBody.dataset.activeNav = targetNav;
+                // Update nav sidebar selection
+                document.querySelectorAll('.nav-item').forEach(function (ni) {
+                    ni.classList.toggle('nav-selected', ni.dataset.nav === targetNav);
+                });
+            } else if (stepIndex >= 1 && stepIndex <= 6) {
+                tuiBody.dataset.activeNav = 'main';
+                document.querySelectorAll('.nav-item').forEach(function (ni) {
+                    ni.classList.toggle('nav-selected', ni.dataset.nav === 'main');
+                });
+            }
+        }
+
         
         var centerTabs = document.getElementById('centerTabs');
         if (centerTabs) {
             var tabs = centerTabs.querySelectorAll('.tab');
             tabs.forEach(function (t) { t.classList.remove('tab-active'); });
-            var tabMap = { 2: 0, 3: 1, 4: 2 };
+            var tabMap = { 3: 0, 4: 1, 5: 2 };
             var tabIdx = tabMap[stepIndex];
             if (tabIdx !== undefined && tabs[tabIdx]) {
                 tabs[tabIdx].classList.add('tab-active');
@@ -362,7 +425,15 @@ function initScrollGuide() {
                 var parent = targetEl.parentElement;
                 
                 var scope = parent;
-                if (termStates[stepIndex] === 'firewall') {
+                if (termStates[stepIndex] === 'trends') {
+                    scope = document.getElementById('navViewTrends');
+                } else if (termStates[stepIndex] === 'storage') {
+                    scope = document.getElementById('navViewStorage');
+                } else if (termStates[stepIndex] === 'libraries') {
+                    scope = document.getElementById('navViewLibraries');
+                } else if (termStates[stepIndex] === 'containers') {
+                    scope = document.getElementById('navViewContainers');
+                } else if (termStates[stepIndex] === 'firewall') {
                     scope = document.getElementById('firewallLayout');
                 } else if (termStates[stepIndex] === 'search') {
                     scope = document.getElementById('tuiApp');
@@ -374,7 +445,7 @@ function initScrollGuide() {
                     scope = document.getElementById('mapView');
                 }
                 if (scope) {
-                    var siblings = scope.querySelectorAll('.tui-panel, .tui-header, .tui-hintbar, .tui-statusbar, .fw-col, .fw-actions, .search-overlay, .lang-overlay, .investigation-view, .map-view, .inv-hintbar, .inv-grid, .inv-left, .inv-right, .map-body');
+                    var siblings = scope.querySelectorAll('.tui-panel, .tui-header, .tui-hintbar, .tui-statusbar, .fw-col, .fw-actions, .search-overlay, .lang-overlay, .investigation-view, .map-view, .inv-hintbar, .inv-grid, .inv-left, .inv-right, .map-body, .trends-kpi-row, .trends-sparkline-row, .trends-mid-row, .trends-bottom-row, .storage-col, .lib-col, .ct-col, .ct-identity, .ct-usage, .ct-runtime, .nav-view');
                     siblings.forEach(function (s) {
                         if (s !== targetEl) s.classList.remove('highlighted');
                     });
@@ -411,6 +482,17 @@ function initScrollGuide() {
         var transitionStart = Math.max(0, heroH - winH * 0.4);
         var transitionEnd = heroH + 100;
 
+        // Reset nav view when not in tour
+        function resetNavView() {
+            var tuiBody = document.getElementById('tuiBody');
+            if (tuiBody) {
+                tuiBody.dataset.activeNav = 'main';
+                document.querySelectorAll('.nav-item').forEach(function (ni) {
+                    ni.classList.toggle('nav-selected', ni.dataset.nav === 'main');
+                });
+            }
+        }
+
         
         if (scrollY < transitionStart) {
             if (isFixed) {
@@ -418,10 +500,12 @@ function initScrollGuide() {
                 guideOverlay.classList.remove('guide-visible');
                 animateBack(terminalWindow);
                 updateGuide(-1);
+                resetNavView();
             }
             guideOverlay.style.display = 'none';
             guideOverlay.classList.remove('guide-visible');
             tuiApp.dataset.termState = 'loading';
+            resetNavView();
             return;
         }
 
@@ -430,6 +514,7 @@ function initScrollGuide() {
             guideOverlay.style.display = 'none';
             guideOverlay.classList.remove('guide-visible');
             updateGuide(-1);
+            resetNavView();
             tuiApp.dataset.termState = 'loading';
 
             if (!isFixed && !transitioning) {
@@ -466,7 +551,7 @@ function initScrollGuide() {
             var progress = guideRange > 0 ? (scrollY - guideStart) / guideRange : 0;
             progress = Math.max(0, Math.min(1, progress));
 
-            var stepIndex = Math.min(Math.floor(progress * 10), 9);
+            var stepIndex = Math.min(Math.floor(progress * 15), 14);
             updateGuide(stepIndex);
 
             terminalWindow.style.display = '';
@@ -478,6 +563,7 @@ function initScrollGuide() {
         guideOverlay.style.display = 'none';
         guideOverlay.classList.remove('guide-visible');
         updateGuide(-1);
+        resetNavView();
         tuiApp.dataset.termState = 'loading';
         if (isFixed) {
             restoreStyles(terminalWindow);
@@ -506,6 +592,34 @@ function initScrollGuide() {
 
     tuiApp.dataset.termState = 'loading';
     handleScroll();
+}
+
+
+function initNavViewSwitching() {
+    var navItems = document.querySelectorAll('.nav-item');
+    var tuiBody = document.getElementById('tuiBody');
+    if (!navItems.length || !tuiBody) return;
+
+    navItems.forEach(function (item) {
+        item.addEventListener('click', function () {
+            var nav = this.dataset.nav;
+            if (!nav) return;
+            tuiBody.dataset.activeNav = nav;
+            navItems.forEach(function (ni) {
+                ni.classList.toggle('nav-selected', ni.dataset.nav === nav);
+            });
+            delete document.getElementById('tuiApp').dataset.termState;
+        });
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'm' || e.key === 'M') {
+            var navSidebar = document.getElementById('tuiNavSidebar');
+            if (navSidebar) {
+                navSidebar.classList.toggle('nav-collapsed');
+            }
+        }
+    });
 }
 
 

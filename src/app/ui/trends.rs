@@ -22,7 +22,11 @@ pub fn render_trends_view(f: &mut ratatui::Frame, app: &App, area: Rect) {
             .border_style(Style::default().fg(THEME.secondary));
         f.render_widget(block.clone(), area);
         let inner = block.inner(area);
-        let msg = format!(" {} {}...", s, tr!(app.ui.translator, "status.auto_analyzing"));
+        let msg = format!(
+            " {} {}...",
+            s,
+            tr!(app.ui.translator, "status.auto_analyzing")
+        );
         f.render_widget(
             Paragraph::new(Line::from(Span::styled(
                 msg,
@@ -73,7 +77,13 @@ fn render_summary_cards(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .map(|a| a.connections.len() as u64)
         .sum();
 
-    let peak_conn = app.trend.conn_count_history.iter().max().copied().unwrap_or(0);
+    let peak_conn = app
+        .trend
+        .conn_count_history
+        .iter()
+        .max()
+        .copied()
+        .unwrap_or(0);
 
     let current_cpu = app.trend.cpu_history.last().copied().unwrap_or(0.0);
 
@@ -211,7 +221,8 @@ fn render_sparkline_row(f: &mut ratatui::Frame, app: &App, area: Rect) {
         &cpu_history_label,
         &cpu_to_u64(&app.trend.cpu_history),
         THEME.warning,
-        app.trend.cpu_history
+        app.trend
+            .cpu_history
             .last()
             .copied()
             .map(|v| format!("{:.1}%", v)),
@@ -223,7 +234,8 @@ fn render_sparkline_row(f: &mut ratatui::Frame, app: &App, area: Rect) {
         &conn_history_label,
         &app.trend.conn_count_history,
         THEME.primary,
-        app.trend.conn_count_history
+        app.trend
+            .conn_count_history
             .last()
             .copied()
             .map(|v| format!("{} active", v)),
@@ -378,7 +390,11 @@ fn render_risk_distribution(f: &mut ratatui::Frame, app: &App, area: Rect) {
             THEME.danger,
         ),
         (tr!(app.ui.translator, "trends.high"), high, THEME.danger),
-        (tr!(app.ui.translator, "trends.medium"), medium, THEME.warning),
+        (
+            tr!(app.ui.translator, "trends.medium"),
+            medium,
+            THEME.warning,
+        ),
         (tr!(app.ui.translator, "trends.low"), low, THEME.success),
         (tr!(app.ui.translator, "trends.safe"), safe, THEME.primary),
     ];
@@ -603,7 +619,8 @@ fn render_bottom_row(f: &mut ratatui::Frame, app: &App, area: Rect) {
         return;
     }
 
-    let show_containers = !app.containers.containers.is_empty() || app.containers.containers_loaded_once;
+    let show_containers =
+        !app.containers.containers.is_empty() || app.containers.containers_loaded_once;
 
     let constraints = if show_containers {
         vec![

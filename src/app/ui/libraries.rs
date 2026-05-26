@@ -19,7 +19,11 @@ pub fn render_libraries_view(f: &mut ratatui::Frame, app: &App, area: Rect) {
         return;
     }
 
-    let search_bar_height = if app.libraries.library_search_active { 3 } else { 0 };
+    let search_bar_height = if app.libraries.library_search_active {
+        3
+    } else {
+        0
+    };
 
     let rows = Layout::default()
         .direction(Direction::Vertical)
@@ -324,7 +328,9 @@ fn render_library_table(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     let libs = get_libs_for_selected_process(app);
     if libs.is_empty() {
-        let msg = if !app.libraries.library_search_query.is_empty() || app.libraries.library_risk_filter.is_some() {
+        let msg = if !app.libraries.library_search_query.is_empty()
+            || app.libraries.library_risk_filter.is_some()
+        {
             tr!(app.ui.translator, "libraries.filter_none")
         } else {
             tr!(app.ui.translator, "libraries.filter_none_proc")
@@ -544,7 +550,12 @@ fn render_library_actions_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
     list_state.select(Some(app.ui.selected_action_index));
     let list = List::new(items).block(Block::default());
     f.render_stateful_widget(list, list_area, &mut list_state);
-    widgets::render_scrollbar(f, scrollbar_area, actions.len(), app.ui.selected_action_index);
+    widgets::render_scrollbar(
+        f,
+        scrollbar_area,
+        actions.len(),
+        app.ui.selected_action_index,
+    );
 }
 
 fn render_selected_library_info(f: &mut ratatui::Frame, app: &App, area: Rect) {
@@ -926,7 +937,8 @@ pub fn render_library_binary_viewer(f: &mut ratatui::Frame, app: &App) {
     let total = lines.len();
     let visible_height = inner.height.saturating_sub(2) as usize;
     let scroll = app
-        .libraries.library_binary_scroll
+        .libraries
+        .library_binary_scroll
         .min(total.saturating_sub(visible_height).max(0));
 
     let mut rendered = Vec::with_capacity(visible_height + 2);

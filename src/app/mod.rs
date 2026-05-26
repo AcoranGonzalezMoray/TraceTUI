@@ -21,11 +21,11 @@ use crate::tr;
 use crate::utils::db::Database;
 pub use investigation_service::InvestigationReport;
 pub use io::{restore_terminal, setup_terminal};
-pub use types::{AppConnection, AppState, FirewallPanel, NavView, SidebarFocus};
 pub use states::{
     ContainerState, FirewallState, GeoState, InvestigationState, LibraryState, NetworkDataState,
     StorageState, TrendState, UiState, UpdateState,
 };
+pub use types::{AppConnection, AppState, FirewallPanel, NavView, SidebarFocus};
 
 pub struct App {
     pub ui: UiState,
@@ -181,8 +181,7 @@ impl App {
         });
         self.libraries.libraries_rx = Some(rx);
         self.libraries.libraries_loading = true;
-        self.ui.status_message =
-            tr!(self.ui.translator, "libraries.status.refreshing").to_string();
+        self.ui.status_message = tr!(self.ui.translator, "libraries.status.refreshing").to_string();
     }
 }
 

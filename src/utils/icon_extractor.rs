@@ -15,8 +15,7 @@ impl IconCache {
     pub fn new() -> Self {
         Self {
             cache: LruCache::new(
-                NonZeroUsize::new(config::LRU_CACHE_SIZE)
-                    .expect("LRU_CACHE_SIZE must be > 0"),
+                NonZeroUsize::new(config::LRU_CACHE_SIZE).expect("LRU_CACHE_SIZE must be > 0"),
             ),
         }
     }

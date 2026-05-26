@@ -90,7 +90,9 @@ fn render_disk_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
         return;
     }
 
-    let items: Vec<ListItem> = app.storage.disks
+    let items: Vec<ListItem> = app
+        .storage
+        .disks
         .iter()
         .enumerate()
         .map(|(i, disk)| {
@@ -324,7 +326,10 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
     f.render_widget(block, area);
 
     let sort_label = app.storage.file_sort_mode.label();
-    let sort_str = format!(" {}", tr!(app.ui.translator, "storage.sort_label", sort_label));
+    let sort_str = format!(
+        " {}",
+        tr!(app.ui.translator, "storage.sort_label", sort_label)
+    );
     let path_str = format!(
         " 📁 {} {}",
         app.storage.current_directory.to_string_lossy(),
@@ -608,7 +613,8 @@ pub fn render_file_viewer_modal(f: &mut ratatui::Frame, app: &App) {
     f.render_widget(Clear, area);
 
     let path = app.storage.current_directory.join(
-        app.storage.file_entries
+        app.storage
+            .file_entries
             .get(0)
             .map(|e| e.name.as_str())
             .unwrap_or(""),
@@ -642,7 +648,9 @@ pub fn render_file_viewer_modal(f: &mut ratatui::Frame, app: &App) {
 
     let total_lines = app.storage.file_viewer_content.len();
     let visible_height = inner.height.saturating_sub(2) as usize;
-    let scroll_pos = app.storage.file_viewer_scroll
+    let scroll_pos = app
+        .storage
+        .file_viewer_scroll
         .min(total_lines.saturating_sub(visible_height).max(0));
 
     let mut lines: Vec<Line> = Vec::with_capacity(visible_height + 1);
@@ -662,7 +670,10 @@ pub fn render_file_viewer_modal(f: &mut ratatui::Frame, app: &App) {
                 Style::default().fg(THEME.background),
             ),
             Span::styled(
-                format!(" ({})", tr!(app.ui.translator, "storage.viewer_scroll_hint")),
+                format!(
+                    " ({})",
+                    tr!(app.ui.translator, "storage.viewer_scroll_hint")
+                ),
                 Style::default().fg(THEME.background),
             ),
         ])
@@ -850,7 +861,8 @@ pub fn render_file_search_modal(f: &mut ratatui::Frame, app: &App) {
         .min(FILE_EXTENSION_FILTERS.len().saturating_sub(1));
     let (ext_icon, _) = FILE_EXTENSION_FILTERS[ext_idx];
     let ext_name = app
-        .ui.translator
+        .ui
+        .translator
         .get(crate::app::storage::extension_filter_label(ext_idx));
 
     let border_color_e = if e_focused {

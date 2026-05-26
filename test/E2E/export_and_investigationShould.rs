@@ -55,7 +55,7 @@ mod e2e_export_and_investigation {
     #[test]
     fn e2e_export_multi_app_with_cleanup() {
         let mut app = App::new();
-        app.app_connections = vec![
+        app.network.app_connections = vec![
             build_app(
                 1,
                 "chrome.exe",
@@ -104,10 +104,10 @@ mod e2e_export_and_investigation {
                 }],
             ),
         ];
-        app.auto_analysis_complete = true;
-        app.is_initial_loading = false;
+        app.ui.auto_analysis_complete = true;
+        app.ui.is_initial_loading = false;
 
-        app.export_to_json();
+        crate::app::services::input_service::export_to_json(&mut app);
 
         let json_files: Vec<_> = std::fs::read_dir(".")
             .unwrap()

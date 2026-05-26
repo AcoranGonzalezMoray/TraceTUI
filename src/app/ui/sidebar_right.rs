@@ -131,7 +131,12 @@ fn render_actions_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
     list_state.select(Some(app.ui.selected_action_index));
     let list = List::new(items).block(Block::default());
     f.render_stateful_widget(list, list_area, &mut list_state);
-    widgets::render_scrollbar(f, scrollbar_area, actions.len(), app.ui.selected_action_index);
+    widgets::render_scrollbar(
+        f,
+        scrollbar_area,
+        actions.len(),
+        app.ui.selected_action_index,
+    );
 }
 fn render_app_icon(f: &mut ratatui::Frame, app: &App, area: Rect) {
     if let Some(selected_app) = app.get_selected_app() {

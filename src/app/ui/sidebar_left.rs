@@ -87,7 +87,11 @@ pub fn render_left_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
                 Line::from(vec![
                     Span::raw("    "),
                     Span::styled(
-                        tr!(app.ui.translator, "sidebar.items", app_conn.connections.len()),
+                        tr!(
+                            app.ui.translator,
+                            "sidebar.items",
+                            app_conn.connections.len()
+                        ),
                         Style::default().fg(THEME.text_dim),
                     ),
                     Span::styled(" │ ", Style::default().fg(THEME.secondary)),

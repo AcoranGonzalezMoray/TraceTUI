@@ -93,6 +93,57 @@
 
 ---
 
+### Sidebar Navigation Views
+
+The left-most nav sidebar (`M` key to expand/collapse) provides 5 main sections:
+
+**1. Networks** (Main dashboard) `󰞶`
+- Three-panel IDE layout: process list (left) | process details + tabs (center) | actions + app icon (right)
+- Center panel has 3 tabs: **[1] Connections** (protocol/local/foreign/state/location table), **[2] Risk Overview** (bar chart per process), **[3] Timeline** (connection activity line chart)
+- 10 quick actions: Pause/Resume `R`, Kill Process `X`, Kill All Conns `-`, Search Online `G`, Copy Path `C`, Export JSON `S`, Filter High Risk `F`, Hunter Mode `H`, Firewall Manager `B`, Language `L`
+- Connection investigation: press `Enter` on any row for trust score gauge, WHOIS data, traceroute hops, and security analysis
+- Map view: geographic route visualization with hop-by-hop tracing
+
+**2. Trends & Analytics** `󰄪`
+- Summary KPI cards: total connections, peak connections, current CPU %, memory usage, high-risk count
+- CPU history and connection count sparkline charts with min/avg/max stats
+- Risk distribution bar chart (Critical/High/Medium/Low/Safe)
+- Top processes by CPU and memory usage with visual bars
+- Protocol distribution table
+- Country/IP distribution table (top 10)
+- Docker container health overview (if available)
+
+**3. Storage / Files** `󰋊`
+- Disk list with usage bars and color-coded capacity warnings (>85% red)
+- Disk properties panel (device, mount, filesystem, total/used/free)
+- File browser with icon-coded entries (dirs, images, audio, video, archives, code, text, PDF)
+- Sortable columns: Name, Size, Modified
+- File viewer modal with line numbers and ANSI-aware rendering
+- File search modal with recursive option, extension filter, and query input
+- Actions: Refresh `R`, Open `Enter`, Properties `P`, Parent Dir `Backspace`, Go Home `H`, Sort `S`
+
+**4. Libraries** (Library Inspection) `󰅩`
+- Per-process loaded library analysis
+- Process list with library count and threat count per process
+- Library table: Name, Size, Origin (Temp/UserSpace/System/ProgramFiles), Signature (Signed/Unsigned/Invalid/Unknown), Risk (Critical/Suspicious/Safe)
+- Search bar with live filtering and match count
+- Actions: Refresh `R`, Filter Risk `F`, Copy Path `Enter`, Export JSON `J`, Export CSV `C`, Hash Info `H`, View Binary `V`
+- Library binary viewer with Hex and Disassembly tabs
+- Hash info modal for integrity verification
+
+**5. Containers** (Docker) `󰡨`
+- Container list with summary bar: running ▶ / stopped ■ / paused ⏸ counts
+- State badges with color coding: ▶ RUN (green), ⏸ PAUSE (yellow), ■ STOP (red)
+- CPU indicator dots per container (red ≥75%, yellow ≥40%, green <40%)
+- Container details panel: identity (name, ID, image, ports, networks), CPU/memory gauges, runtime info (uptime, net/block I/O, PIDs)
+- Actions: Refresh `R`, Logs `V`, Console `C`, Start `S`, Stop `T`, Restart `E`, Pause/Unpause `P`
+- Docker daemon control: Start Docker `N`, Stop Docker `O`
+- Docker Hub search `H` with image search, configuration form, and one-click create
+- Container logs modal with line numbers and color-coded output (error/warn/info)
+- Container console modal with interactive terminal
+
+---
+
 ## External Dependencies
 
 TraceTUI connects to the following external services at runtime:
@@ -125,16 +176,55 @@ Pre-built binaries are available on the [Releases page](https://github.com/Acora
 > **Already installed?** Just run `tracetui` — it checks for updates automatically on every launch.
 > The install script below is only needed for first-time setup.
 
-**Windows:**
-1. Download `tracetui-x86_64-pc-windows-gnu.zip`
-2. Extract and run `installOrUpdate.ps1` (adds `tracetui` to your user PATH)
-3. Restart your terminal and run `tracetui`
+**Windows (PowerShell - Run as Administrator):**
+```powershell
+# Download
+Invoke-WebRequest -Uri "https://github.com/AcoranGonzalezMoray/TraceTUI/releases/latest/download/tracetui-x86_64-pc-windows-gnu.zip" -OutFile "$env:TEMP\tracetui.zip"
+# Extract
+Expand-Archive -Path "$env:TEMP\tracetui.zip" -DestinationPath "$env:TEMP\tracetui" -Force
+# Install
+& "$env:TEMP\tracetui\installOrUpdate.ps1"
+# Restart your terminal and run
+tracetui
+```
+
+**Windows (Classic CMD - Run as Administrator):**
+```cmd
+:: Download
+powershell -Command "Invoke-WebRequest -Uri 'https://github.com/AcoranGonzalezMoray/TraceTUI/releases/latest/download/tracetui-x86_64-pc-windows-gnu.zip' -OutFile '%TEMP%\tracetui.zip'"
+:: Extract
+powershell -Command "Expand-Archive -Path '%TEMP%\tracetui.zip' -DestinationPath '%TEMP%\tracetui' -Force"
+:: Install
+powershell -Command "& '%TEMP%\tracetui\installOrUpdate.ps1'"
+:: Restart your terminal and run
+tracetui
+```
 
 **Linux:**
-1. Download `tracetui-x86_64-unknown-linux-gnu.tar.gz`
-2. Extract: `tar xzf tracetui-x86_64-unknown-linux-gnu.tar.gz`
-3. Run the install script: `chmod +x installOrUpdate.sh and next sudo sh ./installOrUpdate.sh`
-4. Run `tracetui`
+```bash
+# Download
+curl -L -o /tmp/tracetui.tar.gz "https://github.com/AcoranGonzalezMoray/TraceTUI/releases/latest/download/tracetui-x86_64-unknown-linux-gnu.tar.gz"
+# Extract
+tar xzf /tmp/tracetui.tar.gz -C /tmp
+# Install
+chmod +x /tmp/installOrUpdate.sh
+sudo sh /tmp/installOrUpdate.sh
+# Run
+tracetui
+```
+
+> **Manual download (no terminal needed):** Download the archive from the [Releases page](https://github.com/AcoranGonzalezMoray/TraceTUI/releases), extract it, and run the install script manually.
+>
+> **Windows:**
+> 1. Download `tracetui-x86_64-pc-windows-gnu.zip`
+> 2. Extract and run `installOrUpdate.ps1` **as Administrator** (adds `tracetui` to your system PATH)
+> 3. Restart your terminal and run `tracetui`
+>
+> **Linux:**
+> 1. Download `tracetui-x86_64-unknown-linux-gnu.tar.gz`
+> 2. Extract: `tar xzf tracetui-x86_64-unknown-linux-gnu.tar.gz`
+> 3. Run the install script: `chmod +x installOrUpdate.sh && sudo sh ./installOrUpdate.sh`
+> 4. Run `tracetui`
 
 ### From Source
 
@@ -210,21 +300,29 @@ scripts/
 src/
 ├── main.rs                 # Entry point
 ├── app/
-│   ├── mod.rs              # App struct, state, core logic
+│   ├── mod.rs              # App struct (12 state fields), shared methods
+│   ├── states/
+│   │   └── mod.rs          # 12 state structs: Ui, NetworkData, Geo, Investigation,
+│   │                       #   Firewall, Update, Storage, Container, Library,
+│   │                       #   Trend, Install, NerdFont
+│   ├── services/
+│   │   ├── mod.rs
+│   │   ├── analysis_service.rs  # on_tick(), trigger_background_refresh(), is_newer()
+│   │   ├── input_service.rs     # key/mouse dispatch, execute_action(), export_to_json()
+│   │   └── investigation_service.rs  # Deep-dive IP investigation, risk scoring
 │   ├── analysis.rs         # Auto-analysis, geo lookup, investigation
 │   ├── firewall_service.rs # Firewall panel state machine
 │   ├── grouping.rs         # ConnectionGrouper: process→connection→risk
 │   ├── input.rs            # Key/mouse event dispatch, actions
 │   ├── installation.rs     # Net-tools installation helpers
-│   ├── investigation_service.rs  # Deep-dive IP investigation
 │   ├── io.rs               # Terminal setup/restore
 │   ├── nerdfont.rs         # Nerd Font detection
 │   ├── risk.rs             # RiskAnalyzer: scoring engine
 │   ├── types.rs            # Core enums, structs, traits
 │   ├── network/
-│   │   ├── mod.rs          # NetworkAnalyzer, connection parsing
+│   │   └── mod.rs          # NetworkAnalyzer, connection parsing
 │   ├── process/
-│   │   ├── mod.rs          # ProcessManager, ProcessInfo
+│   │   └── mod.rs          # ProcessManager, ProcessInfo
 │   └── ui/
 │       ├── mod.rs          # UI render dispatch
 │       ├── center_panel.rs

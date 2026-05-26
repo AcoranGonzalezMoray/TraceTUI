@@ -31,13 +31,16 @@ pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     let spinners = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
-    let storage_icon = if app.storage.search_progress_running && app.ui.current_nav_view != NavView::Storage {
-        spinners[(app.ui.frame_count as usize) % spinners.len()]
-    } else {
-        "󰋊"
-    };
+    let storage_icon =
+        if app.storage.search_progress_running && app.ui.current_nav_view != NavView::Storage {
+            spinners[(app.ui.frame_count as usize) % spinners.len()]
+        } else {
+            "󰋊"
+        };
 
-    let libs_icon = if app.libraries.libraries_loading && app.ui.current_nav_view != NavView::LibraryInspection {
+    let libs_icon = if app.libraries.libraries_loading
+        && app.ui.current_nav_view != NavView::LibraryInspection
+    {
         spinners[(app.ui.frame_count as usize) % spinners.len()]
     } else {
         "󰅩"
@@ -45,7 +48,11 @@ pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     let nav_items = vec![
         (NavView::Main, "󰞶", tr!(app.ui.translator, "nav.main")),
-        (NavView::TrendGraphs, "󰄪", tr!(app.ui.translator, "nav.trends")),
+        (
+            NavView::TrendGraphs,
+            "󰄪",
+            tr!(app.ui.translator, "nav.trends"),
+        ),
         (
             NavView::Storage,
             storage_icon,

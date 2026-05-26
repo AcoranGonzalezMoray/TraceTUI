@@ -54,42 +54,42 @@ mod e2e_firewall_flow {
             sample_conn(1, "10.0.0.2"),
             sample_conn(1, "10.0.0.3"),
         ];
-        app.app_connections = vec![build_app(1, "test_app", conns)];
-        app.auto_analysis_complete = true;
-        app.is_initial_loading = false;
+        app.network.app_connections = vec![build_app(1, "test_app", conns)];
+        app.ui.auto_analysis_complete = true;
+        app.ui.is_initial_loading = false;
 
         fn press(key: KeyCode) -> KeyEvent {
             KeyEvent::new(key, KeyModifiers::empty())
         }
 
-        app.selected_action_index = 7;
-        app.execute_action();
-        assert!(app.firewall_mode);
-        assert_eq!(app.firewall_focus, FirewallPanel::Connections);
-        assert_eq!(app.firewall_connections.len(), 3);
-        assert_eq!(app.firewall_conn_checked.len(), 3);
+        app.ui.selected_action_index = 7;
+        crate::app::services::input_service::execute_action(&mut app);
+        assert!(app.firewall.firewall_mode);
+        assert_eq!(app.firewall.firewall_focus, FirewallPanel::Connections);
+        assert_eq!(app.firewall.firewall_connections.len(), 3);
+        assert_eq!(app.firewall.firewall_conn_checked.len(), 3);
 
-        app.handle_key_event(press(KeyCode::Down));
-        assert_eq!(app.firewall_conn_index, 1);
-        app.handle_key_event(press(KeyCode::Down));
-        assert_eq!(app.firewall_conn_index, 2);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Down));
+        assert_eq!(app.firewall.firewall_conn_index, 1);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Down));
+        assert_eq!(app.firewall.firewall_conn_index, 2);
 
-        app.handle_key_event(press(KeyCode::Up));
-        assert_eq!(app.firewall_conn_index, 1);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Up));
+        assert_eq!(app.firewall.firewall_conn_index, 1);
 
-        app.handle_key_event(press(KeyCode::Tab));
-        assert_eq!(app.firewall_focus, FirewallPanel::BlockedList);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Tab));
+        assert_eq!(app.firewall.firewall_focus, FirewallPanel::BlockedList);
 
-        app.handle_key_event(press(KeyCode::Tab));
-        assert_eq!(app.firewall_focus, FirewallPanel::Actions);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Tab));
+        assert_eq!(app.firewall.firewall_focus, FirewallPanel::Actions);
 
-        app.handle_key_event(press(KeyCode::BackTab));
-        assert_eq!(app.firewall_focus, FirewallPanel::BlockedList);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::BackTab));
+        assert_eq!(app.firewall.firewall_focus, FirewallPanel::BlockedList);
 
-        app.handle_key_event(press(KeyCode::Char('q')));
-        assert!(!app.firewall_mode);
-        assert!(app.firewall_connections.is_empty());
-        assert!(app.firewall_process_name.is_empty());
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char('q')));
+        assert!(!app.firewall.firewall_mode);
+        assert!(app.firewall.firewall_connections.is_empty());
+        assert!(app.firewall.firewall_process_name.is_empty());
     }
 
     #[test]
@@ -97,41 +97,41 @@ mod e2e_firewall_flow {
         use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
         let mut app = App::new();
         let conns = vec![sample_conn(1, "10.0.0.1"), sample_conn(1, "10.0.0.2")];
-        app.app_connections = vec![build_app(1, "test_app", conns)];
-        app.auto_analysis_complete = true;
-        app.is_initial_loading = false;
+        app.network.app_connections = vec![build_app(1, "test_app", conns)];
+        app.ui.auto_analysis_complete = true;
+        app.ui.is_initial_loading = false;
 
         fn press(key: KeyCode) -> KeyEvent {
             KeyEvent::new(key, KeyModifiers::empty())
         }
 
-        app.selected_action_index = 7;
-        app.execute_action();
-        assert!(app.firewall_mode);
+        app.ui.selected_action_index = 7;
+        crate::app::services::input_service::execute_action(&mut app);
+        assert!(app.firewall.firewall_mode);
 
-        assert!(!app.any_conn_checked());
+        assert!(!crate::app::services::input_service::any_conn_checked(&app));
 
-        app.handle_key_event(press(KeyCode::Char(' ')));
-        assert!(app.firewall_conn_checked[0]);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char(' ')));
+        assert!(app.firewall.firewall_conn_checked[0]);
 
-        app.handle_key_event(press(KeyCode::Down));
-        app.handle_key_event(press(KeyCode::Char(' ')));
-        assert!(app.firewall_conn_checked[1]);
-        assert!(app.any_conn_checked());
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Down));
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char(' ')));
+        assert!(app.firewall.firewall_conn_checked[1]);
+        assert!(crate::app::services::input_service::any_conn_checked(&app));
 
-        app.handle_key_event(press(KeyCode::Char(' ')));
-        assert!(!app.firewall_conn_checked[1]);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char(' ')));
+        assert!(!app.firewall.firewall_conn_checked[1]);
     }
 
     #[test]
     fn e2e_firewall_no_selection() {
         let mut app = App::new();
-        app.auto_analysis_complete = true;
-        app.is_initial_loading = false;
+        app.ui.auto_analysis_complete = true;
+        app.ui.is_initial_loading = false;
 
-        app.selected_action_index = 7;
-        app.execute_action();
+        app.ui.selected_action_index = 7;
+        crate::app::services::input_service::execute_action(&mut app);
 
-        assert!(!app.firewall_mode);
+        assert!(!app.firewall.firewall_mode);
     }
 }

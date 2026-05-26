@@ -147,7 +147,7 @@ fn get_libraries_windows(pids: &[u32]) -> Vec<LibraryInfo> {
         .map(|p| p.to_string())
         .collect::<Vec<_>>()
         .join(",");
-        
+
     let script = format!(
         r#"
         $ErrorActionPreference = 'SilentlyContinue';
@@ -563,7 +563,8 @@ impl crate::app::App {
             .map(|(n, _)| n.as_str())
             .unwrap_or("");
         let sq = search_query.to_lowercase();
-        self.libraries.libraries
+        self.libraries
+            .libraries
             .iter()
             .filter(|l| {
                 l.process_name == pname

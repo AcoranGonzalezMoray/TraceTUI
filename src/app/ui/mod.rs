@@ -46,7 +46,11 @@ pub use storage::render_storage_view;
 pub use theme::THEME;
 pub use trends::render_trends_view;
 pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
-    let search_bar_height = if app.ui.search_mode { config::SEARCH_BAR_HEIGHT } else { 0 };
+    let search_bar_height = if app.ui.search_mode {
+        config::SEARCH_BAR_HEIGHT
+    } else {
+        0
+    };
     let main_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -327,7 +331,8 @@ pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
     if app.ui.current_nav_view == NavView::Containers && app.containers.show_container_logs_modal {
         render_container_logs_modal(f, app);
     }
-    if app.ui.current_nav_view == NavView::Containers && app.containers.show_container_console_modal {
+    if app.ui.current_nav_view == NavView::Containers && app.containers.show_container_console_modal
+    {
         render_container_console_modal(f, app);
     }
     if app.ui.current_nav_view == NavView::Containers && app.containers.show_docker_hub_modal {
@@ -336,7 +341,9 @@ pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
     if app.ui.current_nav_view == NavView::LibraryInspection && app.libraries.show_hash_info_modal {
         render_library_hash_modal(f, app);
     }
-    if app.ui.current_nav_view == NavView::LibraryInspection && app.libraries.show_library_binary_viewer {
+    if app.ui.current_nav_view == NavView::LibraryInspection
+        && app.libraries.show_library_binary_viewer
+    {
         render_library_binary_viewer(f, app);
     }
 }
@@ -391,7 +398,11 @@ fn render_search_bar(f: &mut ratatui::Frame, app: &App, area: Rect) {
     f.render_widget(search_widget, search_area);
 }
 fn render_main_layout_with_nav(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let nav_width = if app.ui.nav_sidebar_expanded { config::NAV_SIDEBAR_EXPANDED_WIDTH } else { config::NAV_SIDEBAR_COLLAPSED_WIDTH };
+    let nav_width = if app.ui.nav_sidebar_expanded {
+        config::NAV_SIDEBAR_EXPANDED_WIDTH
+    } else {
+        config::NAV_SIDEBAR_COLLAPSED_WIDTH
+    };
 
     let main_layout = Layout::default()
         .direction(Direction::Horizontal)

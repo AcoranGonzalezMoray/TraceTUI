@@ -34,7 +34,9 @@ async fn main() -> Result<()> {
         if crossterm::event::poll(timeout)? {
             match event::read()? {
                 crossterm::event::Event::Key(key) => input_service::handle_key_event(&mut app, key),
-                crossterm::event::Event::Mouse(mouse) => input_service::handle_mouse_event(&mut app, mouse),
+                crossterm::event::Event::Mouse(mouse) => {
+                    input_service::handle_mouse_event(&mut app, mouse)
+                }
                 crossterm::event::Event::Resize(_, _) => {
                     app.ui.needs_clear = true;
                 }

@@ -23,14 +23,14 @@ fn os_name(translator: &crate::i18n::Translator) -> String {
 }
 
 pub fn render_footer(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let status_color = if app.ui.status_message.contains("[!]") || app.ui.status_message.contains("[-] ")
-    {
-        THEME.danger
-    } else if app.ui.status_message.contains("[*]") {
-        THEME.warning
-    } else {
-        THEME.success
-    };
+    let status_color =
+        if app.ui.status_message.contains("[!]") || app.ui.status_message.contains("[-] ") {
+            THEME.danger
+        } else if app.ui.status_message.contains("[*]") {
+            THEME.warning
+        } else {
+            THEME.success
+        };
 
     let mut status_spans = vec![
         Span::styled(
@@ -51,7 +51,11 @@ pub fn render_footer(f: &mut ratatui::Frame, app: &App, area: Rect) {
         status_spans.push(Span::styled(
             format!(
                 " \u{f0ac} {} ",
-                tr!(app.ui.translator, "status.geo_lookup", app.geo.pending_geo_lookups)
+                tr!(
+                    app.ui.translator,
+                    "status.geo_lookup",
+                    app.geo.pending_geo_lookups
+                )
             ),
             Style::default().fg(THEME.warning),
         ));
@@ -148,7 +152,11 @@ fn storage_footer_spans(app: &App) -> Vec<Span<'_>> {
         Span::styled(
             format!(
                 " {} ",
-                tr!(app.ui.translator, "sidebar.items", app.storage.file_entries.len())
+                tr!(
+                    app.ui.translator,
+                    "sidebar.items",
+                    app.storage.file_entries.len()
+                )
             ),
             Style::default().fg(THEME.text_dim),
         ),
@@ -168,7 +176,13 @@ fn storage_footer_spans(app: &App) -> Vec<Span<'_>> {
 }
 
 fn trends_footer_spans(app: &App) -> Vec<Span<'_>> {
-    let peak_conn = app.trend.conn_count_history.iter().max().copied().unwrap_or(0);
+    let peak_conn = app
+        .trend
+        .conn_count_history
+        .iter()
+        .max()
+        .copied()
+        .unwrap_or(0);
     let current_cpu = app.trend.cpu_history.last().copied().unwrap_or(0.0);
     vec![
         Span::styled(
@@ -195,13 +209,17 @@ fn trends_footer_spans(app: &App) -> Vec<Span<'_>> {
 fn libraries_footer_spans(app: &App) -> Vec<Span<'_>> {
     let total = app.libraries.libraries.len();
     let suspicious = app
-        .libraries.libraries
+        .libraries
+        .libraries
         .iter()
         .filter(|l| l.risk == "Suspicious")
         .count();
     vec![
         Span::styled(
-            format!(" {} ", tr!(app.ui.translator, "libraries.footer_count", total)),
+            format!(
+                " {} ",
+                tr!(app.ui.translator, "libraries.footer_count", total)
+            ),
             Style::default().fg(THEME.secondary),
         ),
         separator(),
@@ -228,7 +246,11 @@ fn network_footer_spans(app: &App) -> Vec<Span<'_>> {
         Span::styled(
             format!(
                 " {} ",
-                tr!(app.ui.translator, "app.apps_count", app.network.app_connections.len())
+                tr!(
+                    app.ui.translator,
+                    "app.apps_count",
+                    app.network.app_connections.len()
+                )
             ),
             Style::default().fg(THEME.secondary),
         ),

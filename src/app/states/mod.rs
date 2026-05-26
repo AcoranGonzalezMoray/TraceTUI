@@ -1,15 +1,18 @@
 #![allow(dead_code)]
 
-use crate::app::containers::{ContainerInfo, ContainerAction, DockerAction, DockerHubSearchState};
+use crate::app::containers::{ContainerAction, ContainerInfo, DockerAction, DockerHubSearchState};
 use crate::app::libraries::LibraryInfo;
 use crate::app::network::NetworkConnection;
 use crate::app::process::ProcessInfo;
 use crate::app::storage::{DiskInfo, FileEntry};
-use crate::app::types::{AppConnection, AppState, FileSearchState, FileSortMode, FirewallPanel, NavView, SidebarFocus, UpdateEvent};
+use crate::app::types::{
+    AppConnection, AppState, FileSearchState, FileSortMode, FirewallPanel, NavView, SidebarFocus,
+    UpdateEvent,
+};
 use crate::app::InvestigationReport;
+use crate::i18n::Translator;
 use crate::services::geoip_service::{GeoInfo, GeoIpService};
 use crate::utils::icon_extractor::IconCache;
-use crate::i18n::Translator;
 use tokio::sync::mpsc;
 
 pub struct InstallState {
@@ -345,7 +348,9 @@ pub struct ContainerState {
     pub container_console_rx: Option<std::sync::mpsc::Receiver<Result<Vec<String>, String>>>,
     pub show_docker_hub_modal: bool,
     pub docker_hub_search: DockerHubSearchState,
-    pub docker_hub_search_rx: Option<std::sync::mpsc::Receiver<Result<Vec<crate::app::containers::DockerHubImage>, String>>>,
+    pub docker_hub_search_rx: Option<
+        std::sync::mpsc::Receiver<Result<Vec<crate::app::containers::DockerHubImage>, String>>,
+    >,
     pub docker_hub_create_rx: Option<std::sync::mpsc::Receiver<Result<String, String>>>,
     pub pending_container_action: Option<ContainerAction>,
     pub pending_docker_action: Option<DockerAction>,

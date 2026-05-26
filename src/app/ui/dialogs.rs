@@ -88,7 +88,8 @@ pub fn render_install_dialog(f: &mut ratatui::Frame, app: &App) {
             )
         };
         let lines: Vec<Line> = app
-            .install.message
+            .install
+            .message
             .lines()
             .map(|l| {
                 Line::from(Span::styled(
@@ -384,7 +385,8 @@ pub fn render_nerdfont_dialog(f: &mut ratatui::Frame, app: &App) {
             ("[FAIL]", THEME.danger)
         };
         let lines: Vec<Line> = app
-            .nerdfont.install_message
+            .nerdfont
+            .install_message
             .lines()
             .map(|l| {
                 Line::from(Span::styled(
@@ -601,7 +603,8 @@ pub fn render_language_modal(f: &mut ratatui::Frame, app: &App) {
     }
 
     if total > visible {
-        let thumb_pos = (app.ui.language_selection_index * (scrollbar_chars.len() - 1)) / total.max(1);
+        let thumb_pos =
+            (app.ui.language_selection_index * (scrollbar_chars.len() - 1)) / total.max(1);
         let thumb = scrollbar_chars[thumb_pos.min(scrollbar_chars.len() - 1)];
         let pad_w = popup_width.saturating_sub(6);
         let pad = " ".repeat(pad_w as usize);
@@ -693,7 +696,10 @@ pub fn render_update_dialog(f: &mut ratatui::Frame, app: &App) {
             .block(
                 Block::default()
                     .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
-                    .title(format!(" {} ", tr!(app.ui.translator, "dialog.update_title")))
+                    .title(format!(
+                        " {} ",
+                        tr!(app.ui.translator, "dialog.update_title")
+                    ))
                     .title_style(
                         Style::default()
                             .fg(THEME.warning)
@@ -863,7 +869,10 @@ pub fn render_update_dialog(f: &mut ratatui::Frame, app: &App) {
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .title(format!(" {} ", tr!(app.ui.translator, "dialog.update_title")))
+                    .title(format!(
+                        " {} ",
+                        tr!(app.ui.translator, "dialog.update_title")
+                    ))
                     .title_style(
                         Style::default()
                             .fg(THEME.warning)
@@ -890,7 +899,10 @@ pub fn render_confirmation_dialog(f: &mut ratatui::Frame, app: &App) {
     let dialog_text = vec![
         Line::from(""),
         Line::from(vec![Span::styled(
-            format!("  󰆐  {} ", tr!(app.ui.translator, "dialog.confirm_attention")),
+            format!(
+                "  󰆐  {} ",
+                tr!(app.ui.translator, "dialog.confirm_attention")
+            ),
             Style::default()
                 .fg(THEME.danger)
                 .add_modifier(Modifier::BOLD),
@@ -1041,11 +1053,13 @@ pub fn render_welcome_dialog(f: &mut ratatui::Frame, app: &App) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(if app.ui.welcome_index == crate::config::WELCOME_PAGE_COUNT - 2 {
-                    THEME.success
-                } else {
-                    THEME.text_dim
-                })),
+                .border_style(Style::default().fg(
+                    if app.ui.welcome_index == crate::config::WELCOME_PAGE_COUNT - 2 {
+                        THEME.success
+                    } else {
+                        THEME.text_dim
+                    },
+                )),
         );
 
     let btn_changes = Paragraph::new(tr!(app.ui.translator, "dialog.view_changes"))
@@ -1053,11 +1067,13 @@ pub fn render_welcome_dialog(f: &mut ratatui::Frame, app: &App) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(if app.ui.welcome_index == crate::config::WELCOME_PAGE_COUNT - 1 {
-                    THEME.primary
-                } else {
-                    THEME.text_dim
-                })),
+                .border_style(Style::default().fg(
+                    if app.ui.welcome_index == crate::config::WELCOME_PAGE_COUNT - 1 {
+                        THEME.primary
+                    } else {
+                        THEME.text_dim
+                    },
+                )),
         );
 
     f.render_widget(Clear, area);

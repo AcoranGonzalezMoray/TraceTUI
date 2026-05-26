@@ -1047,7 +1047,13 @@ fn render_timeline_chart(
         return;
     }
 
-    let max = *app.trend.conn_count_history.iter().max().unwrap_or(&1).max(&1);
+    let max = *app
+        .trend
+        .conn_count_history
+        .iter()
+        .max()
+        .unwrap_or(&1)
+        .max(&1);
     let data: Vec<(f64, f64)> = app
         .trend
         .conn_count_history
@@ -1066,7 +1072,10 @@ fn render_timeline_chart(
         .block(Block::default())
         .x_axis(
             ratatui::widgets::Axis::default()
-                .bounds([0.0, app.trend.conn_count_history.len().saturating_sub(1) as f64])
+                .bounds([
+                    0.0,
+                    app.trend.conn_count_history.len().saturating_sub(1) as f64,
+                ])
                 .labels(vec![
                     "0".into(),
                     format!("{}", app.trend.conn_count_history.len()),

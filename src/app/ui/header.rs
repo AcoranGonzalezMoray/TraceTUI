@@ -29,7 +29,11 @@ pub fn render_header(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
 fn network_header_content(app: &App) -> Line<'_> {
     let (dot_text, dot_color, live_text) = if app.ui.analysis_paused {
-        ("\u{f004} ", THEME.danger, tr!(app.ui.translator, "app.paused"))
+        (
+            "\u{f004} ",
+            THEME.danger,
+            tr!(app.ui.translator, "app.paused"),
+        )
     } else {
         let pulse = app.ui.frame_count % 4 < 2;
         (
@@ -64,7 +68,11 @@ fn network_header_content(app: &App) -> Line<'_> {
         Span::styled(
             format!(
                 " \u{f0c0}  {} ",
-                tr!(app.ui.translator, "app.apps_count", app.network.app_connections.len())
+                tr!(
+                    app.ui.translator,
+                    "app.apps_count",
+                    app.network.app_connections.len()
+                )
             ),
             Style::default().fg(THEME.secondary),
         ),
@@ -84,14 +92,18 @@ fn network_header_content(app: &App) -> Line<'_> {
 
 fn docker_header_content(app: &App) -> Line<'_> {
     let (label, color) = match app.docker_status() {
-        DockerStatus::On => (tr!(app.ui.translator, "containers.header_on"), THEME.success),
+        DockerStatus::On => (
+            tr!(app.ui.translator, "containers.header_on"),
+            THEME.success,
+        ),
         DockerStatus::Starting => (
             tr!(app.ui.translator, "containers.header_starting"),
             THEME.warning,
         ),
-        DockerStatus::Off | DockerStatus::Missing => {
-            (tr!(app.ui.translator, "containers.header_off"), THEME.danger)
-        }
+        DockerStatus::Off | DockerStatus::Missing => (
+            tr!(app.ui.translator, "containers.header_off"),
+            THEME.danger,
+        ),
         DockerStatus::Unknown => (
             tr!(app.ui.translator, "containers.header_unknown"),
             THEME.warning,
@@ -165,18 +177,26 @@ fn storage_header_content(app: &App) -> Line<'_> {
 
 fn trends_header_content(app: &App) -> Line<'_> {
     let active_conns: u64 = app
-        .network.app_connections
+        .network
+        .app_connections
         .iter()
         .map(|a| a.connections.len() as u64)
         .sum();
-    let total_cpu: f64 = app.network.app_connections.iter().map(|a| a.cpu_usage as f64).sum();
+    let total_cpu: f64 = app
+        .network
+        .app_connections
+        .iter()
+        .map(|a| a.cpu_usage as f64)
+        .sum();
     let total_mem_mb: u64 = app
-        .network.app_connections
+        .network
+        .app_connections
         .iter()
         .map(|a| a.memory_usage / 1024 / 1024)
         .sum();
     let high_risk = app
-        .network.app_connections
+        .network
+        .app_connections
         .iter()
         .filter(|a| a.risk_level.contains("HIGH") || a.risk_level.contains("CRITICAL"))
         .count();
@@ -219,7 +239,8 @@ fn trends_header_content(app: &App) -> Line<'_> {
 fn libraries_header_content(app: &App) -> Line<'_> {
     let total = app.libraries.libraries.len();
     let suspicious = app
-        .libraries.libraries
+        .libraries
+        .libraries
         .iter()
         .filter(|l| l.risk == "Suspicious")
         .count();

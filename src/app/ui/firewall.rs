@@ -1,7 +1,7 @@
 use super::theme::THEME;
 use super::widgets;
-use crate::app::{App, FirewallPanel};
 use crate::app::services::input_service::{any_blocked_checked, any_conn_checked};
+use crate::app::{App, FirewallPanel};
 use crate::config;
 use crate::tr;
 use ratatui::{
@@ -106,13 +106,19 @@ fn render_connections_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
             Constraint::Length(config::SCROLLBAR_WIDTH),
         ])
         .split(inner_area);
-    let items: Vec<ListItem> = app.firewall
+    let items: Vec<ListItem> = app
+        .firewall
         .firewall_connections
         .iter()
         .enumerate()
         .map(|(i, conn)| {
             let is_selected = i == app.firewall.firewall_conn_index && is_focused;
-            let boxed = app.firewall.firewall_conn_checked.get(i).copied().unwrap_or(false);
+            let boxed = app
+                .firewall
+                .firewall_conn_checked
+                .get(i)
+                .copied()
+                .unwrap_or(false);
             let chk = checkbox(true, boxed);
             let conn_style = if is_selected {
                 Style::default()
@@ -164,7 +170,12 @@ fn render_connections_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
         app.firewall.firewall_connections.len(),
         app.firewall.firewall_conn_index,
     );
-    let count = app.firewall.firewall_conn_checked.iter().filter(|&&c| c).count();
+    let count = app
+        .firewall
+        .firewall_conn_checked
+        .iter()
+        .filter(|&&c| c)
+        .count();
     let hint = Paragraph::new(Line::from(vec![
         Span::styled(
             tr!(app.ui.translator, "firewall.checked", count),
@@ -231,7 +242,11 @@ fn render_blocked_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .borders(Borders::ALL)
         .title(format!(
             " 󰒘 {} ",
-            tr!(app.ui.translator, "firewall.blocked", app.firewall.blocked_ips.len())
+            tr!(
+                app.ui.translator,
+                "firewall.blocked",
+                app.firewall.blocked_ips.len()
+            )
         ))
         .title_style(
             Style::default()
@@ -249,13 +264,15 @@ fn render_blocked_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
             Constraint::Length(config::SCROLLBAR_WIDTH),
         ])
         .split(inner_area);
-    let items: Vec<ListItem> = app.firewall
+    let items: Vec<ListItem> = app
+        .firewall
         .blocked_ips
         .iter()
         .enumerate()
         .map(|(i, (ip, pname, _))| {
             let is_selected = i == app.firewall.firewall_blocked_index && is_focused;
-            let boxed = app.firewall
+            let boxed = app
+                .firewall
                 .firewall_blocked_checked
                 .get(i)
                 .copied()
@@ -303,7 +320,12 @@ fn render_blocked_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
         app.firewall.blocked_ips.len(),
         app.firewall.firewall_blocked_index,
     );
-    let count = app.firewall.firewall_blocked_checked.iter().filter(|&&c| c).count();
+    let count = app
+        .firewall
+        .firewall_blocked_checked
+        .iter()
+        .filter(|&&c| c)
+        .count();
     let hint = Paragraph::new(Line::from(vec![
         Span::styled(
             tr!(app.ui.translator, "firewall.checked", count),
