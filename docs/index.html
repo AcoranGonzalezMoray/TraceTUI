@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -6,9 +6,10 @@
     <title>TraceTUI - Modern Network Investigation Tool</title>
     <meta name="description" content="TraceTUI: Open-source terminal-based network monitoring and threat investigation tool with real-time analysis">
     <link rel="icon" type="image/png" href="assets/tracetuiicon.png">
-    <link rel="stylesheet" href="css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <!-- Navigation -->
@@ -66,7 +67,7 @@
                         <div class="step-indicator" id="stepIndicator">
                             <span class="step-num" id="stepNum">01</span>
                             <span class="step-sep">/</span>
-                            <span class="step-total">11</span>
+                            <span class="step-total">15</span>
                             <span class="step-label" id="stepLabel">Dashboard Overview</span>
                             <div class="step-dots" id="stepDots"></div>
                         </div>
@@ -75,12 +76,12 @@
                             <span class="header-chip header-trace">TRACE</span>
                             <span class="header-chip header-tui">TUI</span>
                             <span class="header-sep">│</span>
-                            <span class="header-dot" id="headerDot">󱐱</span>
+                            <span class="header-dot" id="headerDot">&#xf004;</span>
                             <span class="header-live" id="headerLive">LIVE ANALYSIS</span>
                             <span class="header-sep">│</span>
                             <span class="header-mode" id="headerMode">󰒓 NORMAL</span>
                             <span class="header-sep">│</span>
-                            <span class="header-counts"> 42 Apps  󱂇 156 Conns</span>
+                            <span class="header-counts">&#xf0c0; 42 Apps  &#xf0c1; 156 Conns</span>
                         </div>
                         <!-- SEARCH BAR - between header and body (matches Rust TUI) -->
                         <div class="search-overlay" id="searchOverlay">
@@ -92,277 +93,475 @@
                             </div>
                         </div>
                         <!-- MAIN 3-COLUMN LAYOUT -->
-                        <div class="tui-body" id="tuiBody">
-                            <!-- LEFT SIDEBAR - PROCESSES -->
-                            <div class="tui-panel tui-left" id="tuiLeft">
-                                <div class="panel-titlebar">󰲚 PROCESSES (5)</div>
-                            <div class="proc-list">
-                                <div class="proc-loading">
-                                    <div class="proc-empty-icon">󱈸</div>
-                                    <div class="proc-empty-msg">No active connections</div>
-                                    <div class="proc-empty-hint">Press <span class="proc-empty-key">R</span> to refresh</div>
+                        <div class="tui-body" id="tuiBody" data-active-nav="main">
+                            <!-- NAV SIDEBAR (collapsible with M key) -->
+                            <div class="tui-nav-sidebar" id="tuiNavSidebar">
+                                <div class="nav-item nav-selected" data-nav="main">
+                                    <span class="nav-icon nf nf-oct-hub"></span>
+                                    <span class="nav-label">Main</span>
                                 </div>
-                                <div class="proc-items">
-                                    <div class="proc-item selected-proc">
-                                        <span class="proc-sel">▎</span>
-                                        <span class="proc-name">myapp.exe</span>
-                                        <div class="proc-sub">
-                                            <span class="proc-conns">12 conns</span>
-                                            <span class="proc-sep">│</span>
-                                            <span class="proc-risk-icon risk-low">󰄬</span>
-                                            <span class="proc-risk-badge risk-low-bg">LOW</span>
-                                        </div>
-                                    </div>
-                                    <div class="proc-item">
-                                        <span class="proc-sel">  </span>
-                                        <span class="proc-name">browser.exe</span>
-                                        <div class="proc-sub">
-                                            <span class="proc-conns">24 conns</span>
-                                            <span class="proc-sep">│</span>
-                                            <span class="proc-risk-icon risk-med">󰒓</span>
-                                            <span class="proc-risk-badge risk-med-bg">MEDIUM</span>
-                                        </div>
-                                    </div>
-                                    <div class="proc-item">
-                                        <span class="proc-sel">  </span>
-                                        <span class="proc-name">svchost.exe</span>
-                                        <div class="proc-sub">
-                                            <span class="proc-conns">8 conns</span>
-                                            <span class="proc-sep">│</span>
-                                            <span class="proc-risk-icon risk-critical">󰈸</span>
-                                            <span class="proc-risk-badge risk-critical-bg">CRITICAL</span>
-                                        </div>
-                                    </div>
-                                    <div class="proc-item">
-                                        <span class="proc-sel">  </span>
-                                        <span class="proc-name">chat.exe</span>
-                                        <div class="proc-sub">
-                                            <span class="proc-conns">6 conns</span>
-                                            <span class="proc-sep">│</span>
-                                            <span class="proc-risk-icon risk-low">󰄬</span>
-                                            <span class="proc-risk-badge risk-low-bg">LOW</span>
-                                        </div>
-                                    </div>
-                                    <div class="proc-item">
-                                        <span class="proc-sel">  </span>
-                                        <span class="proc-name">player.exe</span>
-                                        <div class="proc-sub">
-                                            <span class="proc-conns">3 conns</span>
-                                            <span class="proc-sep">│</span>
-                                            <span class="proc-risk-icon risk-low">󰄬</span>
-                                            <span class="proc-risk-badge risk-low-bg">LOW</span>
-                                        </div>
-                                    </div>
+                                <div class="nav-item" data-nav="trends">
+                                    <span class="nav-icon nf nf-md-chart_areaspline"></span>
+                                    <span class="nav-label">Trends</span>
+                                </div>
+                                <div class="nav-item" data-nav="storage">
+                                    <span class="nav-icon nf nf-fa-hdd_o"></span>
+                                    <span class="nav-label">Storage</span>
+                                </div>
+                                <div class="nav-item" data-nav="libraries">
+                                    <span class="nav-icon nf nf-cod-library"></span>
+                                    <span class="nav-label">Libraries</span>
+                                </div>
+                                <div class="nav-item" data-nav="containers">
+                                    <span class="nav-icon nf nf-md-docker"></span>
+                                    <span class="nav-label">Containers</span>
                                 </div>
                             </div>
-                            </div>
-                            <!-- CENTER PANEL -->
-                            <div class="tui-panel tui-center" id="tuiCenter">
-                                <div class="panel-titlebar">󰰍 PROCESS INFO</div>
-                                <div class="center-loading">
-                                    <div class="center-loading-line"><span class="center-loading-spinner">⠋</span> <span class="center-loading-msg">Analyzing network connections...</span></div>
-                                    <div class="center-loading-sub">   Please wait, this may take a few seconds.</div>
-                                </div>
-                                <div class="center-info">
-                                    <div class="info-grid">
-                                        <div class="info-left">
-                                            <div class="info-row"><span class="info-lbl">󰙅 Process:</span><span class="info-val">myapp.exe</span></div>
-                                            <div class="info-row"><span class="info-lbl">󱔗 PID:</span><span class="info-val">1243</span></div>
-                                            <div class="info-row"><span class="info-lbl"> Risk:</span><span class="proc-risk-badge risk-low-bg">LOW</span></div>
-                                            <div class="info-row"><span class="info-lbl">󰄬 Signature:</span><span class="info-val sig-ok">󰄬 Signed</span></div>
+                            <div class="tui-content-area">
+                                <!-- ===== MAIN VIEW (3-panel IDE layout) ===== -->
+                                <div class="nav-view nav-view-main">
+                                    <div class="tui-panel tui-left" id="tuiLeft">
+                                        <div class="panel-titlebar">󰲚 PROCESSES (5)</div>
+                                    <div class="proc-list">
+                                        <div class="proc-loading">
+                                            <div class="proc-empty-icon">󱈸</div>
+                                            <div class="proc-empty-msg">No active connections</div>
+                                            <div class="proc-empty-hint">Press <span class="proc-empty-key">R</span> to refresh</div>
                                         </div>
-                                        <div class="info-right">
-                                            <div class="gauge-row">
-                                                <span class="gauge-lbl">CPU 12.4%</span>
-                                                <div class="gauge-track"><div class="gauge-fill gauge-cpu" style="width:12%"></div></div>
-                                            </div>
-                                            <div class="gauge-row">
-                                                <span class="gauge-lbl">MEM 256.0 MB</span>
-                                                <div class="gauge-track"><div class="gauge-fill gauge-mem" style="width:26%"></div></div>
-                                            </div>
-                                            <div class="sparkline-row">
-                                                <span class="gauge-lbl">CPU HISTORY</span>
-                                                <div class="sparkline-track">
-                                                    <span class="spark-bar" style="height:20%"></span>
-                                                    <span class="spark-bar" style="height:45%"></span>
-                                                    <span class="spark-bar" style="height:12%"></span>
-                                                    <span class="spark-bar" style="height:60%"></span>
-                                                    <span class="spark-bar" style="height:30%"></span>
-                                                    <span class="spark-bar" style="height:80%"></span>
-                                                    <span class="spark-bar" style="height:55%"></span>
-                                                    <span class="spark-bar" style="height:25%"></span>
-                                                    <span class="spark-bar" style="height:40%"></span>
-                                                    <span class="spark-bar" style="height:10%"></span>
+                                        <div class="proc-items">
+                                            <div class="proc-item selected-proc">
+                                                <span class="proc-sel">▎</span>
+                                                <span class="proc-name">myapp.exe</span>
+                                                <div class="proc-sub">
+                                                    <span class="proc-conns">12 conns</span>
+                                                    <span class="proc-sep">│</span>
+                                                    <span class="proc-risk-icon risk-low">󰄬</span>
+                                                    <span class="proc-risk-badge risk-low-bg">LOW</span>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </div>
-                                    <div class="info-path">
-                                        <span class="info-lbl">󰉋 Path:</span>
-                                        <span class="info-val path-val">C:\Program Files\Example\myapp.exe</span>
-                                    </div>
-                                </div>
-                                <div class="center-tabs" id="centerTabs">
-                                    <span class="tab tab-active" data-tab="1">▎[1] Connections</span>
-                                    <span class="tab" data-tab="2">[2] Risk Overview</span>
-                                    <span class="tab" data-tab="3">[3] Timeline</span>
-                                </div>
-                                <!-- CONNECTIONS TABLE (default) -->
-                                <div class="conn-table term-view" data-view="connections">
-                                    <div class="conn-header-row">
-                                        <span class="conn-c-ind"></span>
-                                        <span class="conn-c-proto">Proto</span>
-                                        <span class="conn-c-local">Local</span>
-                                        <span class="conn-c-foreign">Foreign</span>
-                                        <span class="conn-c-state">State</span>
-                                        <span class="conn-c-location">Location</span>
-                                    </div>
-                                    <div class="conn-row conn-selected">
-                                        <span class="conn-c-ind"><span class="conn-enter">ENTER ↵</span></span>
-                                        <span class="conn-c-proto"><span class="conn-proto-badge proto-tcp">TCP</span></span>
-                                        <span class="conn-c-local"><span class="addr-local">127.0.0.1:8080</span></span>
-                                        <span class="conn-c-foreign"><span class="addr-foreign">203.0.113.10:443</span></span>
-                                        <span class="conn-c-state"><span class="state-est">ESTABLISHED</span></span>
-                                        <span class="conn-c-location"><span class="addr-loc">Mountain View, US</span></span>
-                                    </div>
-                                    <div class="conn-row">
-                                        <span class="conn-c-ind"></span>
-                                        <span class="conn-c-proto"><span class="conn-proto-badge proto-udp">UDP</span></span>
-                                        <span class="conn-c-local"><span class="addr-local">192.168.1.15:54321</span></span>
-                                        <span class="conn-c-foreign"><span class="addr-foreign">203.0.113.53:53</span></span>
-                                        <span class="conn-c-state"><span class="state-idle">IDLE</span></span>
-                                        <span class="conn-c-location"><span class="addr-loc">Northbrook, US</span></span>
-                                    </div>
-                                    <div class="conn-row">
-                                        <span class="conn-c-ind"></span>
-                                        <span class="conn-c-proto"><span class="conn-proto-badge proto-tcp">TCP</span></span>
-                                        <span class="conn-c-local"><span class="addr-local">0.0.0.0:80</span></span>
-                                        <span class="conn-c-foreign"><span class="addr-foreign">203.0.113.50:443</span></span>
-                                        <span class="conn-c-state"><span class="state-est">ESTABLISHED</span></span>
-                                        <span class="conn-c-location"><span class="addr-loc">Unknown</span></span>
-                                    </div>
-                                </div>
-                                <!-- RISK OVERVIEW (shown in state risk) -->
-                                <div class="term-view risk-view" data-view="risk">
-                                    <div class="risk-chart-border">
-                                        <div class="risk-chart-title"> RISK OVERVIEW </div>
-                                        <div class="risk-chart-inner">
-                                            <div class="risk-col">
-                                                <div class="risk-col-bars">
-                                                    <div class="risk-bar-seg fill-low"></div>
+                                            <div class="proc-item">
+                                                <span class="proc-sel">  </span>
+                                                <span class="proc-name">browser.exe</span>
+                                                <div class="proc-sub">
+                                                    <span class="proc-conns">24 conns</span>
+                                                    <span class="proc-sep">│</span>
+                                                    <span class="proc-risk-icon risk-med">󰒓</span>
+                                                    <span class="proc-risk-badge risk-med-bg">MEDIUM</span>
                                                 </div>
-                                                <span class="risk-col-lbl">myapp.exe</span>
-                                                <span class="risk-col-val risk-col-val-low">LOW</span>
                                             </div>
-                                            <div class="risk-col">
-                                                <div class="risk-col-bars">
-                                                    <div class="risk-bar-seg fill-med"></div>
-                                                    <div class="risk-bar-seg fill-med"></div>
+                                            <div class="proc-item">
+                                                <span class="proc-sel">  </span>
+                                                <span class="proc-name">svchost.exe</span>
+                                                <div class="proc-sub">
+                                                    <span class="proc-conns">8 conns</span>
+                                                    <span class="proc-sep">│</span>
+                                                    <span class="proc-risk-icon risk-critical">󰈸</span>
+                                                    <span class="proc-risk-badge risk-critical-bg">CRITICAL</span>
                                                 </div>
-                                                <span class="risk-col-lbl">browser.exe</span>
-                                                <span class="risk-col-val risk-col-val-med">MEDIUM</span>
                                             </div>
-                                            <div class="risk-col">
-                                                <div class="risk-col-bars">
-                                                    <div class="risk-bar-seg fill-critical"></div>
-                                                    <div class="risk-bar-seg fill-critical"></div>
-                                                    <div class="risk-bar-seg fill-critical"></div>
-                                                    <div class="risk-bar-seg fill-critical"></div>
+                                            <div class="proc-item">
+                                                <span class="proc-sel">  </span>
+                                                <span class="proc-name">chat.exe</span>
+                                                <div class="proc-sub">
+                                                    <span class="proc-conns">6 conns</span>
+                                                    <span class="proc-sep">│</span>
+                                                    <span class="proc-risk-icon risk-high">󰀪</span>
+                                                    <span class="proc-risk-badge risk-high-bg">HIGH</span>
                                                 </div>
-                                                <span class="risk-col-lbl">svchost.exe</span>
-                                                <span class="risk-col-val risk-col-val-critical">CRITICAL</span>
                                             </div>
-                                            <div class="risk-col">
-                                                <div class="risk-col-bars">
-                                                    <div class="risk-bar-seg fill-low"></div>
+                                            <div class="proc-item">
+                                                <span class="proc-sel">  </span>
+                                                <span class="proc-name">player.exe</span>
+                                                <div class="proc-sub">
+                                                    <span class="proc-conns">3 conns</span>
+                                                    <span class="proc-sep">│</span>
+                                                    <span class="proc-risk-icon risk-low">󰄬</span>
+                                                    <span class="proc-risk-badge risk-low-bg">LOW</span>
                                                 </div>
-                                                <span class="risk-col-lbl">chat.exe</span>
-                                                <span class="risk-col-val risk-col-val-low">LOW</span>
-                                            </div>
-                                            <div class="risk-col">
-                                                <div class="risk-col-bars">
-                                                    <div class="risk-bar-seg fill-low"></div>
-                                                </div>
-                                                <span class="risk-col-lbl">player.exe</span>
-                                                <span class="risk-col-val risk-col-val-low">LOW</span>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                                <!-- TIMELINE (shown in state timeline) -->
-                                <div class="term-view timeline-view" data-view="timeline">
-                                    <div class="timeline-title"> CONNECTION TIMELINE </div>
-                                    <div class="timeline-chart">
-                                        <svg viewBox="0 0 200 80" class="timeline-svg">
-                                            <polyline points="0,70 10,65 20,60 30,40 40,35 50,50 60,30 70,25 80,20 90,15 100,30 110,25 120,35 130,20 140,10 150,15 160,25 170,30 180,20 190,10 200,5"
-                                                fill="none" stroke="#6495ed" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
-                                            <polyline points="0,70 10,68 20,65 30,55 40,50 50,60 60,45 70,40 80,35 90,30 100,45 110,40 120,50 130,35 140,25 150,30 160,40 170,45 180,35 190,25 200,20"
-                                                fill="none" stroke="#32cd32" stroke-width="1" vector-effect="non-scaling-stroke" opacity="0.6"/>
-                                        </svg>
-                                        <div class="timeline-labels">
-                                            <span>0s</span><span>30s</span><span>60s</span><span>90s</span><span>120s</span>
+                                    </div>
+                                    <div class="tui-panel tui-center" id="tuiCenter">
+                                        <div class="panel-titlebar">󰰍 PROCESS INFO</div>
+                                        <div class="center-loading">
+                                            <div class="center-loading-line"><span class="center-loading-spinner">⠋</span> <span class="center-loading-msg">Analyzing network connections...</span></div>
+                                            <div class="center-loading-sub">   Please wait, this may take a few seconds.</div>
+                                        </div>
+                                        <div class="center-info">
+                                            <div class="info-grid">
+                                                <div class="info-left">
+                                                    <div class="info-row"><span class="info-lbl">󰙅 Process:</span><span class="info-val">myapp.exe</span></div>
+                                                    <div class="info-row"><span class="info-lbl">󱔗 PID:</span><span class="info-val">1243</span></div>
+                                                    <div class="info-row"><span class="info-lbl"> Risk:</span><span class="proc-risk-badge risk-low-bg">LOW</span></div>
+                                                    <div class="info-row"><span class="info-lbl">󰄬 Signature:</span><span class="info-val sig-ok">󰄬 Signed</span></div>
+                                                </div>
+                                                <div class="info-right">
+                                                    <div class="gauge-row">
+                                                        <span class="gauge-lbl">CPU 12.4%</span>
+                                                        <div class="gauge-track"><div class="gauge-fill gauge-cpu" style="width:12%"></div></div>
+                                                    </div>
+                                                    <div class="gauge-row">
+                                                        <span class="gauge-lbl">MEM 256.0 MB</span>
+                                                        <div class="gauge-track"><div class="gauge-fill gauge-mem" style="width:26%"></div></div>
+                                                    </div>
+                                                    <div class="sparkline-row">
+                                                        <span class="gauge-lbl">CPU HISTORY</span>
+                                                        <div class="sparkline-track">
+                                                            <span class="spark-bar" style="height:20%"></span>
+                                                            <span class="spark-bar" style="height:45%"></span>
+                                                            <span class="spark-bar" style="height:12%"></span>
+                                                            <span class="spark-bar" style="height:60%"></span>
+                                                            <span class="spark-bar" style="height:30%"></span>
+                                                            <span class="spark-bar" style="height:80%"></span>
+                                                            <span class="spark-bar" style="height:55%"></span>
+                                                            <span class="spark-bar" style="height:25%"></span>
+                                                            <span class="spark-bar" style="height:40%"></span>
+                                                            <span class="spark-bar" style="height:10%"></span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="info-path">
+                                                <span class="info-lbl">󰉋 Path:</span>
+                                                <span class="info-val path-val">C:\Program Files\Example\myapp.exe</span>
+                                            </div>
+                                        </div>
+                                        <div class="center-tabs" id="centerTabs">
+                                            <span class="tab tab-active" data-tab="1">▎[1] Connections</span>
+                                            <span class="tab" data-tab="2">[2] Risk Overview</span>
+                                            <span class="tab" data-tab="3">[3] Timeline</span>
+                                        </div>
+                                        <div class="conn-table term-view" data-view="connections">
+                                            <div class="conn-header-row">
+                                                <span class="conn-c-ind"></span>
+                                                <span class="conn-c-proto">Proto</span>
+                                                <span class="conn-c-local">Local</span>
+                                                <span class="conn-c-foreign">Foreign</span>
+                                                <span class="conn-c-state">State</span>
+                                                <span class="conn-c-location">Location</span>
+                                            </div>
+                                            <div class="conn-row conn-selected">
+                                                <span class="conn-c-ind"><span class="conn-enter">ENTER ↵</span></span>
+                                                <span class="conn-c-proto"><span class="conn-proto-badge proto-tcp">TCP</span></span>
+                                                <span class="conn-c-local"><span class="addr-local">127.0.0.1:8080</span></span>
+                                                <span class="conn-c-foreign"><span class="addr-foreign">203.0.113.10:443</span></span>
+                                                <span class="conn-c-state"><span class="state-est">ESTABLISHED</span></span>
+                                                <span class="conn-c-location"><span class="addr-loc">Mountain View, US</span></span>
+                                            </div>
+                                            <div class="conn-row">
+                                                <span class="conn-c-ind"></span>
+                                                <span class="conn-c-proto"><span class="conn-proto-badge proto-udp">UDP</span></span>
+                                                <span class="conn-c-local"><span class="addr-local">192.168.1.15:54321</span></span>
+                                                <span class="conn-c-foreign"><span class="addr-foreign">203.0.113.53:53</span></span>
+                                                <span class="conn-c-state"><span class="state-idle">IDLE</span></span>
+                                                <span class="conn-c-location"><span class="addr-loc">Northbrook, US</span></span>
+                                            </div>
+                                            <div class="conn-row">
+                                                <span class="conn-c-ind"></span>
+                                                <span class="conn-c-proto"><span class="conn-proto-badge proto-tcp">TCP</span></span>
+                                                <span class="conn-c-local"><span class="addr-local">0.0.0.0:80</span></span>
+                                                <span class="conn-c-foreign"><span class="addr-foreign">203.0.113.50:443</span></span>
+                                                <span class="conn-c-state"><span class="state-est">ESTABLISHED</span></span>
+                                                <span class="conn-c-location"><span class="addr-loc">Unknown</span></span>
+                                            </div>
+                                        </div>
+                                        <div class="term-view risk-view" data-view="risk">
+                                            <div class="risk-chart-border">
+                                                <div class="risk-chart-title"> RISK OVERVIEW </div>
+                                                <div class="risk-chart-inner">
+                                                    <div class="risk-col">
+                                                        <div class="risk-col-bars">
+                                                            <div class="risk-bar-seg fill-low"></div>
+                                                        </div>
+                                                        <span class="risk-col-lbl">myapp.exe</span>
+                                                        <span class="risk-col-val risk-col-val-low">LOW</span>
+                                                    </div>
+                                                    <div class="risk-col">
+                                                        <div class="risk-col-bars">
+                                                            <div class="risk-bar-seg fill-med"></div>
+                                                            <div class="risk-bar-seg fill-med"></div>
+                                                        </div>
+                                                        <span class="risk-col-lbl">browser.exe</span>
+                                                        <span class="risk-col-val risk-col-val-med">MEDIUM</span>
+                                                    </div>
+                                                    <div class="risk-col">
+                                                        <div class="risk-col-bars">
+                                                            <div class="risk-bar-seg fill-critical"></div>
+                                                            <div class="risk-bar-seg fill-critical"></div>
+                                                            <div class="risk-bar-seg fill-critical"></div>
+                                                            <div class="risk-bar-seg fill-critical"></div>
+                                                        </div>
+                                                        <span class="risk-col-lbl">svchost.exe</span>
+                                                        <span class="risk-col-val risk-col-val-critical">CRITICAL</span>
+                                                    </div>
+                                                    <div class="risk-col">
+                                                        <div class="risk-col-bars">
+                                                            <div class="risk-bar-seg fill-high"></div>
+                                                            <div class="risk-bar-seg fill-high"></div>
+                                                            <div class="risk-bar-seg fill-high"></div>
+                                                        </div>
+                                                        <span class="risk-col-lbl">chat.exe</span>
+                                                        <span class="risk-col-val risk-col-val-high">HIGH</span>
+                                                    </div>
+                                                    <div class="risk-col">
+                                                        <div class="risk-col-bars">
+                                                            <div class="risk-bar-seg fill-low"></div>
+                                                        </div>
+                                                        <span class="risk-col-lbl">player.exe</span>
+                                                        <span class="risk-col-val risk-col-val-low">LOW</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="term-view timeline-view" data-view="timeline">
+                                            <div class="timeline-title"> CONNECTION TIMELINE </div>
+                                            <div class="timeline-chart">
+                                                <svg viewBox="0 0 200 80" class="timeline-svg">
+                                                    <polyline points="0,70 10,65 20,60 30,40 40,35 50,50 60,30 70,25 80,20 90,15 100,30 110,25 120,35 130,20 140,10 150,15 160,25 170,30 180,20 190,10 200,5"
+                                                        fill="none" stroke="#6495ed" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+                                                    <polyline points="0,70 10,68 20,65 30,55 40,50 50,60 60,45 70,40 80,35 90,30 100,45 110,40 120,50 130,35 140,25 150,30 160,40 170,45 180,35 190,25 200,20"
+                                                        fill="none" stroke="#32cd32" stroke-width="1" vector-effect="non-scaling-stroke" opacity="0.6"/>
+                                                </svg>
+                                                <div class="timeline-labels">
+                                                    <span>0s</span><span>30s</span><span>60s</span><span>90s</span><span>120s</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="tui-panel tui-right" id="tuiRight">
+                                        <div class="panel-titlebar">󰬒 ACTIONS</div>
+                                        <div class="action-list">
+                                            <div class="action-item action-selected">
+                                                <span class="act-icon act-primary">󰑐</span>
+                                                <span class="act-label">Pause/Resume</span>
+                                                <span class="act-key">[R]</span>
+                                            </div>
+                                            <div class="action-item">
+                                                <span class="act-icon act-danger">󰆐</span>
+                                                <span class="act-label">Kill Process</span>
+                                                <span class="act-key">[X]</span>
+                                            </div>
+                                            <div class="action-item">
+                                                <span class="act-icon act-danger">󰱝</span>
+                                                <span class="act-label">Kill All Conns</span>
+                                                <span class="act-key">[-]</span>
+                                            </div>
+                                            <div class="action-item">
+                                                <span class="act-icon act-dim">󰖟</span>
+                                                <span class="act-label">Search Online</span>
+                                                <span class="act-key">[G]</span>
+                                            </div>
+                                            <div class="action-item">
+                                                <span class="act-icon act-dim">󰅍</span>
+                                                <span class="act-label">Copy Path</span>
+                                                <span class="act-key">[C]</span>
+                                            </div>
+                                            <div class="action-item">
+                                                <span class="act-icon act-dim">󰒈</span>
+                                                <span class="act-label">Export JSON</span>
+                                                <span class="act-key">[S]</span>
+                                            </div>
+                                            <div class="action-item">
+                                                <span class="act-icon act-warn">󰈸</span>
+                                                <span class="act-label">Filter High Risk</span>
+                                                <span class="act-key">[F]</span>
+                                            </div>
+                                            <div class="action-item">
+                                                <span class="act-icon act-success">󰒓</span>
+                                                <span class="act-label">Hunter Mode</span>
+                                                <span class="act-key">[H]</span>
+                                            </div>
+                                            <div class="action-item">
+                                                <span class="act-icon act-danger">󰒘</span>
+                                                <span class="act-label">Firewall Manager</span>
+                                                <span class="act-key">[B]</span>
+                                            </div>
+                                            <div class="action-item">
+                                                <span class="act-icon act-dim">󰗎</span>
+                                                <span class="act-label">Language</span>
+                                                <span class="act-key">[L]</span>
+                                            </div>
+                                        </div>
+                                        <div class="icon-section">
+                                            <div class="panel-titlebar">ℹ APP ICON</div>
+                                            <div class="icon-display">🦊</div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                            <!-- RIGHT SIDEBAR - ACTIONS -->
-                            <div class="tui-panel tui-right" id="tuiRight">
-                                <div class="panel-titlebar">󰬒 ACTIONS</div>
-                                <div class="action-list">
-                                    <div class="action-item action-selected">
-                                        <span class="act-icon act-primary">󰑐</span>
-                                        <span class="act-label">Pause/Resume</span>
-                                        <span class="act-key">[R]</span>
+                                <!-- ===== TRENDS VIEW ===== -->
+                                <div class="nav-view nav-view-trends" id="navViewTrends">
+                                    <div class="panel-titlebar">󰄪 TRENDS &amp; ANALYTICS</div>
+                                    <div class="trends-kpi-row">
+                                        <div class="kpi-card"><span class="kpi-icon kpi-primary">▲</span><span class="kpi-val">156</span><span class="kpi-lbl">Connections</span></div>
+                                        <div class="kpi-card"><span class="kpi-icon kpi-success">◆</span><span class="kpi-val">312</span><span class="kpi-lbl">Peak</span></div>
+                                        <div class="kpi-card"><span class="kpi-icon kpi-warning">◈</span><span class="kpi-val">24.5%</span><span class="kpi-lbl">CPU</span></div>
+                                        <div class="kpi-card"><span class="kpi-icon kpi-dim">▣</span><span class="kpi-val">1,024 MB</span><span class="kpi-lbl">Memory</span></div>
+                                        <div class="kpi-card"><span class="kpi-icon kpi-danger">⚠</span><span class="kpi-val">3</span><span class="kpi-lbl">High Risk</span></div>
                                     </div>
-                                    <div class="action-item">
-                                        <span class="act-icon act-danger">󰆐</span>
-                                        <span class="act-label">Kill Process</span>
-                                        <span class="act-key">[X]</span>
+                                    <div class="trends-sparkline-row">
+                                        <div class="trends-spark-col"><div class="panel-titlebar">CPU HISTORY ─ 24.5%</div><div class="spark-stats"><span>Min: 2.1%</span><span>Avg: 18.7%</span><span>Max: 89.3%</span></div><div class="sparkline-track"><span class="spark-bar" style="height:10%"></span><span class="spark-bar" style="height:30%"></span><span class="spark-bar" style="height:60%"></span><span class="spark-bar" style="height:20%"></span><span class="spark-bar" style="height:80%"></span><span class="spark-bar" style="height:45%"></span><span class="spark-bar" style="height:25%"></span><span class="spark-bar" style="height:90%"></span><span class="spark-bar" style="height:35%"></span><span class="spark-bar" style="height:40%"></span></div></div>
+                                        <div class="trends-spark-col"><div class="panel-titlebar">CONN COUNT ─ 156 active</div><div class="spark-stats"><span>Min: 45</span><span>Avg: 142</span><span>Max: 312</span></div><div class="sparkline-track"><span class="spark-bar" style="height:20%"></span><span class="spark-bar" style="height:50%"></span><span class="spark-bar" style="height:80%"></span><span class="spark-bar" style="height:60%"></span><span class="spark-bar" style="height:100%"></span><span class="spark-bar" style="height:40%"></span><span class="spark-bar" style="height:70%"></span><span class="spark-bar" style="height:90%"></span><span class="spark-bar" style="height:55%"></span><span class="spark-bar" style="height:30%"></span></div></div>
                                     </div>
-                                    <div class="action-item">
-                                        <span class="act-icon act-danger">󰱝</span>
-                                        <span class="act-label">Kill All Conns</span>
-                                        <span class="act-key">[-]</span>
+                                    <div class="trends-mid-row">
+                                        <div class="trends-dist-col"><div class="panel-titlebar">RISK DISTRIBUTION</div><div class="dist-list"><div class="dist-row"><span class="dist-lbl risk-critical">Critical</span><div class="dist-bar-track"><div class="dist-bar dist-danger" style="width:10%"></div></div><span class="dist-pct">10% (1)</span></div><div class="dist-row"><span class="dist-lbl risk-high">High</span><div class="dist-bar-track"><div class="dist-bar dist-danger" style="width:20%"></div></div><span class="dist-pct">20% (2)</span></div><div class="dist-row"><span class="dist-lbl risk-med">Medium</span><div class="dist-bar-track"><div class="dist-bar dist-warning" style="width:30%"></div></div><span class="dist-pct">30% (3)</span></div><div class="dist-row"><span class="dist-lbl risk-low">Low</span><div class="dist-bar-track"><div class="dist-bar dist-success" style="width:40%"></div></div><span class="dist-pct">40% (4)</span></div><div class="dist-row"><span class="dist-lbl risk-low">Safe</span><div class="dist-bar-track"><div class="dist-bar dist-primary" style="width:0%"></div></div><span class="dist-pct">0% (0)</span></div></div></div>
+                                        <div class="trends-top-col"><div class="panel-titlebar">TOP PROCESSES (CPU)</div><div class="top-list"><div class="top-row"><span class="top-name">svchost.exe</span><div class="top-bar-track"><div class="top-bar" style="width:100%"></div></div><span class="top-pct">89.3%</span></div><div class="top-row"><span class="top-name">browser.exe</span><div class="top-bar-track"><div class="top-bar" style="width:65%"></div></div><span class="top-pct">58.1%</span></div><div class="top-row"><span class="top-name">myapp.exe</span><div class="top-bar-track"><div class="top-bar" style="width:14%"></div></div><span class="top-pct">12.4%</span></div></div></div>
+                                        <div class="trends-top-col"><div class="panel-titlebar">TOP PROCESSES (MEM)</div><div class="top-list"><div class="top-row"><span class="top-name">browser.exe</span><div class="top-bar-track"><div class="top-bar" style="width:100%"></div></div><span class="top-pct">512 MB</span></div><div class="top-row"><span class="top-name">svchost.exe</span><div class="top-bar-track"><div class="top-bar" style="width:60%"></div></div><span class="top-pct">256 MB</span></div><div class="top-row"><span class="top-name">myapp.exe</span><div class="top-bar-track"><div class="top-bar" style="width:15%"></div></div><span class="top-pct">64 MB</span></div></div></div>
                                     </div>
-                                    <div class="action-item">
-                                        <span class="act-icon act-dim">󰖟</span>
-                                        <span class="act-label">Search Online</span>
-                                        <span class="act-key">[G]</span>
-                                    </div>
-                                    <div class="action-item">
-                                        <span class="act-icon act-dim">󰅍</span>
-                                        <span class="act-label">Copy Path</span>
-                                        <span class="act-key">[C]</span>
-                                    </div>
-                                    <div class="action-item">
-                                        <span class="act-icon act-dim">󰒈</span>
-                                        <span class="act-label">Export JSON</span>
-                                        <span class="act-key">[S]</span>
-                                    </div>
-                                    <div class="action-item">
-                                        <span class="act-icon act-warn">󰈸</span>
-                                        <span class="act-label">Filter High Risk</span>
-                                        <span class="act-key">[F]</span>
-                                    </div>
-                                    <div class="action-item">
-                                        <span class="act-icon act-success">󰒓</span>
-                                        <span class="act-label">Hunter Mode</span>
-                                        <span class="act-key">[H]</span>
-                                    </div>
-                                    <div class="action-item">
-                                        <span class="act-icon act-danger">󰒘</span>
-                                        <span class="act-label">Firewall Manager</span>
-                                        <span class="act-key">[B]</span>
-                                    </div>
-                                    <div class="action-item">
-                                        <span class="act-icon act-dim">󰗎</span>
-                                        <span class="act-label">Language</span>
-                                        <span class="act-key">[L]</span>
+                                    <div class="trends-bottom-row">
+                                        <div class="trends-protocol-col"><div class="panel-titlebar">PROTOCOLS</div><div class="dist-list"><div class="dist-row"><span class="dist-lbl">TCP</span><div class="dist-bar-track"><div class="dist-bar dist-success" style="width:70%"></div></div><span class="dist-pct">109</span></div><div class="dist-row"><span class="dist-lbl">UDP</span><div class="dist-bar-track"><div class="dist-bar dist-warning" style="width:30%"></div></div><span class="dist-pct">47</span></div></div></div>
+                                        <div class="trends-country-col"><div class="panel-titlebar">DESTINATIONS (Top 5)</div><div class="dist-list"><div class="dist-row"><span class="dist-lbl">US</span><div class="dist-bar-track"><div class="dist-bar dist-warning" style="width:100%"></div></div><span class="dist-pct">64</span></div><div class="dist-row"><span class="dist-lbl">DE</span><div class="dist-bar-track"><div class="dist-bar dist-warning" style="width:35%"></div></div><span class="dist-pct">22</span></div><div class="dist-row"><span class="dist-lbl">Unknown</span><div class="dist-bar-track"><div class="dist-bar dist-dim" style="width:25%"></div></div><span class="dist-pct">16</span></div><div class="dist-row"><span class="dist-lbl">JP</span><div class="dist-bar-track"><div class="dist-bar dist-warning" style="width:20%"></div></div><span class="dist-pct">13</span></div><div class="dist-row"><span class="dist-lbl">GB</span><div class="dist-bar-track"><div class="dist-bar dist-warning" style="width:18%"></div></div><span class="dist-pct">11</span></div></div></div>
                                     </div>
                                 </div>
-                                <div class="icon-section">
-                                    <div class="panel-titlebar">ℹ APP ICON</div>
-                                    <div class="icon-display">🦊</div>
+                                <!-- ===== STORAGE VIEW ===== -->
+                                <div class="nav-view nav-view-storage" id="navViewStorage">
+                                    <div class="storage-col storage-disks-col">
+                                        <div class="panel-titlebar">DISKS</div>
+                                        <div class="disk-list">
+                                            <div class="disk-item disk-selected"><span class="disk-dev">C:</span><div class="disk-bar-track"><div class="disk-bar-fill disk-ok" style="width:62%"></div></div><span class="disk-pct">62%</span></div>
+                                            <div class="disk-item"><span class="disk-dev">D:</span><div class="disk-bar-track"><div class="disk-bar-fill disk-warn" style="width:78%"></div></div><span class="disk-pct">78%</span></div>
+                                            <div class="disk-item"><span class="disk-dev">E:</span><div class="disk-bar-track"><div class="disk-bar-fill disk-danger" style="width:92%"></div></div><span class="disk-pct">92%</span></div>
+                                        </div>
+                                        <div class="panel-titlebar">PROPERTIES</div>
+                                        <div class="disk-props">
+                                            <div class="prop-row"><span class="prop-lbl">Device:</span><span class="prop-val">C:</span></div>
+                                            <div class="prop-row"><span class="prop-lbl">Mount:</span><span class="prop-val">C:\</span></div>
+                                            <div class="prop-row"><span class="prop-lbl">FS:</span><span class="prop-val">NTFS</span></div>
+                                            <div class="prop-row"><span class="prop-lbl">Total:</span><span class="prop-val">476 GB</span></div>
+                                            <div class="prop-row"><span class="prop-lbl">Used:</span><span class="prop-val">295 GB</span></div>
+                                            <div class="prop-row"><span class="prop-lbl">Free:</span><span class="prop-val">181 GB</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="storage-col storage-browser-col">
+                                        <div class="panel-titlebar">FILE BROWSER</div>
+                                        <div class="fb-header">&#xf15b; C:\Users\Example [Name]</div>
+                                        <div class="fb-table">
+                                            <div class="fb-header-row"><span class="fb-c-name">Name</span><span class="fb-c-size">Size</span><span class="fb-c-mod">Modified</span></div>
+                                            <div class="fb-row fb-dir"><span class="fb-c-name">&#xf07c; Documents</span><span class="fb-c-size">&lt;DIR&gt;</span><span class="fb-c-mod">2026-05-20</span></div>
+                                            <div class="fb-row fb-dir"><span class="fb-c-name">&#xf07c; Downloads</span><span class="fb-c-size">&lt;DIR&gt;</span><span class="fb-c-mod">2026-05-25</span></div>
+                                            <div class="fb-row fb-file fb-selected"><span class="fb-c-name">&#xf02e9; image.png</span><span class="fb-c-size">1.2 MB</span><span class="fb-c-mod">2026-05-24</span></div>
+                                            <div class="fb-row fb-file"><span class="fb-c-name">&#xf0219; notes.txt</span><span class="fb-c-size">4 KB</span><span class="fb-c-mod">2026-05-23</span></div>
+                                            <div class="fb-row fb-file"><span class="fb-c-name">&#xf0ffa; backup.zip</span><span class="fb-c-size">256 MB</span><span class="fb-c-mod">2026-05-22</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="storage-col storage-actions-col">
+                                        <div class="panel-titlebar">ACTIONS</div>
+                                        <div class="action-list">
+                                            <div class="action-item action-selected"><span class="act-icon act-success">&#xf021;</span><span class="act-label">Refresh</span><span class="act-key">[R]</span></div>
+                                            <div class="action-item"><span class="act-icon act-primary">&#xf15b;</span><span class="act-label">Open</span><span class="act-key">[Enter]</span></div>
+                                            <div class="action-item"><span class="act-icon act-warn">&#xf0ca;</span><span class="act-label">Properties</span><span class="act-key">[P]</span></div>
+                                            <div class="action-item"><span class="act-icon act-dim">&#xf07c;</span><span class="act-label">Parent Dir</span><span class="act-key">[Bksp]</span></div>
+                                            <div class="action-item"><span class="act-icon act-danger">&#xf015;</span><span class="act-label">Go Home</span><span class="act-key">[H]</span></div>
+                                            <div class="action-item"><span class="act-icon act-dim">&#xf0dc;</span><span class="act-label">Sort: Name</span><span class="act-key">[S]</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- ===== LIBRARIES VIEW ===== -->
+                                <div class="nav-view nav-view-libraries" id="navViewLibraries">
+                                    <div class="lib-col lib-proc-col">
+                                        <div class="panel-titlebar">PROCESSES</div>
+                                        <div class="lib-proc-list">
+                                            <div class="lib-proc lib-selected"><span class="lib-proc-name">myapp.exe</span><span class="lib-proc-cnt">14</span><span class="lib-proc-threat">0</span></div>
+                                            <div class="lib-proc"><span class="lib-proc-name">browser.exe</span><span class="lib-proc-cnt">32</span><span class="lib-proc-threat">2</span></div>
+                                            <div class="lib-proc"><span class="lib-proc-name">svchost.exe</span><span class="lib-proc-cnt">28</span><span class="lib-proc-threat">1</span></div>
+                                            <div class="lib-proc"><span class="lib-proc-name">chat.exe</span><span class="lib-proc-cnt">8</span><span class="lib-proc-threat">0</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="lib-col lib-table-col">
+                                        <div class="panel-titlebar">LOADED LIBRARIES</div>
+                                        <div class="lib-tbl">
+                                            <div class="lib-tbl-hdr"><span style="flex:1">Name</span><span style="width:60px">Size</span><span style="width:72px">Origin</span><span style="width:64px">Sign</span><span style="width:88px">Risk</span></div>
+                                            <div class="lib-tbl-row" style="background:var(--primary);color:var(--background);font-weight:700"><span style="flex:1">▶ ntdll.dll</span><span style="width:60px">1.8MB</span><span style="width:72px">System</span><span style="width:64px">✔Signed</span><span style="width:88px">Safe</span></div>
+                                            <div class="lib-tbl-row"><span style="flex:1">kernel32.dll</span><span style="width:60px">1.2MB</span><span style="width:72px">System</span><span style="width:64px">✔Signed</span><span style="width:88px">Safe</span></div>
+                                            <div class="lib-tbl-row"><span style="flex:1">ws2_32.dll</span><span style="width:60px">0.6MB</span><span style="width:72px">System</span><span style="width:64px">✔Signed</span><span style="width:88px">Safe</span></div>
+                                            <div class="lib-tbl-row"><span style="flex:1">libcurl.dll</span><span style="width:60px">4.2MB</span><span style="width:72px">ProgramFiles</span><span style="width:64px">✔Signed</span><span style="width:88px">Safe</span></div>
+                                            <div class="lib-tbl-row"><span style="flex:1">unstable.dll</span><span style="width:60px">0.8MB</span><span style="width:72px">UserSpace</span><span style="width:64px">✗Unsign</span><span style="width:88px;color:var(--warning)">Suspicious</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="lib-col lib-actions-col">
+                                        <div class="panel-titlebar">ACTIONS</div>
+                                        <div class="action-list">
+                                            <div class="action-item action-selected"><span class="act-icon act-primary">&#xf0350;</span><span class="act-label">Refresh</span><span class="act-key">[R]</span></div>
+                                            <div class="action-item"><span class="act-icon act-warn">&#xf0493;</span><span class="act-label">Filter Risk</span><span class="act-key">[F]</span></div>
+                                            <div class="action-item"><span class="act-icon act-dim">&#xf014d;</span><span class="act-label">Copy Path</span><span class="act-key">[Enter]</span></div>
+                                            <div class="action-item"><span class="act-icon act-dim">&#xf0488;</span><span class="act-label">Export JSON</span><span class="act-key">[J]</span></div>
+                                            <div class="action-item"><span class="act-icon act-dim">&#xf0238;</span><span class="act-label">Export CSV</span><span class="act-key">[C]</span></div>
+                                            <div class="action-item"><span class="act-icon act-dim">&#xf0109;</span><span class="act-label">Hash Info</span><span class="act-key">[H]</span></div>
+                                            <div class="action-item"><span class="act-icon act-primary">&#xf0214;</span><span class="act-label">View Binary</span><span class="act-key">[V]</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- ===== CONTAINERS VIEW ===== -->
+                                <div class="nav-view nav-view-containers" id="navViewContainers">
+                                    <div class="lib-col lib-proc-col" style="width:34%">
+                                        <div class="panel-titlebar">CONTAINERS (4)</div>
+                                        <div style="padding:3px 8px;font-size:0.65rem;">▶ <span style="color:var(--success);font-weight:700">2</span>  ■ <span style="color:var(--danger);font-weight:700">1</span>  ⏸ <span style="color:var(--warning);font-weight:700">1</span>  / 4 total</div>
+                                        <div style="display:flex;padding:3px 8px;font-size:0.6rem;color:var(--text-dim);font-weight:600;border-bottom:1px solid var(--border)">
+                                            <span style="width:72px">State</span><span style="flex:1">Name</span><span style="width:90px">Image</span>
+                                        </div>
+                                        <div style="display:flex;padding:4px 8px;font-size:0.65rem;background:var(--primary);color:var(--background);font-weight:700">
+                                            <span style="width:72px"><span style="color:var(--success)">▶</span> RUN  </span><span style="flex:1"><span style="color:var(--success)">●</span> web-app</span><span style="width:90px">nginx:latest</span>
+                                        </div>
+                                        <div style="display:flex;padding:4px 8px;font-size:0.65rem;">
+                                            <span style="width:72px"><span style="color:var(--success)">▶</span> RUN  </span><span style="flex:1"><span style="color:var(--warning)">●</span> api-server</span><span style="width:90px">node:18</span>
+                                        </div>
+                                        <div style="display:flex;padding:4px 8px;font-size:0.65rem;">
+                                            <span style="width:72px"><span style="color:var(--warning)">⏸</span> PAUSE </span><span style="flex:1"><span style="color:var(--success)">●</span> cache-db</span><span style="width:90px">redis:7</span>
+                                        </div>
+                                        <div style="display:flex;padding:4px 8px;font-size:0.65rem;">
+                                            <span style="width:72px"><span style="color:var(--danger)">■</span> STOP </span><span style="flex:1"><span style="color:var(--text-dim)">○</span> old-service</span><span style="width:90px">ubuntu:22</span>
+                                        </div>
+                                    </div>
+                                    <div class="lib-col lib-table-col" style="width:43%">
+                                        <div class="panel-titlebar">DETAILS</div>
+                                        <div style="padding:4px 8px;font-size:0.65rem;border-bottom:1px solid var(--border)">
+                                            <div><span style="color:var(--success);font-weight:700">▶ RUN</span></div>
+                                            <div><span style="color:var(--text-dim)">Name:</span> <span style="font-weight:700">web-app</span></div>
+                                            <div><span style="color:var(--text-dim)">ID:</span> <span style="color:var(--text-dim)">a1b2c3d4e5f6</span></div>
+                                            <div><span style="color:var(--text-dim)">Image:</span> <span style="color:var(--secondary)">nginx:latest</span></div>
+                                            <div><span style="color:var(--text-dim)">Ports:</span> <span style="color:var(--primary)">0.0.0.0:80->80/tcp</span></div>
+                                            <div><span style="color:var(--text-dim)">Networks:</span> bridge</div>
+                                        </div>
+                                        <div style="display:flex;padding:4px 8px;gap:4px;border-bottom:1px solid var(--border)">
+                                            <div style="flex:1;border:1px solid var(--border);border-radius:4px;padding:2px">
+                                                <div style="font-size:0.6rem;color:var(--danger)">CPU</div>
+                                                <div style="font-size:0.7rem;font-weight:700">23.5%</div>
+                                                <div class="gauge-track" style="margin-top:2px"><div class="gauge-fill gauge-cpu" style="width:24%"></div></div>
+                                            </div>
+                                            <div style="flex:1;border:1px solid var(--border);border-radius:4px;padding:2px">
+                                                <div style="font-size:0.6rem;color:var(--primary)">MEM</div>
+                                                <div style="font-size:0.7rem;font-weight:700">45.2% (256MB)</div>
+                                                <div class="gauge-track" style="margin-top:2px"><div class="gauge-fill gauge-mem" style="width:45%"></div></div>
+                                            </div>
+                                        </div>
+                                        <div style="padding:4px 8px;font-size:0.65rem">
+                                            <div><span style="color:var(--text-dim)">Running for:</span> <span style="color:var(--primary);font-weight:700">3 days 12h</span></div>
+                                            <div><span style="color:var(--text-dim)">Created:</span> 2026-05-22</div>
+                                            <div><span style="color:var(--text-dim)">Net I/O:</span> 1.2GB / 45MB</div>
+                                            <div><span style="color:var(--text-dim)">Block I/O:</span> 256MB / 128MB</div>
+                                            <div><span style="color:var(--text-dim)">PIDs:</span> 12</div>
+                                        </div>
+                                    </div>
+                                    <div class="lib-col lib-actions-col" style="width:23%">
+                                        <div class="panel-titlebar">ACTIONS</div>
+                                        <div class="action-list">
+                                            <div class="action-item action-selected"><span class="act-icon act-dim">&#xf021;</span><span class="act-label">Refresh</span><span class="act-key">[R]</span></div>
+                                            <div class="action-item"><span class="act-icon act-dim">&#xf022;</span><span class="act-label">Logs</span><span class="act-key">[V]</span></div>
+                                            <div class="action-item"><span class="act-icon act-dim">&#xe795;</span><span class="act-label">Console</span><span class="act-key">[C]</span></div>
+                                            <div class="action-item"><span class="act-icon act-success">&#xf04b;</span><span class="act-label">Start</span><span class="act-key">[S]</span></div>
+                                            <div class="action-item"><span class="act-icon act-danger">&#xf04d;</span><span class="act-label">Stop</span><span class="act-key">[T]</span></div>
+                                            <div class="action-item"><span class="act-icon act-warn">&#xf021;</span><span class="act-label">Restart</span><span class="act-key">[E]</span></div>
+                                            <div class="action-item"><span class="act-icon act-primary">&#xf04c;</span><span class="act-label">Pause</span><span class="act-key">[P]</span></div>
+                                        </div>
+                                        <div style="border-top:1px solid var(--border);margin-top:4px">
+                                            <div class="panel-titlebar" style="font-size:0.65rem">DOCKER <span style="color:var(--success);font-weight:700">● ON</span></div>
+                                            <div class="action-list">
+                                                <div class="action-item"><span class="act-icon act-success">&#xf011;</span><span class="act-label">Start Docker</span><span class="act-key">[N]</span></div>
+                                                <div class="action-item"><span class="act-icon act-danger">&#xf04d;</span><span class="act-label">Stop Docker</span><span class="act-key">[O]</span></div>
+                                                <div class="action-item"><span class="act-icon act-dim">&#xe28b;</span><span class="act-label">Hub Search</span><span class="act-key">[H]</span></div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -388,10 +587,10 @@
                             <div class="fw-col fw-col-right">
                                 <div class="panel-titlebar">⚙ FIREWALL</div>
                                 <div class="fw-actions">
-                                    <div class="fw-act"><span class="act-icon act-primary">☐</span><span class="act-label">Select/Deselect</span><span class="act-key">[Space]</span></div>
-                                    <div class="fw-act fw-act-sel"><span class="act-icon act-danger">⚡</span><span class="act-label">Block Connection(s)</span><span class="act-key">[B]</span></div>
-                                    <div class="fw-act"><span class="act-icon act-success">◉</span><span class="act-label">Unblock IP(s)</span><span class="act-key">[U]</span></div>
-                                    <div class="fw-act"><span class="act-icon act-dim">⏻</span><span class="act-label">Exit Firewall</span><span class="act-key">[Esc]</span></div>
+                                    <div class="fw-act"><span class="act-icon act-primary">&#xf012d;</span><span class="act-label">Select/Deselect</span><span class="act-key">[Space]</span></div>
+                                    <div class="fw-act fw-act-sel"><span class="act-icon act-danger">&#xf0498;</span><span class="act-label">Block Connection(s)</span><span class="act-key">[B]</span></div>
+                                    <div class="fw-act"><span class="act-icon act-success">&#xf0141;</span><span class="act-label">Unblock IP(s)</span><span class="act-key">[U]</span></div>
+                                    <div class="fw-act"><span class="act-icon act-dim">&#xf0a48;</span><span class="act-label">Exit Firewall</span><span class="act-key">[Esc]</span></div>
                                 </div>
                             </div>
                         </div>
@@ -546,7 +745,7 @@ Status: clientDeleteProhibited</div>
                             <span class="status-chip">STATUS</span>
                             <span class="status-arrow">⟫</span>
                             <span class="status-msg">Analyzing network connections...</span>
-                            <span class="status-geo" id="statusGeo">󰩠 3</span>
+                            <span class="status-geo" id="statusGeo">&#xf0ac; 3</span>
                             <span class="status-sep">│</span>
                             <span class="status-version">v0.0.4</span>
                             <span class="status-os">[Windows]</span>
@@ -557,144 +756,139 @@ Status: clientDeleteProhibited</div>
         </div>
     </section>
 
-    <!-- Tour / Scroll Guide Section -->
-    <section class="tour-section" id="tourSection"></section>
+    <!-- Scrollytelling Tour Section -->
+    <section class="tour-section" id="tourSection">
+        <div class="tour-container">
+            <!-- Sticky Terminal Container -->
+            <div class="sticky-wrapper" id="stickyWrapper">
+                <!-- The terminal will be moved here by JS during scroll, or we can clone it. 
+                     For a smoother experience, we'll keep the terminal in the hero and let JS handle its movement. -->
+            </div>
 
-    <!-- Guide overlays + sidebar -->
-    <div class="guide-overlay" id="guideOverlay">
-        <div class="guide-sidebar" id="guideSidebar">
-            <div class="guide-step-item" data-sidebar="0">
-                <div class="guide-step-dot"></div>
-                <div class="guide-step-num">01</div>
-                <div class="guide-step-label">Dashboard Overview</div>
-                <div class="guide-step-desc">Three-panel layout with header, live indicator, mode and counts.</div>
-            </div>
-            <div class="guide-step-item" data-sidebar="1">
-                <div class="guide-step-dot"></div>
-                <div class="guide-step-num">02</div>
-                <div class="guide-step-label">Process Monitor</div>
-                <div class="guide-step-desc">Active processes with connection counts and color-coded risk levels.</div>
-            </div>
-            <div class="guide-step-item" data-sidebar="2">
-                <div class="guide-step-dot"></div>
-                <div class="guide-step-num">03</div>
-                <div class="guide-step-label">Connections Table</div>
-                <div class="guide-step-desc">Protocol, local/foreign addresses, states, and geo-location data.</div>
-            </div>
-            <div class="guide-step-item" data-sidebar="3">
-                <div class="guide-step-dot"></div>
-                <div class="guide-step-num">04</div>
-                <div class="guide-step-label">Risk Overview</div>
-                <div class="guide-step-desc">Bar chart comparing risk scores across all monitored processes.</div>
-            </div>
-            <div class="guide-step-item" data-sidebar="4">
-                <div class="guide-step-dot"></div>
-                <div class="guide-step-num">05</div>
-                <div class="guide-step-label">Timeline</div>
-                <div class="guide-step-desc">Line chart tracking connection activity over time.</div>
-            </div>
-            <div class="guide-step-item" data-sidebar="5">
-                <div class="guide-step-dot"></div>
-                <div class="guide-step-num">06</div>
-                <div class="guide-step-label">Quick Actions</div>
-                <div class="guide-step-desc">Kill, block, export, investigate — all with keyboard shortcuts.</div>
-            </div>
-            <div class="guide-step-item" data-sidebar="6">
-                <div class="guide-step-dot"></div>
-                <div class="guide-step-num">07</div>
-                <div class="guide-step-label">Firewall Manager</div>
-                <div class="guide-step-desc">Block/unblock IPs with Windows Firewall integration.</div>
-            </div>
-            <div class="guide-step-item" data-sidebar="7">
-                <div class="guide-step-dot"></div>
-                <div class="guide-step-num">08</div>
-                <div class="guide-step-label">Live Search</div>
-                <div class="guide-step-desc">Filter connections in real-time with the search bar.</div>
-            </div>
-            <div class="guide-step-item" data-sidebar="8">
-                <div class="guide-step-dot"></div>
-                <div class="guide-step-num">09</div>
-                <div class="guide-step-label">Status &amp; Language</div>
-                <div class="guide-step-desc">Multi-language support and real-time analysis feedback.</div>
-            </div>
-            <div class="guide-step-item" data-sidebar="9">
-                <div class="guide-step-dot"></div>
-                <div class="guide-step-num">10</div>
-                <div class="guide-step-label">Connection Analysis</div>
-                <div class="guide-step-desc">Intel report with trust score, WHOIS, and route hops.</div>
-            </div>
-        </div>
-            <div class="guide-card" data-guide="0">
-            <div class="guide-arrow guide-arrow-right"></div>
-            <div class="guide-content">
-                <div class="guide-title">󱐱 Header Dashboard</div>
-                <div class="guide-desc">Shows TRACE TUI brand, pulsing live dot, mode (󰒓 NORMAL / 󰒓 HUNTER), and real-time connection counts ( Apps / 󱂇 Conns).</div>
-            </div>
-        </div>
-        <div class="guide-card" data-guide="1">
-            <div class="guide-arrow guide-arrow-right"></div>
-            <div class="guide-content">
-                <div class="guide-title">󰲚 Process List</div>
-                <div class="guide-desc">All active processes with connection counts and color-coded risk badges: <span class="risk-low">󰄬 LOW</span> <span class="risk-med">󰒓 MEDIUM</span> <span class="risk-high">󰀪 HIGH</span> <span class="risk-critical">󰈸 CRITICAL</span>.<br><br>Navigate with <span class="guide-key">↑</span><span class="guide-key">↓</span> and press <span class="guide-key">Enter</span> to inspect.</div>
-            </div>
-        </div>
-        <div class="guide-card" data-guide="2">
-            <div class="guide-arrow guide-arrow-right"></div>
-            <div class="guide-content">
-                <div class="guide-title">ℹ Connections Table</div>
-                <div class="guide-desc">Tab <span class="guide-key">1</span> shows protocol (TCP/UDP), local address, foreign address, connection state, and geolocation. Selected row highlighted in blue.</div>
-            </div>
-        </div>
-        <div class="guide-card" data-guide="3">
-            <div class="guide-arrow guide-arrow-right"></div>
-            <div class="guide-content">
-                <div class="guide-title">◈ Risk Overview</div>
-                <div class="guide-desc">Tab <span class="guide-key">2</span> displays a bar chart of risk scores. Processes are ranked from LOW (green) to HIGH (red) based on connection analysis.</div>
-            </div>
-        </div>
-        <div class="guide-card" data-guide="4">
-            <div class="guide-arrow guide-arrow-right"></div>
-            <div class="guide-content">
-                <div class="guide-title">◈ Timeline Chart</div>
-                <div class="guide-desc">Tab <span class="guide-key">3</span> shows connection activity over time with a line chart. Track spikes and patterns in real-time network behavior.</div>
-            </div>
-        </div>
-        <div class="guide-card" data-guide="5">
-            <div class="guide-arrow guide-arrow-right"></div>
-            <div class="guide-content">
-                <div class="guide-title">󰬒 Actions Panel</div>
-                <div class="guide-desc">10 quick-access commands: Pause/Resume <span class="guide-key">R</span>, Kill <span class="guide-key">X</span>, Search <span class="guide-key">G</span>, Export <span class="guide-key">S</span>, Hunter Mode <span class="guide-key">H</span>, Firewall <span class="guide-key">B</span>, Language <span class="guide-key">L</span>.</div>
-            </div>
-        </div>
-        <div class="guide-card" data-guide="6">
-            <div class="guide-arrow guide-arrow-right"></div>
-            <div class="guide-content">
-                <div class="guide-title">⚡ Firewall Manager</div>
-                <div class="guide-desc">Press <span class="guide-key">B</span> to enter firewall mode. 3-column layout: connections ➜ blocked IPs ➜ actions. Block/unblock with <span class="guide-key">Space</span> <span class="guide-key">B</span> <span class="guide-key">U</span>.</div>
-            </div>
-        </div>
-        <div class="guide-card" data-guide="7">
-            <div class="guide-arrow guide-arrow-right"></div>
-            <div class="guide-content">
-                <div class="guide-title">◎ Live Search</div>
-                <div class="guide-desc">Press <span class="guide-key">/</span> to open the search bar. Filter processes and connections in real-time with match count feedback.</div>
-            </div>
-        </div>
-        <div class="guide-card" data-guide="8">
-            <div class="guide-arrow guide-arrow-top"></div>
-            <div class="guide-content">
-                <div class="guide-title">◎ Multi-Language</div>
-                <div class="guide-desc">Press <span class="guide-key">L</span> for the language selector with 8 locales. Status bar shows live analysis feedback, version, and platform info.</div>
+            <!-- Tour Steps -->
+            <div class="tour-steps" id="tourSteps">
+                <div class="tour-step" data-step="0">
+                    <div class="step-card">
+                        <span class="step-num">Step 01</span>
+                        <h3>Navigation Sidebar</h3>
+                        <p>Access the 5 main sections: Networks, Trends, Storage, Libraries, and Containers. Highly responsive and collapsible.</p>
+                    </div>
+                </div>
+                <div class="tour-step" data-step="1">
+                    <div class="step-card">
+                        <span class="step-num">Step 02</span>
+                        <h3>Dashboard Overview</h3>
+                        <p>Get a bird's-eye view of your system. Monitor live analysis indicators, operation modes, and real-time connection counts.</p>
+                    </div>
+                </div>
+                <div class="tour-step" data-step="2">
+                    <div class="step-card">
+                        <span class="step-num">Step 03</span>
+                        <h3>Process Intelligence</h3>
+                        <p>Deep dive into active processes. TraceTUI automatically calculates threat levels using advanced heuristics.</p>
+                    </div>
+                </div>
+                <div class="tour-step" data-step="3">
+                    <div class="step-card">
+                        <span class="step-num">Step 04</span>
+                        <h3>Connection Granularity</h3>
+                        <p>Inspect every single packet. View protocol details, local/foreign endpoints, and geographic origins in one table.</p>
+                    </div>
+                </div>
+                <div class="tour-step" data-step="4">
+                    <div class="step-card">
+                        <span class="step-num">Step 05</span>
+                        <h3>Risk Visualization</h3>
+                        <p>Visual comparison of security scores. Identify outliers and suspicious behavior with clear bar charts.</p>
+                    </div>
+                </div>
+                <div class="tour-step" data-step="5">
+                    <div class="step-card">
+                        <span class="step-num">Step 06</span>
+                        <h3>Activity Timeline</h3>
+                        <p>Track network spikes and dips. The real-time timeline helps you identify patterns over time.</p>
+                    </div>
+                </div>
+                <div class="tour-step" data-step="6">
+                    <div class="step-card">
+                        <span class="step-num">Step 07</span>
+                        <h3>Rapid Actions</h3>
+                        <p>Take control immediately. Kill suspicious processes, export data to JSON, or manage your firewall with single keystrokes.</p>
+                    </div>
+                </div>
+                <div class="tour-step" data-step="7">
+                    <div class="step-card">
+                        <span class="step-num">Step 08</span>
+                        <h3>Advanced Analytics</h3>
+                        <p>Explore trends and peak usage stats. Understand your network footprint with detailed distribution metrics.</p>
+                    </div>
+                </div>
+                <div class="tour-step" data-step="8">
+                    <div class="step-card">
+                        <span class="step-num">Step 09</span>
+                        <h3>Storage Explorer</h3>
+                        <p>Integrated file browser for quick access to system files, logs, and process-related artifacts.</p>
+                    </div>
+                </div>
+                <div class="tour-step" data-step="9">
+                    <div class="step-card">
+                        <span class="step-num">Step 10</span>
+                        <h3>Binary Inspection</h3>
+                        <p>Review loaded DLLs and shared libraries. Verify signatures and paths for all running code.</p>
+                    </div>
+                </div>
+                <div class="tour-step" data-step="10">
+                    <div class="step-card">
+                        <span class="step-num">Step 11</span>
+                        <h3>Container Monitoring</h3>
+                        <p>Native Docker support. Monitor container health, resource usage, and bridge networks directly from your TUI.</p>
+                    </div>
+                </div>
+                <div class="tour-step" data-step="11">
+                    <div class="step-card">
+                        <span class="step-num">Step 12</span>
+                        <h3>Active Firewall</h3>
+                        <p>Real-time blocking. Select connections and instantly block malicious IPs with the built-in firewall manager.</p>
+                    </div>
+                </div>
+                <div class="tour-step" data-step="12">
+                    <div class="step-card">
+                        <span class="step-num">Step 13</span>
+                        <h3>Instant Search</h3>
+                        <p>Find what you need, fast. Full-text search across processes, connections, and files with recursive matching.</p>
+                    </div>
+                </div>
+                <div class="tour-step" data-step="13">
+                    <div class="step-card">
+                        <span class="step-num">Step 14</span>
+                        <h3>Global Ready</h3>
+                        <p>Multiple language support with a clean select dialog. TraceTUI speaks your language.</p>
+                    </div>
+                </div>
+                <div class="tour-step" data-step="15">
+                    <div class="step-card">
+                        <span class="step-num">Step 16</span>
+                        <h3>System Trends</h3>
+                        <p>Analyze performance metrics over time. Monitor CPU spikes, memory leaks, and connection peaks with real-time sparklines.</p>
+                    </div>
+                </div>
+                <div class="tour-step" data-step="16">
+                    <div class="step-card">
+                        <span class="step-num">Step 17</span>
+                        <h3>Storage Deep-Dive</h3>
+                        <p>Browse system files and logs. Inspect process-related artifacts and configuration files directly from the TUI.</p>
+                    </div>
+                </div>
+                <div class="tour-step" data-step="17">
+                    <div class="step-card">
+                        <span class="step-num">Step 18</span>
+                        <h3>DOCKER Monitoring</h3>
+                        <p>Native container support. Check health status, resource allocation, and bridge networks for all local containers.</p>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="guide-card" data-guide="9">
-            <div class="guide-arrow guide-arrow-right"></div>
-            <div class="guide-content">
-                <div class="guide-title">◎ Connection Analysis</div>
-                <div class="guide-desc">Press <span class="guide-key">Enter</span> on any connection for a full intel report: trust score gauge, WHOIS data, traceroute hops, and security analysis with color-coded remarks.</div>
-            </div>
-        </div>
-    </div>
+    </section>
 
     <!-- Features Section -->
     <section class="features" id="features">
@@ -735,6 +929,34 @@ Status: clientDeleteProhibited</div>
                     <p>Block suspicious IPs directly from the interface with Windows Firewall integration and visual connection management.</p>
                 </div>
             </div>
+            <div class="features-extra" id="featuresExtra">
+                <div class="features-grid">
+                    <div class="feature-card" data-aos="fade-up">
+                        <div class="feature-icon">📈</div>
+                        <h3>Trends &amp; Analytics</h3>
+                        <p>Track CPU history, connection peaks, and memory usage with real-time sparklines. Visualize risk distribution across all processes.</p>
+                    </div>
+                    <div class="feature-card" data-aos="fade-up" data-aos-delay="100">
+                        <div class="feature-icon">💾</div>
+                        <h3>Storage Explorer</h3>
+                        <p>Browse disk usage, inspect process-related files, and navigate the file system with an integrated file browser and properties panel.</p>
+                    </div>
+                    <div class="feature-card" data-aos="fade-up" data-aos-delay="200">
+                        <div class="feature-icon">📚</div>
+                        <h3>Library Inspection</h3>
+                        <p>Review loaded DLLs and shared libraries per process. Verify digital signatures and detect unsigned or suspicious binaries.</p>
+                    </div>
+                    <div class="feature-card" data-aos="fade-up" data-aos-delay="300">
+                        <div class="feature-icon">🐳</div>
+                        <h3>Container Monitoring</h3>
+                        <p>Native Docker support with health checks, resource usage, and bridge network monitoring directly from the terminal interface.</p>
+                    </div>
+                </div>
+            </div>
+            <button class="features-toggle" id="featuresToggle" aria-label="Show more features">
+                <span class="toggle-icon" id="toggleIcon">+</span>
+                <span class="toggle-text" id="toggleText">Show all features</span>
+            </button>
         </div>
     </section>
 

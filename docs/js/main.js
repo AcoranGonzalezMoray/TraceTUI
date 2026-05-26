@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initScrollGuide();
     initHeaderToggles();
     initNavViewSwitching();
+    initFeaturesToggle();
 });
 
 function initMobileMenu() {
@@ -130,12 +131,12 @@ function initHeaderToggles() {
             if (dotEl && liveEl) {
                 if (isPaused) {
                     dotEl.style.color = '';
-                    dotEl.textContent = '󱐱';
+                    dotEl.textContent = '\uf004';
                     liveEl.textContent = 'LIVE ANALYSIS';
                     liveEl.style.color = '';
                 } else {
                     dotEl.style.color = 'var(--danger)';
-                    dotEl.textContent = '󱐱';
+                    dotEl.textContent = '\uf004';
                     liveEl.textContent = 'PAUSED';
                     liveEl.style.color = 'var(--danger)';
                 }
@@ -145,455 +146,148 @@ function initHeaderToggles() {
 }
 
 function initScrollGuide() {
-    var terminalWindow = document.getElementById('terminalWindow');
-    var guideOverlay = document.getElementById('guideOverlay');
-    var tuiApp = document.getElementById('tuiApp');
-    var tourSection = document.getElementById('tourSection');
-    var hero = document.getElementById('hero');
-    var guideCards = document.querySelectorAll('.guide-card');
+    const terminal = document.getElementById('terminalWindow');
+    const steps = document.querySelectorAll('.tour-step');
+    const tuiApp = document.getElementById('tuiApp');
+    const tuiBody = document.getElementById('tuiBody');
+    const hero = document.getElementById('hero');
 
-    if (!terminalWindow || !tourSection || !hero) return;
+    if (!terminal || !steps.length || !tuiApp) return;
 
-    function getTermWidth() {
-        var vw = window.innerWidth;
-        if (vw >= 1852) return Math.min(vw * 0.75, 1300);
-        if (vw >= 1300) return Math.min(vw * 0.6, 1000);
-        return Math.min(vw * 0.7, 850);
-    }
-
-    var stepNumEl = document.getElementById('stepNum');
-    var stepLabelEl = document.getElementById('stepLabel');
-    var stepDotsEl = document.getElementById('stepDots');
-
-    
-    if (stepDotsEl) {
-        for (var i = 0; i < 15; i++) {
-            var dot = document.createElement('span');
-            dot.className = 'step-dot';
-            stepDotsEl.appendChild(dot);
-        }
-    }
-
-    var isFixed = false;
-    var savedStyles = {};
-    var firstFixDone = false;
-    var currentStep = -1;
-    var transitioning = false;
-
-    var highlightClasses = [
-        'highlight-nav-sidebar',
-        'highlight-header',
-        'highlight-processes',
-        'highlight-center',
-        'highlight-risk',
-        'highlight-timeline',
-        'highlight-actions',
-        'highlight-trends',
-        'highlight-storage',
-        'highlight-libraries',
-        'highlight-containers',
-        'highlight-firewall',
-        'highlight-search',
-        'highlight-language',
-        'highlight-investigation'
+    // Mapping steps to TUI states
+    const termStates = [
+        'main', 'main', 'main', 'main', 'risk', 'timeline', 'main', 'trends', 'storage', 'libraries', 'containers', 'firewall', 'search', 'language', 'investigation',
+        'trends', 'storage', 'containers' // New steps
     ];
 
-    var stepTargets = [
-        'tuiNavSidebar',
-        'tuiHeader',
-        'tuiLeft',
-        'tuiCenter',
-        'tuiCenter',
-        'tuiCenter',
-        'tuiRight',
-        'navViewTrends',
-        'navViewStorage',
-        'navViewLibraries',
-        'navViewContainers',
-        'firewallLayout',
-        'searchOverlay',
-        'langOverlay',
-        'investigationView'
+    const navMap = [
+        'main', 'main', 'main', 'main', 'main', 'main', 'main', 'trends', 'storage', 'libraries', 'containers', 'main', 'main', 'main', 'main',
+        'trends', 'storage', 'containers' // New steps
     ];
 
-    var termStates = ['', '', '', '', 'risk', 'timeline', '', 'trends', 'storage', 'libraries', 'containers', 'firewall', 'search', 'language', 'investigation'];
-
-    var stepLabels = [
-        'Navigation Sidebar',
-        'Dashboard Overview',
-        'Process List',
-        'Connections Table',
-        'Risk Overview',
-        'Timeline Chart',
-        'Actions Panel',
-        'Trends & Analytics',
-        'Storage / Files',
-        'Library Inspection',
-        'Containers',
-        'Firewall Manager',
-        'Live Search',
-        'Multi-Language',
-        'Connection Analysis'
+    const highlightClasses = [
+        'highlight-nav-sidebar', 'highlight-header', 'highlight-processes', 'highlight-center', 'highlight-risk', 'highlight-timeline', 'highlight-actions', 'highlight-trends', 'highlight-storage', 'highlight-libraries', 'highlight-containers', 'highlight-firewall', 'highlight-search', 'highlight-language', 'highlight-investigation',
+        'highlight-trends', 'highlight-storage', 'highlight-containers'
     ];
 
-    var stepTargets = [
-        'tuiHeader',
-        'tuiLeft',
-        'tuiCenter',
-        'tuiCenter',
-        'tuiCenter',
-        'tuiRight',
-        'firewallLayout',
-        'searchOverlay',
-        'langOverlay',
-        'investigationView'
-    ];
+    let isFixed = false;
+    let originalParent = terminal.parentElement;
 
-    var termStates = ['', '', '', 'risk', 'timeline', '', 'firewall', 'search', 'language', 'investigation'];
+    const observerOptions = {
+        root: null,
+        rootMargin: '-30% 0px -30% 0px', // Adjusted for longer scroll space
+        threshold: 0
+    };
 
-    var stepLabels = [
-        'Dashboard Overview',
-        'Process List',
-        'Connections Table',
-        'Risk Overview',
-        'Timeline Chart',
-        'Actions Panel',
-        'Firewall Manager',
-        'Live Search',
-        'Multi-Language',
-        'Connection Analysis'
-    ];
-
-    function saveStyles(el) {
-        savedStyles = {
-            position: el.style.position || '',
-            top: el.style.top || '',
-            left: el.style.left || '',
-            width: el.style.width || '',
-            transform: el.style.transform || '',
-            zIndex: el.style.zIndex || '',
-            margin: el.style.margin || '',
-            transition: el.style.transition || '',
-            opacity: el.style.opacity || ''
-        };
-    }
-
-    function restoreStyles(el) {
-        el.style.position = savedStyles.position;
-        el.style.top = savedStyles.top;
-        el.style.left = savedStyles.left;
-        el.style.width = savedStyles.width;
-        el.style.transform = savedStyles.transform;
-        el.style.zIndex = savedStyles.zIndex;
-        el.style.margin = savedStyles.margin;
-        el.style.transition = savedStyles.transition;
-        el.style.opacity = savedStyles.opacity;
-        isFixed = false;
-        firstFixDone = false;
-        transitioning = false;
-    }
-
-    function fixAtCurrentPosition(el) {
-        if (isFixed) return;
-        var rect = el.getBoundingClientRect();
-        var parentRect = el.parentElement ? el.parentElement.getBoundingClientRect() : rect;
-        saveStyles(el);
-        el.style.position = 'fixed';
-        el.style.top = rect.top + 'px';
-        el.style.left = rect.left + 'px';
-        el.style.width = rect.width + 'px';
-        el.style.margin = '0';
-        el.style.zIndex = '150';
-        el.style.transition = 'none';
-        void el.offsetHeight;
-        isFixed = true;
-        firstFixDone = true;
-    }
-
-    function animateToCenter(el) {
-        if (!isFixed) return;
-        var tw = getTermWidth();
-        el.style.transition = 'all 0.7s cubic-bezier(0.16, 1, 0.3, 1)';
-        el.style.top = '50%';
-        el.style.left = '50%';
-        el.style.transform = 'translate(-50%, -50%)';
-        el.style.width = tw + 'px';
-        transitioning = true;
-        var onEnd = function () {
-            transitioning = false;
-            el.removeEventListener('transitionend', onEnd);
-        };
-        el.addEventListener('transitionend', onEnd);
-    }
-
-    function animateBack(el) {
-        if (!isFixed) return;
-        var heroTerminal = document.querySelector('.hero-terminal');
-        if (!heroTerminal) { restoreStyles(el); return; }
-        var heroRect = heroTerminal.getBoundingClientRect();
-        el.style.transition = 'all 0.5s cubic-bezier(0.16, 1, 0.3, 1)';
-        el.style.top = heroRect.top + 'px';
-        el.style.left = heroRect.left + 'px';
-        el.style.width = heroRect.width + 'px';
-        el.style.transform = 'none';
-        transitioning = true;
-        var onEnd = function () {
-            el.style.transition = savedStyles.transition || '';
-            el.style.position = savedStyles.position || '';
-            el.style.top = savedStyles.top || '';
-            el.style.left = savedStyles.left || '';
-            el.style.width = savedStyles.width || '';
-            el.style.transform = savedStyles.transform || '';
-            el.style.margin = savedStyles.margin || '';
-            el.style.zIndex = '';
-            el.style.opacity = savedStyles.opacity || '1';
-            el.style.display = '';
-            isFixed = false;
-            firstFixDone = false;
-            transitioning = false;
-            el.removeEventListener('transitionend', onEnd);
-        };
-        el.addEventListener('transitionend', onEnd);
-        setTimeout(onEnd, 600);
-    }
-
-    function updateGuide(stepIndex) {
-        if (stepIndex === currentStep) return;
-        currentStep = stepIndex;
-
-        guideCards.forEach(function (card, i) {
-            card.classList.toggle('active', i === stepIndex);
+    const stepObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const stepIndex = parseInt(entry.target.dataset.step);
+                activateStep(stepIndex);
+            }
         });
+    }, observerOptions);
 
-        
-        var sidebarItems = document.querySelectorAll('.guide-step-item');
-        sidebarItems.forEach(function (item, i) {
-            item.classList.toggle('active-step', i === stepIndex);
-            item.classList.toggle('completed-step', i < stepIndex);
-        });
+    steps.forEach(step => stepObserver.observe(step));
 
-        
-        delete tuiApp.dataset.termState;
-        if (stepIndex >= 0 && stepIndex < termStates.length && termStates[stepIndex]) {
-            tuiApp.dataset.termState = termStates[stepIndex];
-        }
+    function activateStep(index) {
+        // Update active class on steps
+        steps.forEach((s, i) => s.classList.toggle('active', i === index));
 
-        // Set active nav view based on tour step
-        var tuiBody = document.getElementById('tuiBody');
-        var navMap = { 0: 'main', 7: 'trends', 8: 'storage', 9: 'libraries', 10: 'containers' };
-        if (tuiBody) {
-            var targetNav = navMap[stepIndex];
-            if (targetNav) {
-                tuiBody.dataset.activeNav = targetNav;
-                // Update nav sidebar selection
-                document.querySelectorAll('.nav-item').forEach(function (ni) {
-                    ni.classList.toggle('nav-selected', ni.dataset.nav === targetNav);
-                });
-            } else if (stepIndex >= 1 && stepIndex <= 6) {
-                tuiBody.dataset.activeNav = 'main';
-                document.querySelectorAll('.nav-item').forEach(function (ni) {
-                    ni.classList.toggle('nav-selected', ni.dataset.nav === 'main');
-                });
-            }
-        }
-
-        
-        var centerTabs = document.getElementById('centerTabs');
-        if (centerTabs) {
-            var tabs = centerTabs.querySelectorAll('.tab');
-            tabs.forEach(function (t) { t.classList.remove('tab-active'); });
-            var tabMap = { 3: 0, 4: 1, 5: 2 };
-            var tabIdx = tabMap[stepIndex];
-            if (tabIdx !== undefined && tabs[tabIdx]) {
-                tabs[tabIdx].classList.add('tab-active');
-            } else {
-                
-                tabs[0].classList.add('tab-active');
-            }
-        }
-
-        tuiApp.classList.remove('guide-active', 'dim-others');
-        highlightClasses.forEach(function (c) { tuiApp.classList.remove(c); });
-
-        if (stepIndex >= 0 && stepIndex < highlightClasses.length) {
-            tuiApp.classList.add('guide-active', 'dim-others', highlightClasses[stepIndex]);
-
-            var targetId = stepTargets[stepIndex];
-            var targetEl = document.getElementById(targetId);
-            if (targetEl) {
-                targetEl.classList.add('highlighted');
-                var parent = targetEl.parentElement;
-                
-                var scope = parent;
-                if (termStates[stepIndex] === 'trends') {
-                    scope = document.getElementById('navViewTrends');
-                } else if (termStates[stepIndex] === 'storage') {
-                    scope = document.getElementById('navViewStorage');
-                } else if (termStates[stepIndex] === 'libraries') {
-                    scope = document.getElementById('navViewLibraries');
-                } else if (termStates[stepIndex] === 'containers') {
-                    scope = document.getElementById('navViewContainers');
-                } else if (termStates[stepIndex] === 'firewall') {
-                    scope = document.getElementById('firewallLayout');
-                } else if (termStates[stepIndex] === 'search') {
-                    scope = document.getElementById('tuiApp');
-                } else if (termStates[stepIndex] === 'language') {
-                    scope = document.getElementById('tuiApp');
-                } else if (termStates[stepIndex] === 'investigation') {
-                    scope = document.getElementById('investigationView');
-                } else if (termStates[stepIndex] === 'map') {
-                    scope = document.getElementById('mapView');
-                }
-                if (scope) {
-                    var siblings = scope.querySelectorAll('.tui-panel, .tui-header, .tui-hintbar, .tui-statusbar, .fw-col, .fw-actions, .search-overlay, .lang-overlay, .investigation-view, .map-view, .inv-hintbar, .inv-grid, .inv-left, .inv-right, .map-body, .trends-kpi-row, .trends-sparkline-row, .trends-mid-row, .trends-bottom-row, .storage-col, .lib-col, .ct-col, .ct-identity, .ct-usage, .ct-runtime, .nav-view');
-                    siblings.forEach(function (s) {
-                        if (s !== targetEl) s.classList.remove('highlighted');
-                    });
-                }
-            }
-        }
-
-        
-        if (stepNumEl && stepLabelEl) {
-            if (stepIndex >= 0) {
-                var num = (stepIndex + 1).toString().padStart(2, '0');
-                stepNumEl.textContent = num;
-                stepLabelEl.textContent = stepLabels[stepIndex] || '';
-                if (stepDotsEl) {
-                    var dots = stepDotsEl.querySelectorAll('.step-dot');
-                    dots.forEach(function (d, i) {
-                        d.className = 'step-dot';
-                        if (i === stepIndex) d.classList.add('active');
-                        else if (i < stepIndex) d.classList.add('done');
-                    });
-                }
-            }
-        }
-    }
-
-    function handleScroll() {
-        var scrollY = window.scrollY;
-        var winH = window.innerHeight;
-        var heroH = hero.offsetHeight;
-        var tourH = tourSection.offsetHeight;
-        var tourTop = heroH;
-        var tourEnd = heroH + tourH;
-
-        var transitionStart = Math.max(0, heroH - winH * 0.4);
-        var transitionEnd = heroH + 100;
-
-        // Reset nav view when not in tour
-        function resetNavView() {
-            var tuiBody = document.getElementById('tuiBody');
-            if (tuiBody) {
-                tuiBody.dataset.activeNav = 'main';
-                document.querySelectorAll('.nav-item').forEach(function (ni) {
-                    ni.classList.toggle('nav-selected', ni.dataset.nav === 'main');
-                });
-            }
-        }
-
-        
-        if (scrollY < transitionStart) {
-            if (isFixed) {
-                guideOverlay.style.display = 'none';
-                guideOverlay.classList.remove('guide-visible');
-                animateBack(terminalWindow);
-                updateGuide(-1);
-                resetNavView();
-            }
-            guideOverlay.style.display = 'none';
-            guideOverlay.classList.remove('guide-visible');
-            tuiApp.dataset.termState = 'loading';
-            resetNavView();
-            return;
-        }
-
-        
-        if (scrollY < transitionEnd) {
-            guideOverlay.style.display = 'none';
-            guideOverlay.classList.remove('guide-visible');
-            updateGuide(-1);
-            resetNavView();
-            tuiApp.dataset.termState = 'loading';
-
-            if (!isFixed && !transitioning) {
-                fixAtCurrentPosition(terminalWindow);
-                var self = terminalWindow;
-                requestAnimationFrame(function () {
-                    animateToCenter(self);
-                });
-            }
-            return;
-        }
-
-        
-        if (scrollY < tourEnd - winH * 0.6) {
-            guideOverlay.style.display = 'block';
-            guideOverlay.classList.add('guide-visible');
-
-            if (!isFixed && !transitioning) {
-                fixAtCurrentPosition(terminalWindow);
-                animateToCenter(terminalWindow);
-            }
-
-            if (isFixed) {
-                var tw = getTermWidth();
-                terminalWindow.style.top = '50%';
-                terminalWindow.style.left = '50%';
-                terminalWindow.style.transform = 'translate(-50%, -50%)';
-                terminalWindow.style.width = tw + 'px';
-                transitioning = false;
-            }
-
-            var guideStart = transitionEnd;
-            var guideRange = (tourEnd - winH * 0.6) - guideStart;
-            var progress = guideRange > 0 ? (scrollY - guideStart) / guideRange : 0;
-            progress = Math.max(0, Math.min(1, progress));
-
-            var stepIndex = Math.min(Math.floor(progress * 15), 14);
-            updateGuide(stepIndex);
-
-            terminalWindow.style.display = '';
-            terminalWindow.style.opacity = '1';
-            return;
-        }
-
-        
-        guideOverlay.style.display = 'none';
-        guideOverlay.classList.remove('guide-visible');
-        updateGuide(-1);
-        resetNavView();
-        tuiApp.dataset.termState = 'loading';
-        if (isFixed) {
-            restoreStyles(terminalWindow);
-        }
-    }
-
-    var ticking = false;
-    window.addEventListener('scroll', function () {
-        if (!ticking) {
-            requestAnimationFrame(function () {
-                handleScroll();
-                ticking = false;
+        // Update Nav View
+        const targetNav = navMap[index] || 'main';
+        if (tuiBody && tuiBody.dataset.activeNav !== targetNav) {
+            tuiBody.dataset.activeNav = targetNav;
+            document.querySelectorAll('.nav-item').forEach(ni => {
+                ni.classList.toggle('nav-selected', ni.dataset.nav === targetNav);
             });
-            ticking = true;
         }
-    }, { passive: true });
 
-    window.addEventListener('resize', function () {
-        if (isFixed) {
-            terminalWindow.style.top = '50%';
-            terminalWindow.style.left = '50%';
-            terminalWindow.style.transform = 'translate(-50%, -50%)';
-            terminalWindow.style.width = getTermWidth() + 'px';
+        // Highlight panels - Remove all highlight classes first
+        tuiApp.classList.remove(...highlightClasses);
+        tuiApp.classList.add('guide-active', 'dim-others');
+        if (highlightClasses[index]) {
+            tuiApp.classList.add(highlightClasses[index]);
+        }
+
+        // Update TUI State
+        delete tuiApp.dataset.termState;
+        if (termStates[index]) tuiApp.dataset.termState = termStates[index];
+        
+        // Update step indicator in TUI
+        const stepNumEl = document.getElementById('stepNum');
+        const stepLabelEl = document.getElementById('stepLabel');
+        if (stepNumEl) stepNumEl.textContent = (index + 1).toString().padStart(2, '0');
+        if (stepLabelEl) {
+            const labels = ["Navigation", "Dashboard", "Processes", "Connections", "Risk", "Timeline", "Actions", "Trends", "Storage", "Libraries", "Containers", "Firewall", "Search", "Language", "Analysis"];
+            stepLabelEl.textContent = labels[index] || "";
+        }
+    }
+
+    // Handle the movement of terminal from Hero to Sticky Tour
+    window.addEventListener('scroll', () => {
+        const scrollY = window.scrollY;
+        const heroH = hero.offsetHeight;
+        const tourSection = document.getElementById('tourSection');
+        const stickyWrapper = document.getElementById('stickyWrapper');
+        const featuresSec = document.getElementById('features');
+        
+        if (!tourSection) return;
+
+        // Hide terminal when Powerful Features section enters viewport
+        if (featuresSec) {
+            const featuresTop = featuresSec.offsetTop;
+            if (scrollY + window.innerHeight > featuresTop + 100) {
+                if (isFixed) {
+                    originalParent.appendChild(terminal);
+                    isFixed = false;
+                    tuiApp.classList.remove('guide-active', 'dim-others', ...highlightClasses);
+                    delete tuiApp.dataset.termState;
+                }
+                terminal.style.display = 'none';
+                return;
+            } else {
+                terminal.style.display = '';
+            }
+        }
+        
+        const tourTop = tourSection.offsetTop;
+        const tourBottom = tourTop + tourSection.offsetHeight;
+
+        if (scrollY > tourTop - 100 && scrollY < tourBottom - 800) {
+            if (!isFixed) {
+                stickyWrapper.appendChild(terminal);
+                isFixed = true;
+                terminal.style.animation = 'none';
+                terminal.style.opacity = '1';
+                terminal.style.transform = 'none';
+                tuiApp.classList.add('guide-active');
+            }
+        } else {
+            if (isFixed) {
+                originalParent.appendChild(terminal);
+                isFixed = false;
+                tuiApp.classList.remove('guide-active', 'dim-others', ...highlightClasses);
+                delete tuiApp.dataset.termState;
+            }
         }
     });
-
-    tuiApp.dataset.termState = 'loading';
-    handleScroll();
 }
 
+
+function initFeaturesToggle() {
+    var btn = document.getElementById('featuresToggle');
+    var extra = document.getElementById('featuresExtra');
+    var icon = document.getElementById('toggleIcon');
+    var text = document.getElementById('toggleText');
+    if (!btn || !extra) return;
+    btn.addEventListener('click', function () {
+        var expanded = extra.classList.toggle('expanded');
+        btn.classList.toggle('expanded');
+        icon.textContent = expanded ? '×' : '+';
+        text.textContent = expanded ? 'Hide features' : 'Show all features';
+    });
+}
 
 function initNavViewSwitching() {
     var navItems = document.querySelectorAll('.nav-item');
