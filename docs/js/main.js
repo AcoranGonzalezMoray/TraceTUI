@@ -239,7 +239,7 @@ function initScrollGuide() {
         const stepLabelEl = document.getElementById('stepLabel');
         if (stepNumEl) stepNumEl.textContent = (index + 1).toString().padStart(2, '0');
         if (stepLabelEl) {
-            const labels = ["Navigation", "Dashboard", "Processes", "Connections", "Risk", "Timeline", "Actions", "Trends", "Storage", "Libraries", "Containers", "Firewall", "Search", "Language", "Analysis"];
+            const labels = ["Navigation", "Dashboard", "Processes", "Connections", "Risk", "Timeline", "Actions", "Trends", "Storage", "Libraries", "Containers", "Firewall", "Search", "Language", "Investigation"];
             stepLabelEl.textContent = labels[index] || "";
         }
     }
