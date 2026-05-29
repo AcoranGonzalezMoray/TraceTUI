@@ -26,7 +26,7 @@ pub fn render_center_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
         BorderType::Rounded
     };
     if app.investigation.is_investigating {
-        render_loading_screen(f, app, area, border_color);
+        render_loading_screen(f, app, area, border_color, app.ui.frame_count);
         return;
     }
     if app.ui.is_initial_loading {
@@ -120,6 +120,7 @@ fn render_loading_screen(
     app: &App,
     area: Rect,
     _border_color: ratatui::style::Color,
+    frame_count: u64,
 ) {
     let t = &app.ui.translator;
     let loading_block = Block::default()
@@ -133,11 +134,15 @@ fn render_loading_screen(
         .border_style(Style::default().fg(THEME.warning))
         .border_type(BorderType::Thick);
 
+    let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+    let s = spinner[(frame_count as usize) % spinner.len()];
     let loading_text = vec![
         Line::from(""),
         Line::from(vec![Span::styled(
-            format!("   {} ", tr!(t, "center.loading_diag")),
-            Style::default().fg(THEME.text_main),
+            format!(" {} {}", s, tr!(t, "center.loading_diag")),
+            Style::default()
+                .fg(THEME.warning)
+                .add_modifier(Modifier::BOLD),
         )]),
         Line::from(""),
         Line::from(vec![Span::styled(
@@ -160,7 +165,9 @@ fn render_loading_screen(
                 .add_modifier(Modifier::ITALIC),
         )]),
     ];
-    let p = Paragraph::new(loading_text).block(loading_block);
+    let p = Paragraph::new(loading_text)
+        .block(loading_block)
+        .alignment(Alignment::Center);
     f.render_widget(p, area);
 }
 fn render_investigation_report(

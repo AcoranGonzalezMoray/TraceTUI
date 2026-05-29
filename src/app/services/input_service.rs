@@ -1657,6 +1657,7 @@ fn handle_confirmation_keys(app: &mut App, key: KeyEvent) {
                 app.run_selected_container_action_confirmed(container_action);
                 app.containers.pending_container_action = None;
             } else if let Some(docker_action) = app.containers.pending_docker_action {
+                app.containers.docker_action_in_progress = Some(docker_action);
                 app.execute_docker_action_confirmed(docker_action);
                 app.containers.pending_docker_action = None;
             }
@@ -2417,6 +2418,9 @@ pub fn export_to_json(app: &mut App) {
     }
 }
 fn pick_save_path(_app: &App, default_name: &str) -> Option<std::path::PathBuf> {
+    if cfg!(test) {
+        return Some(std::path::PathBuf::from(default_name));
+    }
     #[cfg(target_os = "windows")]
     {
         use std::process::Command;

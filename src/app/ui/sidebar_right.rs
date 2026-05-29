@@ -140,7 +140,6 @@ fn render_actions_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
 }
 fn render_app_icon(f: &mut ratatui::Frame, app: &App, area: Rect) {
     if let Some(selected_app) = app.get_selected_app() {
-        use ansi_to_tui::IntoText;
         let icon_block = Block::default()
             .borders(Borders::ALL)
             .title(format!(" 󰰍 {} ", tr!(app.ui.translator, "icon.title")))
@@ -151,11 +150,32 @@ fn render_app_icon(f: &mut ratatui::Frame, app: &App, area: Rect) {
             )
             .border_style(Style::default().fg(THEME.secondary))
             .border_type(BorderType::Rounded);
-        let icon_widget = match selected_app.icon.as_bytes().into_text() {
-            Ok(text) => Paragraph::new(text),
-            Err(_) => Paragraph::new(selected_app.icon.as_str()),
-        };
-        let icon_p = icon_widget.block(icon_block).alignment(Alignment::Center);
-        f.render_widget(icon_p, area);
+        if selected_app.icon.is_empty() {
+            let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+            let s = spinner[(app.ui.frame_count as usize) % spinner.len()];
+            let inner_h = area.height.saturating_sub(2);
+            let top = inner_h.saturating_sub(1) / 2;
+            let bot = inner_h.saturating_sub(1) - top;
+            let mut lines = vec![Line::from(""); top as usize];
+            lines.push(Line::from(vec![Span::styled(
+                format!("  {}  ", s),
+                Style::default()
+                    .fg(THEME.warning)
+                    .add_modifier(Modifier::BOLD),
+            )]));
+            lines.extend(vec![Line::from(""); bot as usize]);
+            let p = Paragraph::new(lines)
+                .block(icon_block)
+                .alignment(Alignment::Center);
+            f.render_widget(p, area);
+        } else {
+            use ansi_to_tui::IntoText;
+            let icon_widget = match selected_app.icon.as_bytes().into_text() {
+                Ok(text) => Paragraph::new(text),
+                Err(_) => Paragraph::new(selected_app.icon.as_str()),
+            };
+            let icon_p = icon_widget.block(icon_block).alignment(Alignment::Center);
+            f.render_widget(icon_p, area);
+        }
     }
 }

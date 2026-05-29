@@ -1520,6 +1520,125 @@ fn render_scrollbar(f: &mut ratatui::Frame, area: Rect, pct: u16) {
     f.render_widget(Paragraph::new(lines), area);
 }
 
+pub fn render_container_action_loading_modal(f: &mut ratatui::Frame, app: &App) {
+    let Some(action) = &app.containers.container_action_in_progress else {
+        return;
+    };
+    let area = centered_rect(f.area(), 35, 20);
+    f.render_widget(Clear, area);
+
+    let msg_key = match action {
+        crate::app::containers::ContainerAction::Start => "containers.status.container_starting",
+        crate::app::containers::ContainerAction::Stop => "containers.status.container_stopping",
+        crate::app::containers::ContainerAction::Restart => {
+            "containers.status.container_restarting"
+        }
+        crate::app::containers::ContainerAction::PauseToggle => {
+            "containers.status.container_pausing"
+        }
+        _ => "containers.status.container_pausing",
+    };
+    let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+    let s = spinner[(app.ui.frame_count as usize) % spinner.len()];
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(THEME.warning))
+        .title(Span::styled(
+            tr!(app.ui.translator, "containers.actions_title"),
+            Style::default()
+                .fg(THEME.warning)
+                .add_modifier(Modifier::BOLD),
+        ));
+    f.render_widget(block.clone(), area);
+    let inner = block.inner(area);
+    let text = vec![
+        Line::from(""),
+        Line::from(vec![Span::styled(
+            format!(" {} {}", s, app.ui.translator.get(msg_key)),
+            Style::default()
+                .fg(THEME.warning)
+                .add_modifier(Modifier::BOLD),
+        )]),
+        Line::from(""),
+        Line::from(vec![Span::styled(
+            app.ui.translator.get("center.loading_wait"),
+            Style::default()
+                .fg(THEME.text_dim)
+                .add_modifier(Modifier::ITALIC),
+        )]),
+    ];
+    f.render_widget(
+        Paragraph::new(text)
+            .alignment(Alignment::Center)
+            .block(Block::default()),
+        inner,
+    );
+}
+
+pub fn render_docker_action_loading_modal(f: &mut ratatui::Frame, app: &App) {
+    let Some(action) = &app.containers.docker_action_in_progress else {
+        return;
+    };
+    let area = centered_rect(f.area(), 35, 20);
+    f.render_widget(Clear, area);
+
+    let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+    let s = spinner[(app.ui.frame_count as usize) % spinner.len()];
+    let (title, msg) = match action {
+        crate::app::containers::DockerAction::StartDocker => (
+            format!(
+                " {} ",
+                app.ui.translator.get("containers.docker_action_start")
+            ),
+            app.ui.translator.get("containers.status.docker_starting"),
+        ),
+        _ => (
+            format!(
+                " {} ",
+                app.ui.translator.get("containers.docker_action_stop")
+            ),
+            app.ui
+                .translator
+                .get("containers.status.docker_stop_requested"),
+        ),
+    };
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(THEME.warning))
+        .title(Span::styled(
+            title,
+            Style::default()
+                .fg(THEME.warning)
+                .add_modifier(Modifier::BOLD),
+        ));
+    f.render_widget(block.clone(), area);
+    let inner = block.inner(area);
+    let text = vec![
+        Line::from(""),
+        Line::from(vec![Span::styled(
+            format!(" {} {}", s, msg),
+            Style::default()
+                .fg(THEME.warning)
+                .add_modifier(Modifier::BOLD),
+        )]),
+        Line::from(""),
+        Line::from(vec![Span::styled(
+            app.ui.translator.get("center.loading_wait"),
+            Style::default()
+                .fg(THEME.text_dim)
+                .add_modifier(Modifier::ITALIC),
+        )]),
+    ];
+    f.render_widget(
+        Paragraph::new(text)
+            .alignment(Alignment::Center)
+            .block(Block::default()),
+        inner,
+    );
+}
+
 fn centered_rect(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
     let vertical = Layout::default()
         .direction(Direction::Vertical)

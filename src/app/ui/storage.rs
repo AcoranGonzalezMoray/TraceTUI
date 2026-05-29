@@ -378,6 +378,11 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
             loading_msg,
             Style::default().fg(THEME.warning).bold(),
         )));
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(
+            tr!(app.ui.translator, "storage.search_background_hint"),
+            Style::default().fg(THEME.text_dim),
+        )));
         f.render_widget(Paragraph::new(lines).alignment(Alignment::Center), rest);
         return;
     }
@@ -904,7 +909,13 @@ pub fn render_file_search_modal(f: &mut ratatui::Frame, app: &App) {
 
     let btn_chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Fill(1), Constraint::Fill(1)])
+        .constraints([
+            Constraint::Fill(1),
+            Constraint::Length(18),
+            Constraint::Length(2),
+            Constraint::Length(18),
+            Constraint::Fill(1),
+        ])
         .split(chunks[3]);
 
     let cont_focused = state.focused_field == 3;
@@ -935,7 +946,7 @@ pub fn render_file_search_modal(f: &mut ratatui::Frame, app: &App) {
         } else {
             Style::default()
         }),
-        btn_chunks[0],
+        btn_chunks[1],
     );
 
     let cancel_focused = state.focused_field == 4;
@@ -966,7 +977,7 @@ pub fn render_file_search_modal(f: &mut ratatui::Frame, app: &App) {
         } else {
             Style::default()
         }),
-        btn_chunks[1],
+        btn_chunks[3],
     );
 }
 

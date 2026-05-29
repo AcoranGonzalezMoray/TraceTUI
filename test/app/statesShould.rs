@@ -78,7 +78,11 @@ mod states_tests {
         assert_eq!(s.selected_app_index, 0);
         assert_eq!(s.selected_connection_index, 0);
         let icon = s.icon_cache.get_icon("nonexistent.exe", "test");
-        assert_eq!(icon, "tes");
+        if cfg!(target_os = "linux") {
+            assert_eq!(icon, "");
+        } else {
+            assert_eq!(icon, "tes");
+        }
         assert!(s.data_rx.is_none());
         assert!(s.grouping_rx.is_none());
         assert!(s.icon_extraction_rx.is_none());

@@ -1,5 +1,6 @@
 # UNRELEASED
 
+## 2026-05-29  V2.0.0
 
 # RELEASED
 

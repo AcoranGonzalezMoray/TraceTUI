@@ -354,6 +354,9 @@ pub struct ContainerState {
     pub docker_hub_create_rx: Option<std::sync::mpsc::Receiver<Result<String, String>>>,
     pub pending_container_action: Option<ContainerAction>,
     pub pending_docker_action: Option<DockerAction>,
+    pub docker_action_in_progress: Option<DockerAction>,
+    pub container_action_in_progress: Option<ContainerAction>,
+    pub container_action_rx: Option<std::sync::mpsc::Receiver<(String, Result<(), String>)>>,
 }
 
 impl ContainerState {
@@ -392,6 +395,9 @@ impl ContainerState {
             docker_hub_create_rx: None,
             pending_container_action: None,
             pending_docker_action: None,
+            docker_action_in_progress: None,
+            container_action_in_progress: None,
+            container_action_rx: None,
         }
     }
 }

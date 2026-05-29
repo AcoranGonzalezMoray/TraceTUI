@@ -51,6 +51,7 @@ pub fn on_tick(app: &mut App) {
     process_update_task(app);
     process_search_results(app);
     app.process_container_results();
+    app.process_container_action_results();
     app.process_libraries_results();
     if app.ui.current_nav_view == crate::app::NavView::Containers
         && !app.containers.containers_loaded_once

@@ -23,7 +23,8 @@ pub mod trends;
 pub mod widgets;
 pub use center_panel::render_center_panel;
 pub use containers::{
-    render_container_console_modal, render_container_logs_modal, render_containers_view,
+    render_container_action_loading_modal, render_container_console_modal,
+    render_container_logs_modal, render_containers_view, render_docker_action_loading_modal,
     render_docker_hub_modal,
 };
 pub use dialogs::render_confirmation_dialog;
@@ -337,6 +338,16 @@ pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
     }
     if app.ui.current_nav_view == NavView::Containers && app.containers.show_docker_hub_modal {
         render_docker_hub_modal(f, app);
+    }
+    if app.ui.current_nav_view == NavView::Containers
+        && app.containers.docker_action_in_progress.is_some()
+    {
+        render_docker_action_loading_modal(f, app);
+    }
+    if app.ui.current_nav_view == NavView::Containers
+        && app.containers.container_action_in_progress.is_some()
+    {
+        render_container_action_loading_modal(f, app);
     }
     if app.ui.current_nav_view == NavView::LibraryInspection && app.libraries.show_hash_info_modal {
         render_library_hash_modal(f, app);
