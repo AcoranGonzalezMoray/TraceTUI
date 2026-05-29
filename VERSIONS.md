@@ -1,5 +1,8 @@
 # UNRELEASED
 
+
+# RELEASED
+
 ## 2026-05-29  V2.0.1
 🐛: Fixed export functionality on Linux and kill process action on Windows/Linux
 
@@ -16,8 +19,6 @@
 🧹: **Code Quality** — Resolved all Clippy lint warnings (unused imports, useless `as_ref`, etc.) and cleaned up `input_service.rs`
 
 🎨: **UI Improvements** — Fixed image visualization in the Linux storage explorer; improved icon extraction feedback
-
-# RELEASED
 
 ## 2026-05-29  V2.0.0
 ✨: **Docker Container Monitoring** — Full lifecycle management (start/stop/restart/pause/unpause), real-time CPU/Memory/Net I/O stats, logs viewer, interactive console inside containers
