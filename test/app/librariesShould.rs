@@ -65,8 +65,6 @@ mod libraries_tests {
         assert!(app.libraries.libraries_rx.is_none());
     }
 
-    // ── Export JSON tests ──────────────────────────────────────────
-
     fn sample_lib(
         pid: u32,
         name: &str,
@@ -145,8 +143,6 @@ mod libraries_tests {
         assert!(obj.get("sha256").is_some());
     }
 
-    // ── Export CSV tests ──────────────────────────────────────────
-
     #[test]
     fn test_export_libraries_csv_empty() {
         let csv = crate::app::libraries::export_libraries_csv(&[]);
@@ -179,7 +175,6 @@ mod libraries_tests {
             "Safe",
         )];
         let csv = crate::app::libraries::export_libraries_csv(&libs);
-        // Paths with commas should be quoted
         assert!(csv.contains("\"C:\\Program Files (x86),special\\lib.dll\""));
     }
 
@@ -199,8 +194,6 @@ mod libraries_tests {
         assert_eq!(cols[7], "signature");
         assert_eq!(cols[8], "sha256");
     }
-
-    // ── classify_origin tests ─────────────────────────────────────
 
     #[test]
     fn test_classify_origin_system_windows() {
@@ -265,8 +258,6 @@ mod libraries_tests {
         assert!(matches!(origin, LibraryOrigin::Unknown));
     }
 
-    // ── classify_risk tests ───────────────────────────────────────
-
     #[test]
     fn test_classify_risk_safe_system() {
         use crate::app::libraries::{classify_risk, LibraryOrigin};
@@ -315,8 +306,6 @@ mod libraries_tests {
         assert_eq!(risk, "Suspicious");
     }
 
-    // ── risk_sort_key tests ───────────────────────────────────────
-
     #[test]
     fn test_risk_sort_key_ordering() {
         use crate::app::libraries::risk_sort_key;
@@ -327,14 +316,11 @@ mod libraries_tests {
         assert_eq!(risk_sort_key("anything_else"), 0);
     }
 
-    // ── pick_save_path test mode bypass ───────────────────────────
-
     #[test]
     fn test_pick_save_path_returns_default_in_test_mode() {
         let app = App::new();
         let result =
             crate::app::services::input_service::pick_save_path_for_test(&app, "test_file.json");
-        // In test mode, pick_save_path returns Some(PathBuf::from(default_name))
         assert!(result.is_some());
         assert_eq!(result.unwrap().to_str().unwrap(), "test_file.json");
     }

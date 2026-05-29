@@ -466,9 +466,7 @@ pub fn render_image_preview(path: &Path) -> Option<Vec<String>> {
     let img = image::open(path).ok()?;
     let (orig_w, orig_h) = img.dimensions();
 
-    // Target width for preview
     let target_w = 60;
-    // Calculate aspect-ratio height (multiplied by 2 because we use the 2x1 block technique)
     let target_h = ((orig_h as f32 * target_w as f32 / orig_w as f32) * 1.0).round() as u32;
 
     let resized = img.resize_exact(target_w, target_h, image::imageops::FilterType::Nearest);

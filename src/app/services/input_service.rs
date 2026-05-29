@@ -2465,7 +2465,6 @@ fn pick_save_path(_app: &App, default_name: &str) -> Option<std::path::PathBuf> 
     {
         use std::process::Command;
 
-        // Try Zenity first
         if let Ok(output) = Command::new("zenity")
             .args([
                 "--file-selection",
@@ -2484,7 +2483,6 @@ fn pick_save_path(_app: &App, default_name: &str) -> Option<std::path::PathBuf> 
             }
         }
 
-        // Try KDialog
         if let Ok(output) = Command::new("kdialog")
             .args([
                 "--getsavefilename",
@@ -2503,7 +2501,6 @@ fn pick_save_path(_app: &App, default_name: &str) -> Option<std::path::PathBuf> 
             }
         }
 
-        // Try Python with Tkinter as last resort
         let py_script = format!(
             "import tkinter as tk; from tkinter import filedialog; root = tk.Tk(); root.withdraw(); \
              path = filedialog.asksaveasfilename(initialfile='{}', title='Export Network Analysis', \

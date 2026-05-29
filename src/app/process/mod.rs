@@ -72,7 +72,7 @@ fn fill_missing_paths(processes: &mut [ProcessInfo]) {
                 }
             }
         }
-        Err(_e) => {} // PowerShell not available
+        Err(_e) => {}
     }
 }
 #[cfg(not(windows))]
@@ -266,8 +266,6 @@ impl ProcessManager {
                     Ok(count)
                 }
                 _ => {
-                    // If ss -K failed, we can't kill connections.
-                    // Check if they even exist to give a better error.
                     let check_output = Command::new("ss")
                         .args(["-tnp"])
                         .output()

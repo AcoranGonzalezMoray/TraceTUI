@@ -670,7 +670,6 @@ fn pick_save_path_windows(default_name: &str) -> Option<std::path::PathBuf> {
 
 #[cfg(target_os = "linux")]
 fn pick_save_path_linux(default_name: &str) -> Option<std::path::PathBuf> {
-    // Try Zenity first
     if let Ok(output) = std::process::Command::new("zenity")
         .args([
             "--file-selection",
@@ -689,7 +688,6 @@ fn pick_save_path_linux(default_name: &str) -> Option<std::path::PathBuf> {
         }
     }
 
-    // Try KDialog
     if let Ok(output) = std::process::Command::new("kdialog")
         .args([
             "--getsavefilename",
@@ -708,7 +706,6 @@ fn pick_save_path_linux(default_name: &str) -> Option<std::path::PathBuf> {
         }
     }
 
-    // Try Python with Tkinter (usually available and looks like a real explorer dialog)
     let py_script = format!(
         "import tkinter as tk; from tkinter import filedialog; root = tk.Tk(); root.withdraw(); \
          path = filedialog.asksaveasfilename(initialfile='{}', title='Export Data'); print(path)",
