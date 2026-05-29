@@ -1,7 +1,9 @@
 # UNRELEASED
 
-## 2026-05-29  V2.0.0
 
+# RELEASED
+
+## 2026-05-29  V2.0.0
 ✨: **Docker Container Monitoring** — Full lifecycle management (start/stop/restart/pause/unpause), real-time CPU/Memory/Net I/O stats, logs viewer, interactive console inside containers
 
 ✨: **Docker Hub Integration** — Search images from Docker Hub, configure ports/env vars, and create containers directly from the TUI
@@ -51,8 +53,6 @@
 ♻️: Refactor App struct with 12 state modules for separation of concerns
 
 🔧: Update Cargo.toml dependencies — add iced-x86, sysinfo 0.30, lru 0.12
-
-# RELEASED
 
 ## 2026-05-17  V1.1.2
 🔧: PR workflow now also checks that Cargo.toml version is bumped (compared to base branch)
