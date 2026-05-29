@@ -1,5 +1,14 @@
 # UNRELEASED
 
+## 2026-05-29  V2.0.1
+- 🐛: Fixed export functionality on Linux and kill process action on Windows/Linux
+- 🐧 **Linux Parity**: Added native file explorer integration for export actions (Zenity/KDialog support).
+- 🚀 **User Experience**: Added visual action loaders for process termination and connection closing.
+- ⌨️ **Improved Controls**: Added `Enter` key support for confirmation dialogs across the application.
+- 🌐 **i18n Polish**: Fully synchronized and translated all status messages for 9 supported languages (EN, ES, FR, DE, IT, PT, RU, ZH, JA).
+- 🛡️ **System Stability**: Fixed process termination logic for both Windows (taskkill) and Linux (kill -9) with better permission handling.
+- 🧹 **Code Quality**: Resolved all Clippy lint warnings and performed heavy code cleanup in `input_service.rs`.
+- 🎨 **UI Improvements**: Fixed image visualization in Linux storage explorer and improved icon extraction feedback.
 
 # RELEASED
 

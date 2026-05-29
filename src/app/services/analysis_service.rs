@@ -50,6 +50,7 @@ pub fn on_tick(app: &mut App) {
     process_update_result(app);
     process_update_task(app);
     process_search_results(app);
+    process_status_messages(app);
     app.process_container_results();
     app.process_container_action_results();
     app.process_libraries_results();
@@ -642,5 +643,20 @@ fn check_nerdfont_install_complete(app: &mut App) {
                 tr!(app.ui.translator, "status.nerdfont_fail", first_line)
             };
         }
+    }
+}
+
+fn process_status_messages(app: &mut App) {
+    let mut messages = Vec::new();
+    if let Some(ref rx) = app.ui.status_message_rx {
+        while let Ok(msg) = rx.try_recv() {
+            messages.push(msg);
+        }
+    }
+
+    for msg in messages {
+        app.ui.status_message = msg;
+        app.ui.action_in_progress = None;
+        app.start_batch_analysis();
     }
 }

@@ -71,3 +71,8 @@ pub struct FileSearchState {
     pub extension_idx: usize,
     pub focused_field: usize,
 }
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ConfirmationAction {
+    KillProcess,
+    KillAllConnections,
+}

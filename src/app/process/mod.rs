@@ -256,42 +256,35 @@ impl ProcessManager {
             match ss_output {
                 Ok(output) if output.status.success() => {
                     let count_output = Command::new("ss").args(["-tnp"]).output()?;
-
                     let output_str = String::from_utf8_lossy(&count_output.stdout);
                     let mut count = 0;
-
                     for line in output_str.lines() {
                         if line.contains(&format!("pid={}", pid)) {
                             count += 1;
                         }
                     }
-
                     Ok(count)
                 }
                 _ => {
-                    let ss_output = Command::new("ss")
+                    // If ss -K failed, we can't kill connections.
+                    // Check if they even exist to give a better error.
+                    let check_output = Command::new("ss")
                         .args(["-tnp"])
                         .output()
                         .or_else(|_| Command::new("netstat").args(["-tnp"]).output())?;
 
-                    if !ss_output.status.success() {
-                        return Err("Failed to get network connections".into());
-                    }
+                    let output_str = String::from_utf8_lossy(&check_output.stdout);
+                    let exists = output_str.lines().any(|l| {
+                        l.contains(&format!("pid={}", pid)) || l.contains(&format!("{}/", pid))
+                    });
 
-                    let output_str = String::from_utf8_lossy(&ss_output.stdout);
-                    let mut closed_count = 0;
-
-                    for line in output_str.lines() {
-                        if line.contains(&format!("pid={}", pid))
-                            || line.contains(&format!("{}/", pid))
-                        {
-                            closed_count += 1;
-                        }
-                    }
-                    if closed_count > 0 {
-                        Ok(closed_count)
+                    if exists {
+                        Err(
+                            "Failed to kill connections. 'ss -K' requires root/sudo permissions."
+                                .into(),
+                        )
                     } else {
-                        Err("No connections found or insufficient permissions".into())
+                        Ok(0)
                     }
                 }
             }

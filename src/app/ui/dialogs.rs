@@ -5,6 +5,7 @@ use crate::i18n::Translator;
 use crate::tr;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
+    style::Stylize,
     style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Clear, Gauge, Paragraph},
@@ -1088,4 +1089,50 @@ pub fn render_welcome_dialog(f: &mut ratatui::Frame, app: &App) {
 
     f.render_widget(btn_continue, button_area[1]);
     f.render_widget(btn_changes, button_area[3]);
+}
+
+pub fn render_action_loader(f: &mut ratatui::Frame, app: &App) {
+    if let Some(ref action) = app.ui.action_in_progress {
+        let area = Rect {
+            x: (f.area().width / 4),
+            y: (f.area().height / 3),
+            width: f.area().width / 2,
+            height: 8,
+        };
+        f.render_widget(Clear, area);
+
+        let spinner = match app.ui.frame_count % 4 {
+            0 => "/",
+            1 => "-",
+            2 => "\\",
+            _ => "|",
+        };
+
+        let message = format!("  {}  {}...", spinner, action);
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Thick)
+            .border_style(Style::default().fg(THEME.warning))
+            .title(format!(" {} ", tr!(app.ui.translator, "status.processing")));
+
+        let p = Paragraph::new(vec![
+            Line::from(""),
+            Line::from(vec![Span::styled(
+                message,
+                Style::default().fg(THEME.warning).bold(),
+            )]),
+            Line::from(""),
+            Line::from(vec![
+                Span::raw("  "),
+                Span::styled(
+                    tr!(app.ui.translator, "status.please_wait"),
+                    Style::default().fg(THEME.text_dim),
+                ),
+            ]),
+        ])
+        .block(block)
+        .alignment(Alignment::Left);
+
+        f.render_widget(p, area);
+    }
 }

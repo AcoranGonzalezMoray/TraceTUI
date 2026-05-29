@@ -1,6 +1,6 @@
 use crate::app::firewall_service::FirewallManager;
 use crate::app::storage::fmt_size;
-use crate::app::types::{FirewallPanel, NavView, SidebarFocus};
+use crate::app::types::{ConfirmationAction, FirewallPanel, NavView, SidebarFocus};
 use crate::app::App;
 use crate::config;
 use crate::resources;
@@ -326,6 +326,7 @@ fn handle_dashboard_keys(app: &mut App, key: KeyEvent) {
                     &selected.process_name,
                     selected.pid
                 );
+                app.ui.pending_confirmation_action = Some(ConfirmationAction::KillProcess);
                 app.ui.show_confirmation = true;
             } else {
                 app.ui.status_message = tr!(app.ui.translator, "status.no_selection").to_string();
@@ -339,6 +340,7 @@ fn handle_dashboard_keys(app: &mut App, key: KeyEvent) {
                     selected.connections.len(),
                     &selected.process_name
                 );
+                app.ui.pending_confirmation_action = Some(ConfirmationAction::KillAllConnections);
                 app.ui.show_confirmation = true;
             } else {
                 app.ui.status_message = tr!(app.ui.translator, "status.no_selection").to_string();
@@ -1607,52 +1609,69 @@ fn handle_search_keys(app: &mut App, key: KeyEvent) {
 }
 fn handle_confirmation_keys(app: &mut App, key: KeyEvent) {
     match key.code {
-        KeyCode::Char('y') | KeyCode::Char('Y') => {
-            if app.ui.confirmation_message.contains("kill process") {
-                if let Some(selected) = app.get_selected_app() {
-                    let pid = selected.pid;
-                    let mut manager = crate::app::process::ProcessManager::new();
-                    match manager.kill_process(pid) {
-                        Ok(true) => {
-                            app.ui.status_message = tr!(app.ui.translator, "status.killed", pid);
-                            app.start_batch_analysis();
+        KeyCode::Char('y')
+        | KeyCode::Char('Y')
+        | KeyCode::Char('s')
+        | KeyCode::Char('S')
+        | KeyCode::Enter => {
+            if let Some(action) = app.ui.pending_confirmation_action {
+                match action {
+                    ConfirmationAction::KillProcess => {
+                        let pid = app.get_selected_app().map(|s| s.pid);
+                        if let Some(pid) = pid {
+                            app.ui.action_in_progress =
+                                Some(tr!(app.ui.translator, "status.killing_process", pid));
+                            let tx = app.ui.status_message_tx.clone();
+
+                            let success_msg = tr!(app.ui.translator, "status.killed", pid);
+                            let error_msg_prefix = tr!(app.ui.translator, "status.kill_error", "");
+
+                            std::thread::spawn(move || {
+                                let mut manager = crate::app::process::ProcessManager::new();
+                                let result = manager.kill_process(pid);
+                                if let Some(tx) = tx {
+                                    match result {
+                                        Ok(_) => {
+                                            let _ = tx.send(success_msg);
+                                        }
+                                        Err(e) => {
+                                            let _ = tx.send(format!("{}{}", error_msg_prefix, e));
+                                        }
+                                    }
+                                }
+                            });
                         }
-                        Ok(false) => {
-                            app.ui.status_message = tr!(app.ui.translator, "status.kill_fail", pid);
-                        }
-                        Err(e) => {
-                            app.ui.status_message = format!("[!] {}", e);
+                    }
+                    ConfirmationAction::KillAllConnections => {
+                        let pid = app.get_selected_app().map(|s| s.pid);
+                        if let Some(pid) = pid {
+                            app.ui.action_in_progress =
+                                Some(tr!(app.ui.translator, "status.closing_connections", pid));
+                            let tx = app.ui.status_message_tx.clone();
+
+                            let success_msg_fmt = tr!(app.ui.translator, "status.kill_conns", pid);
+                            let error_msg_prefix = tr!(app.ui.translator, "status.kill_error", "");
+
+                            std::thread::spawn(move || {
+                                let manager = crate::app::process::ProcessManager::new();
+                                let result = manager.kill_connections(pid);
+                                if let Some(tx) = tx {
+                                    match result {
+                                        Ok(count) => {
+                                            let _ = tx.send(
+                                                success_msg_fmt.replace("{}", &count.to_string()),
+                                            );
+                                        }
+                                        Err(e) => {
+                                            let _ = tx.send(format!("{}{}", error_msg_prefix, e));
+                                        }
+                                    }
+                                }
+                            });
                         }
                     }
                 }
-            } else if app.ui.confirmation_message.contains("kill all connections") {
-                if let Some(selected) = app.get_selected_app() {
-                    let pid = selected.pid;
-                    let conn_count = selected.connections.len();
-                    let manager = crate::app::process::ProcessManager::new();
-                    match manager.kill_connections(pid) {
-                        Ok(count) => {
-                            if count > 0 {
-                                app.ui.status_message = format!(
-                                    "[+] {} connection(s) closed for process {}",
-                                    count, pid
-                                );
-                                app.start_batch_analysis();
-                            } else if conn_count > 0 {
-                                app.ui.status_message = format!(
-                                        "[!] Found {} connection(s) but failed to close them. Run as Administrator",
-                                        conn_count
-                                    );
-                            } else {
-                                app.ui.status_message =
-                                    "[!] No active connections found for this process".to_string();
-                            }
-                        }
-                        Err(e) => {
-                            app.ui.status_message = format!("[!] {}", e);
-                        }
-                    }
-                }
+                app.ui.pending_confirmation_action = None;
             } else if let Some(container_action) = app.containers.pending_container_action {
                 app.run_selected_container_action_confirmed(container_action);
                 app.containers.pending_container_action = None;
@@ -1665,8 +1684,9 @@ fn handle_confirmation_keys(app: &mut App, key: KeyEvent) {
             app.ui.confirmation_message.clear();
         }
         KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
-            app.ui.status_message = tr!(app.ui.translator, "status.action_cancelled").to_string();
             app.ui.show_confirmation = false;
+            app.ui.pending_confirmation_action = None;
+            app.ui.status_message = tr!(app.ui.translator, "status.action_cancelled").to_string();
             app.ui.confirmation_message.clear();
             app.containers.pending_container_action = None;
             app.containers.pending_docker_action = None;
@@ -2127,6 +2147,7 @@ pub fn execute_action(app: &mut App) {
                     &selected.process_name,
                     selected.pid
                 );
+                app.ui.pending_confirmation_action = Some(ConfirmationAction::KillProcess);
                 app.ui.show_confirmation = true;
             } else {
                 app.ui.status_message = tr!(app.ui.translator, "status.no_selection").to_string();
@@ -2140,6 +2161,7 @@ pub fn execute_action(app: &mut App) {
                     selected.connections.len(),
                     &selected.process_name
                 );
+                app.ui.pending_confirmation_action = Some(ConfirmationAction::KillAllConnections);
                 app.ui.show_confirmation = true;
             } else {
                 app.ui.status_message = tr!(app.ui.translator, "status.no_selection").to_string();
