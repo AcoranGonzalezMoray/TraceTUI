@@ -670,21 +670,60 @@ fn pick_save_path_windows(default_name: &str) -> Option<std::path::PathBuf> {
 
 #[cfg(target_os = "linux")]
 fn pick_save_path_linux(default_name: &str) -> Option<std::path::PathBuf> {
-    let output = std::process::Command::new("zenity")
+    if let Ok(output) = std::process::Command::new("zenity")
         .args([
             "--file-selection",
             "--save",
-            "--title=Export Libraries",
+            "--confirm-overwrite",
+            "--title=Export Data",
             &format!("--filename={}", default_name),
         ])
         .output()
-        .ok()?;
-    let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if path.is_empty() {
-        None
-    } else {
-        Some(std::path::PathBuf::from(path))
+    {
+        if output.status.success() {
+            let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if !path.is_empty() {
+                return Some(std::path::PathBuf::from(path));
+            }
+        }
     }
+
+    if let Ok(output) = std::process::Command::new("kdialog")
+        .args([
+            "--getsavefilename",
+            ".",
+            default_name,
+            "--title",
+            "Export Data",
+        ])
+        .output()
+    {
+        if output.status.success() {
+            let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if !path.is_empty() {
+                return Some(std::path::PathBuf::from(path));
+            }
+        }
+    }
+
+    let py_script = format!(
+        "import tkinter as tk; from tkinter import filedialog; root = tk.Tk(); root.withdraw(); \
+         path = filedialog.asksaveasfilename(initialfile='{}', title='Export Data'); print(path)",
+        default_name
+    );
+    if let Ok(output) = std::process::Command::new("python3")
+        .args(["-c", &py_script])
+        .output()
+    {
+        if output.status.success() {
+            let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if !path.is_empty() {
+                return Some(std::path::PathBuf::from(path));
+            }
+        }
+    }
+
+    None
 }
 
 fn read_u16_le(buf: &[u8], offset: usize) -> u16 {

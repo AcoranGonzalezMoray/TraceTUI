@@ -154,15 +154,14 @@ function initScrollGuide() {
 
     if (!terminal || !steps.length || !tuiApp) return;
 
-    // Mapping steps to TUI states
     const termStates = [
         'main', 'main', 'main', 'main', 'risk', 'timeline', 'main', 'trends', 'storage', 'libraries', 'containers', 'firewall', 'search', 'language', 'investigation',
-        'trends', 'storage', 'containers' // New steps
+        'trends', 'storage', 'containers'
     ];
 
     const navMap = [
         'main', 'main', 'main', 'main', 'main', 'main', 'main', 'trends', 'storage', 'libraries', 'containers', 'main', 'main', 'main', 'main',
-        'trends', 'storage', 'containers' // New steps
+        'trends', 'storage', 'containers'
     ];
 
     const highlightClasses = [
@@ -175,7 +174,7 @@ function initScrollGuide() {
 
     const observerOptions = {
         root: null,
-        rootMargin: '-30% 0px -30% 0px', // Adjusted for longer scroll space
+        rootMargin: '-30% 0px -30% 0px', 
         threshold: 0
     };
 
@@ -191,10 +190,8 @@ function initScrollGuide() {
     steps.forEach(step => stepObserver.observe(step));
 
     function activateStep(index) {
-        // Update active class on steps
         steps.forEach((s, i) => s.classList.toggle('active', i === index));
 
-        // Update Nav View
         const targetNav = navMap[index] || 'main';
         if (tuiBody && tuiBody.dataset.activeNav !== targetNav) {
             tuiBody.dataset.activeNav = targetNav;
@@ -203,14 +200,12 @@ function initScrollGuide() {
             });
         }
 
-        // Highlight panels - Remove all highlight classes first
         tuiApp.classList.remove(...highlightClasses);
         tuiApp.classList.add('guide-active', 'dim-others');
         if (highlightClasses[index]) {
             tuiApp.classList.add(highlightClasses[index]);
         }
 
-        // Tab switching logic for center-tabs
         const centerTabs = document.querySelectorAll('.center-tabs .tab');
         if (centerTabs.length === 3) {
             centerTabs.forEach(t => t.classList.remove('tab-active'));
@@ -230,11 +225,10 @@ function initScrollGuide() {
             }
         }
 
-        // Update TUI State
         delete tuiApp.dataset.termState;
         if (termStates[index]) tuiApp.dataset.termState = termStates[index];
-        
-        // Update step indicator in TUI
+   
+
         const stepNumEl = document.getElementById('stepNum');
         const stepLabelEl = document.getElementById('stepLabel');
         if (stepNumEl) stepNumEl.textContent = (index + 1).toString().padStart(2, '0');
@@ -244,7 +238,7 @@ function initScrollGuide() {
         }
     }
 
-    // Handle the movement of terminal from Hero to Sticky Tour
+
     window.addEventListener('scroll', () => {
         const scrollY = window.scrollY;
         const heroH = hero.offsetHeight;
@@ -254,7 +248,6 @@ function initScrollGuide() {
         
         if (!tourSection) return;
 
-        // Hide terminal when Powerful Features section enters viewport
         if (featuresSec) {
             const featuresTop = featuresSec.offsetTop;
             if (scrollY + window.innerHeight > featuresTop + 100) {

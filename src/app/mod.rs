@@ -65,6 +65,10 @@ impl App {
             database: Database::new().expect("Failed to init database"),
         };
 
+        let (tx, rx) = std::sync::mpsc::channel();
+        app.ui.status_message_tx = Some(tx);
+        app.ui.status_message_rx = Some(rx);
+
         #[cfg(not(test))]
         {
             let config_path = crate::config::config_dir().join("config.json");

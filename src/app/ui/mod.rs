@@ -27,6 +27,7 @@ pub use containers::{
     render_container_logs_modal, render_containers_view, render_docker_action_loading_modal,
     render_docker_hub_modal,
 };
+pub use dialogs::render_action_loader;
 pub use dialogs::render_confirmation_dialog;
 pub use dialogs::render_install_dialog;
 pub use dialogs::render_language_modal;
@@ -352,10 +353,11 @@ pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
     if app.ui.current_nav_view == NavView::LibraryInspection && app.libraries.show_hash_info_modal {
         render_library_hash_modal(f, app);
     }
-    if app.ui.current_nav_view == NavView::LibraryInspection
-        && app.libraries.show_library_binary_viewer
-    {
+    if app.libraries.show_library_binary_viewer {
         render_library_binary_viewer(f, app);
+    }
+    if app.ui.action_in_progress.is_some() {
+        render_action_loader(f, app);
     }
 }
 fn render_search_bar(f: &mut ratatui::Frame, app: &App, area: Rect) {

@@ -6,8 +6,8 @@ use crate::app::network::NetworkConnection;
 use crate::app::process::ProcessInfo;
 use crate::app::storage::{DiskInfo, FileEntry};
 use crate::app::types::{
-    AppConnection, AppState, FileSearchState, FileSortMode, FirewallPanel, NavView, SidebarFocus,
-    UpdateEvent,
+    AppConnection, AppState, ConfirmationAction, FileSearchState, FileSortMode, FirewallPanel,
+    NavView, SidebarFocus, UpdateEvent,
 };
 use crate::app::InvestigationReport;
 use crate::i18n::Translator;
@@ -99,6 +99,10 @@ pub struct UiState {
     pub file_search_state: FileSearchState,
     pub translator: Translator,
     pub hunter_mode: bool,
+    pub action_in_progress: Option<String>,
+    pub status_message_tx: Option<std::sync::mpsc::Sender<String>>,
+    pub status_message_rx: Option<std::sync::mpsc::Receiver<String>>,
+    pub pending_confirmation_action: Option<ConfirmationAction>,
 }
 
 impl UiState {
@@ -133,6 +137,10 @@ impl UiState {
             file_search_state: FileSearchState::default(),
             translator,
             hunter_mode: false,
+            action_in_progress: None,
+            status_message_tx: None,
+            status_message_rx: None,
+            pending_confirmation_action: None,
         }
     }
 }
