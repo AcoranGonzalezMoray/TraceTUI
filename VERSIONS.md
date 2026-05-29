@@ -1,31 +1,55 @@
-# RELEASED
+# UNRELEASED
 
 ## 2026-05-29  V2.0.0
 
 ✨: **Docker Container Monitoring** — Full lifecycle management (start/stop/restart/pause/unpause), real-time CPU/Memory/Net I/O stats, logs viewer, interactive console inside containers
+
 ✨: **Docker Hub Integration** — Search images from Docker Hub, configure ports/env vars, and create containers directly from the TUI
+
 ✨: **Docker Service Control** — Start/Stop Docker Desktop (Windows) or Docker daemon (Linux) from within the app
+
 ✨: **Storage Explorer** — Disk usage visualization with usage bars, file browser with directory navigation, multiple sort modes (name/size/date)
+
 ✨: **File Search** — Recursive file search across directories with extension filters (images, documents, code, archives, audio, video) and abort support
+
 ✨: **File Viewer** — View text/log/ANSI files inline, image preview via PowerShell/chafa/catimg/Pillow
+
 ✨: **Library Inspection** — Per-process loaded DLL/library listing, digital signature verification (Signed/Unsigned), origin classification (System/ProgramFiles/UserSpace/Temp), risk assessment
+
 ✨: **Binary Viewer** — Hex dump and x86 disassembly viewer (iced-x86 engine) for suspicious libraries
+
 ✨: **Hash Information** — SHA-256 computation for loaded libraries
+
 ✨: **Library Risk Filtering** — Filter libraries by risk level with export to JSON/CSV
+
 ✨: **Trends & Analytics View** — Real-time CPU and connection count sparklines, risk distribution chart, top processes by CPU/memory, protocol breakdown, destination country stats
+
 ✨: **File Sorter** — Toggle between name, size, and date sort modes in file browser
+
 ✨: **Hunter Mode** — `H` key toggle to filter unsigned/unknown processes, auto-hide known-safe signed processes
+
 ✨: **Nerd Font Installer** — One-click JetBrains Mono Nerd Font download and installation dialog on first launch
+
 ✨: **Installation Module** — In-app installer with sudo password modal (Linux), PowerShell-based install (Windows)
+
 ✨: **Update Progress Bar** — Visual download progress during self-update with percentage indicator
+
 ✨: **Improved Welcome Dialog** — Multi-step welcome tour shown after version upgrades
+
 ✨: **Nav Sidebar** — Collapsible `M` key sidebar with 5 views (Main, Trends, Storage, Libraries, Containers)
+
 ✨: **Center Tab Switching** — `[1] Connections`, `[2] Risk Overview`, `[3] Timeline` tabs in center panel
+
 ✨: **Enhanced Filtering** — `F` key high-risk filter now works alongside search query
+
 🐛: Fix initial loading state blocking UI before first data pull
+
 🐛: Handle empty docker ps output gracefully (no containers)
+
 🐛: Fix locale not persisting on version upgrade
+
 ♻️: Refactor App struct with 12 state modules for separation of concerns
+
 🔧: Update Cargo.toml dependencies — add iced-x86, sysinfo 0.30, lru 0.12
 
 # RELEASED
