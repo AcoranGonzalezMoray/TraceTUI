@@ -10,17 +10,6 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph},
 };
 pub fn render_right_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let _is_focused = app.sidebar_focus == SidebarFocus::Right;
-    let _border_color = if _is_focused {
-        THEME.primary
-    } else {
-        THEME.secondary
-    };
-    let _border_type = if _is_focused {
-        BorderType::Thick
-    } else {
-        BorderType::Rounded
-    };
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(0), Constraint::Length(14)])
@@ -29,20 +18,20 @@ pub fn render_right_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
     render_app_icon(f, app, chunks[1]);
 }
 fn render_actions_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let border_color = if app.sidebar_focus == SidebarFocus::Right {
+    let border_color = if app.ui.sidebar_focus == SidebarFocus::Right {
         THEME.primary
     } else {
         THEME.secondary
     };
-    let border_type = if app.sidebar_focus == SidebarFocus::Right {
+    let border_type = if app.ui.sidebar_focus == SidebarFocus::Right {
         BorderType::Thick
     } else {
         BorderType::Rounded
     };
-    let t = &app.translator;
-    let actions: Vec<(&str, String, &str, ratatui::style::Color)> = if app.show_map {
+    let t = &app.ui.translator;
+    let actions: Vec<(&str, String, &str, ratatui::style::Color)> = if app.ui.show_map {
         vec![("󰩈", tr!(t, "actions.close_map"), "Esc", THEME.secondary)]
-    } else if app.investigation_report.is_some() {
+    } else if app.investigation.investigation_report.is_some() {
         vec![
             ("📍", tr!(t, "actions.locatemap"), "Enter", THEME.primary),
             (
@@ -56,7 +45,7 @@ fn render_actions_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
         vec![
             (
                 "󰑐",
-                if app.analysis_paused {
+                if app.ui.analysis_paused {
                     tr!(t, "actions.resume")
                 } else {
                     tr!(t, "actions.pause")
@@ -74,7 +63,7 @@ fn render_actions_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
                 "󰒓",
                 tr!(t, "actions.filter_unsigned"),
                 "H",
-                if app.hunter_mode {
+                if app.ui.hunter_mode {
                     THEME.success
                 } else {
                     THEME.text_dim
@@ -86,7 +75,7 @@ fn render_actions_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
     };
     let block = Block::default()
         .borders(Borders::ALL)
-        .title(format!(" 󰬒 {} ", tr!(app.translator, "actions.title")))
+        .title(format!(" 󰬒 {} ", tr!(app.ui.translator, "actions.title")))
         .title_style(
             Style::default()
                 .fg(border_color)
@@ -109,7 +98,7 @@ fn render_actions_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .iter()
         .enumerate()
         .map(|(i, (icon, title, key, color))| {
-            let is_selected = i == app.selected_action_index;
+            let is_selected = i == app.ui.selected_action_index;
             let prefix = if is_selected { " ▎" } else { "  " };
             let prefix_style = if is_selected {
                 Style::default().fg(THEME.primary)
@@ -139,17 +128,21 @@ fn render_actions_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
         })
         .collect();
     let mut list_state = ListState::default();
-    list_state.select(Some(app.selected_action_index));
+    list_state.select(Some(app.ui.selected_action_index));
     let list = List::new(items).block(Block::default());
     f.render_stateful_widget(list, list_area, &mut list_state);
-    widgets::render_scrollbar(f, scrollbar_area, actions.len(), app.selected_action_index);
+    widgets::render_scrollbar(
+        f,
+        scrollbar_area,
+        actions.len(),
+        app.ui.selected_action_index,
+    );
 }
 fn render_app_icon(f: &mut ratatui::Frame, app: &App, area: Rect) {
     if let Some(selected_app) = app.get_selected_app() {
-        use ansi_to_tui::IntoText;
         let icon_block = Block::default()
             .borders(Borders::ALL)
-            .title(format!(" 󰰍 {} ", tr!(app.translator, "icon.title")))
+            .title(format!(" 󰰍 {} ", tr!(app.ui.translator, "icon.title")))
             .title_style(
                 Style::default()
                     .fg(THEME.primary)
@@ -157,11 +150,32 @@ fn render_app_icon(f: &mut ratatui::Frame, app: &App, area: Rect) {
             )
             .border_style(Style::default().fg(THEME.secondary))
             .border_type(BorderType::Rounded);
-        let icon_widget = match selected_app.icon.as_bytes().into_text() {
-            Ok(text) => Paragraph::new(text),
-            Err(_) => Paragraph::new(selected_app.icon.as_str()),
-        };
-        let icon_p = icon_widget.block(icon_block).alignment(Alignment::Center);
-        f.render_widget(icon_p, area);
+        if selected_app.icon.is_empty() {
+            let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+            let s = spinner[(app.ui.frame_count as usize) % spinner.len()];
+            let inner_h = area.height.saturating_sub(2);
+            let top = inner_h.saturating_sub(1) / 2;
+            let bot = inner_h.saturating_sub(1) - top;
+            let mut lines = vec![Line::from(""); top as usize];
+            lines.push(Line::from(vec![Span::styled(
+                format!("  {}  ", s),
+                Style::default()
+                    .fg(THEME.warning)
+                    .add_modifier(Modifier::BOLD),
+            )]));
+            lines.extend(vec![Line::from(""); bot as usize]);
+            let p = Paragraph::new(lines)
+                .block(icon_block)
+                .alignment(Alignment::Center);
+            f.render_widget(p, area);
+        } else {
+            use ansi_to_tui::IntoText;
+            let icon_widget = match selected_app.icon.as_bytes().into_text() {
+                Ok(text) => Paragraph::new(text),
+                Err(_) => Paragraph::new(selected_app.icon.as_str()),
+            };
+            let icon_p = icon_widget.block(icon_block).alignment(Alignment::Center);
+            f.render_widget(icon_p, area);
+        }
     }
 }

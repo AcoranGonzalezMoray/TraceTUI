@@ -52,15 +52,18 @@ impl Translator {
         }
     }
 
-    pub fn get<'a>(&'a self, key: &'a str) -> &'a str {
-        self.strings.get(key).map(|s| s.as_str()).unwrap_or(key)
+    pub fn get(&self, key: &str) -> String {
+        self.strings
+            .get(key)
+            .cloned()
+            .unwrap_or_else(|| key.to_string())
     }
 
     pub fn get_fmt(&self, key: &str, args: &[String]) -> String {
         let template = self.get(key);
         let mut result =
             String::with_capacity(template.len() + args.iter().map(|a| a.len()).sum::<usize>());
-        let mut rest = template;
+        let mut rest = template.as_str();
         let mut arg_index = 0;
         while let Some(pos) = rest.find("{}") {
             result.push_str(&rest[..pos]);

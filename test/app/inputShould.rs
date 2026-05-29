@@ -13,22 +13,25 @@ mod input_tests {
     #[test]
     fn test_handle_key_quit_via_q() {
         let mut app = App::new();
-        app.handle_key_event(press(KeyCode::Char('q')));
-        assert!(app.should_quit);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char('q')));
+        assert!(app.ui.should_quit);
     }
 
     #[test]
     fn test_handle_key_quit_via_escape() {
         let mut app = App::new();
-        app.handle_key_event(press(KeyCode::Esc));
-        assert!(app.should_quit);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Esc));
+        assert!(app.ui.should_quit);
     }
 
     #[test]
     fn test_handle_key_ctrl_c_quits() {
         let mut app = App::new();
-        app.handle_key_event(KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL));
-        assert!(app.should_quit);
+        crate::app::services::input_service::handle_key_event(
+            &mut app,
+            KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL),
+        );
+        assert!(app.ui.should_quit);
     }
 
     #[test]
@@ -38,31 +41,34 @@ mod input_tests {
             kind: KeyEventKind::Release,
             ..press(KeyCode::Char('q'))
         };
-        app.handle_key_event(released);
-        assert!(!app.should_quit);
+        crate::app::services::input_service::handle_key_event(&mut app, released);
+        assert!(!app.ui.should_quit);
     }
 
     #[test]
     fn test_toggle_analysis_paused_via_r() {
         let mut app = App::new();
-        assert!(!app.analysis_paused);
-        app.handle_key_event(press(KeyCode::Char('r')));
-        assert!(app.analysis_paused);
-        app.handle_key_event(press(KeyCode::Char('r')));
-        assert!(!app.analysis_paused);
+        assert!(!app.ui.analysis_paused);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char('r')));
+        assert!(app.ui.analysis_paused);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char('r')));
+        assert!(!app.ui.analysis_paused);
     }
 
     #[test]
     fn test_ctrl_r_triggers_batch_analysis() {
         let mut app = App::new();
-        app.auto_analysis_complete = true;
-        app.handle_key_event(KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL));
-        assert!(!app.is_initial_loading);
+        app.ui.auto_analysis_complete = true;
+        crate::app::services::input_service::handle_key_event(
+            &mut app,
+            KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL),
+        );
+        assert!(!app.ui.is_initial_loading);
     }
 
     fn dismiss_welcome_dialog(app: &mut App) {
-        if app.show_welcome_dialog {
-            app.handle_key_event(press(KeyCode::Esc));
+        if app.ui.show_welcome_dialog {
+            crate::app::services::input_service::handle_key_event(app, press(KeyCode::Esc));
         }
     }
 
@@ -72,13 +78,15 @@ mod input_tests {
         dismiss_welcome_dialog(&mut app);
         use crate::app::types::SidebarFocus;
 
-        assert_eq!(app.sidebar_focus, SidebarFocus::Left);
-        app.handle_key_event(press(KeyCode::Tab));
-        assert_eq!(app.sidebar_focus, SidebarFocus::Center);
-        app.handle_key_event(press(KeyCode::Tab));
-        assert_eq!(app.sidebar_focus, SidebarFocus::Right);
-        app.handle_key_event(press(KeyCode::Tab));
-        assert_eq!(app.sidebar_focus, SidebarFocus::Left);
+        assert_eq!(app.ui.sidebar_focus, SidebarFocus::Left);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Tab));
+        assert_eq!(app.ui.sidebar_focus, SidebarFocus::Center);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Tab));
+        assert_eq!(app.ui.sidebar_focus, SidebarFocus::Right);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Tab));
+        assert_eq!(app.ui.sidebar_focus, SidebarFocus::Nav);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Tab));
+        assert_eq!(app.ui.sidebar_focus, SidebarFocus::Left);
     }
 
     #[test]
@@ -87,197 +95,230 @@ mod input_tests {
         dismiss_welcome_dialog(&mut app);
         use crate::app::types::SidebarFocus;
 
-        app.handle_key_event(press(KeyCode::BackTab));
-        assert_eq!(app.sidebar_focus, SidebarFocus::Right);
-        app.handle_key_event(press(KeyCode::BackTab));
-        assert_eq!(app.sidebar_focus, SidebarFocus::Center);
-        app.handle_key_event(press(KeyCode::BackTab));
-        assert_eq!(app.sidebar_focus, SidebarFocus::Left);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::BackTab));
+        assert_eq!(app.ui.sidebar_focus, SidebarFocus::Nav);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::BackTab));
+        assert_eq!(app.ui.sidebar_focus, SidebarFocus::Right);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::BackTab));
+        assert_eq!(app.ui.sidebar_focus, SidebarFocus::Center);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::BackTab));
+        assert_eq!(app.ui.sidebar_focus, SidebarFocus::Left);
     }
 
     #[test]
     fn test_up_down_noop_with_empty_apps() {
         let mut app = App::new();
-        app.handle_key_event(press(KeyCode::Up));
-        assert_eq!(app.selected_app_index, 0);
-        app.handle_key_event(press(KeyCode::Down));
-        assert_eq!(app.selected_app_index, 0);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Up));
+        assert_eq!(app.network.selected_app_index, 0);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Down));
+        assert_eq!(app.network.selected_app_index, 0);
     }
 
     #[test]
     fn test_search_mode_toggle_via_slash() {
         let mut app = App::new();
-        assert!(!app.search_mode);
-        app.handle_key_event(press(KeyCode::Char('/')));
-        assert!(app.search_mode);
+        assert!(!app.ui.search_mode);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char('/')));
+        assert!(app.ui.search_mode);
     }
 
     #[test]
     fn test_hunter_mode_toggle_via_h() {
         let mut app = App::new();
-        assert!(!app.hunter_mode);
-        app.handle_key_event(press(KeyCode::Char('h')));
-        assert!(app.hunter_mode);
-        app.handle_key_event(press(KeyCode::Char('h')));
-        assert!(!app.hunter_mode);
+        assert!(!app.ui.hunter_mode);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char('h')));
+        assert!(app.ui.hunter_mode);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char('h')));
+        assert!(!app.ui.hunter_mode);
+    }
+
+    #[test]
+    fn test_nav_sidebar_toggle_via_m() {
+        let mut app = App::new();
+        assert!(!app.ui.nav_sidebar_expanded);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char('m')));
+        assert!(app.ui.nav_sidebar_expanded);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char('m')));
+        assert!(!app.ui.nav_sidebar_expanded);
+    }
+
+    #[test]
+    fn test_nav_view_switching_via_arrows() {
+        let mut app = App::new();
+        use crate::app::types::{NavView, SidebarFocus};
+        app.ui.sidebar_focus = SidebarFocus::Nav;
+
+        assert_eq!(app.ui.current_nav_view, NavView::Main);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Down));
+        assert_eq!(app.ui.current_nav_view, NavView::TrendGraphs);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Down));
+        assert_eq!(app.ui.current_nav_view, NavView::Storage);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Up));
+        assert_eq!(app.ui.current_nav_view, NavView::TrendGraphs);
     }
 
     #[test]
     fn test_filter_toggle_via_f() {
         let mut app = App::new();
-        assert!(!app.filter_high_risk_only);
-        app.handle_key_event(press(KeyCode::Char('f')));
-        assert!(app.filter_high_risk_only);
-        app.handle_key_event(press(KeyCode::Char('f')));
-        assert!(!app.filter_high_risk_only);
+        assert!(!app.ui.filter_high_risk_only);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char('f')));
+        assert!(app.ui.filter_high_risk_only);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char('f')));
+        assert!(!app.ui.filter_high_risk_only);
     }
 
     #[test]
     fn test_center_tab_switch_via_number_keys() {
         let mut app = App::new();
-        assert_eq!(app.center_tab, 0);
-        app.handle_key_event(press(KeyCode::Char('3')));
-        assert_eq!(app.center_tab, 2);
+        assert_eq!(app.ui.center_tab, 0);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char('3')));
+        assert_eq!(app.ui.center_tab, 2);
     }
 
     #[test]
     fn test_firewall_mode_enter_via_b() {
         let mut app = App::new();
-        app.handle_key_event(press(KeyCode::Char('b')));
-        assert!(!app.firewall_mode);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char('b')));
+        assert!(!app.firewall.firewall_mode);
     }
 
     #[test]
     fn test_password_modal_preempts_dashboard() {
         let mut app = App::new();
-        app.show_password_modal = true;
-        app.handle_key_event(press(KeyCode::Char('q')));
-        assert!(!app.should_quit);
+        app.install.show_password_modal = true;
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char('q')));
+        assert!(!app.ui.should_quit);
     }
 
     #[test]
     fn test_nerdfont_dialog_preempts_dashboard() {
         let mut app = App::new();
-        app.show_nerdfont_dialog = true;
-        app.handle_key_event(press(KeyCode::Char('q')));
-        assert!(!app.should_quit);
+        app.nerdfont.show_dialog = true;
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char('q')));
+        assert!(!app.ui.should_quit);
     }
 
     #[test]
     fn test_language_modal_preempts_dashboard() {
         let mut app = App::new();
-        app.show_language_modal = true;
-        app.handle_key_event(press(KeyCode::Char('q')));
-        assert!(!app.should_quit);
+        app.ui.show_language_modal = true;
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char('q')));
+        assert!(!app.ui.should_quit);
     }
 
     #[test]
     fn test_confirm_dialog_preempts_dashboard() {
         let mut app = App::new();
-        app.show_confirmation = true;
-        app.confirmation_message = "test".to_string();
-        app.handle_key_event(press(KeyCode::Esc));
-        assert!(!app.should_quit);
-        assert!(!app.show_confirmation);
+        app.ui.show_confirmation = true;
+        app.ui.confirmation_message = "test".to_string();
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Esc));
+        assert!(!app.ui.should_quit);
+        assert!(!app.ui.show_confirmation);
     }
 
     #[test]
     fn test_search_mode_escape_clears() {
         let mut app = App::new();
-        app.search_mode = true;
-        app.search_query = "test".to_string();
-        app.handle_key_event(press(KeyCode::Esc));
-        assert!(!app.search_mode);
-        assert!(app.search_query.is_empty());
+        app.ui.search_mode = true;
+        app.ui.search_query = "test".to_string();
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Esc));
+        assert!(!app.ui.search_mode);
+        assert!(app.ui.search_query.is_empty());
     }
 
     #[test]
     fn test_search_mode_enter_exits_search() {
         let mut app = App::new();
-        app.search_mode = true;
-        app.handle_key_event(press(KeyCode::Enter));
-        assert!(!app.search_mode);
+        app.ui.search_mode = true;
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Enter));
+        assert!(!app.ui.search_mode);
     }
 
     #[test]
     fn test_search_mode_backspace() {
         let mut app = App::new();
-        app.search_mode = true;
-        app.search_query = "ab".to_string();
-        app.handle_key_event(press(KeyCode::Backspace));
-        assert_eq!(app.search_query, "a");
+        app.ui.search_mode = true;
+        app.ui.search_query = "ab".to_string();
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Backspace));
+        assert_eq!(app.ui.search_query, "a");
     }
 
     #[test]
     fn test_search_mode_char_input() {
         let mut app = App::new();
-        app.search_mode = true;
-        app.handle_key_event(press(KeyCode::Char('x')));
-        assert_eq!(app.search_query, "x");
+        app.ui.search_mode = true;
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char('x')));
+        assert_eq!(app.ui.search_query, "x");
     }
 
     #[test]
     fn test_mouse_click_outside_modal_handled() {
         let mut app = App::new();
         use crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
-        app.handle_mouse_event(MouseEvent {
-            kind: MouseEventKind::Down(MouseButton::Left),
-            column: 10,
-            row: 5,
-            modifiers: KeyModifiers::empty(),
-        });
-        assert_eq!(app.sidebar_focus as u8, 0);
+        crate::app::services::input_service::handle_mouse_event(
+            &mut app,
+            MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Left),
+                column: 10,
+                row: 5,
+                modifiers: KeyModifiers::empty(),
+            },
+        );
+        assert_eq!(app.ui.sidebar_focus as u8, 1);
     }
 
     #[test]
     fn test_mouse_scroll_down_in_left_panel() {
         let mut app = App::new();
         use crossterm::event::{MouseEvent, MouseEventKind};
-        app.handle_mouse_event(MouseEvent {
-            kind: MouseEventKind::ScrollDown,
-            column: 10,
-            row: 5,
-            modifiers: KeyModifiers::empty(),
-        });
-        assert_eq!(app.selected_app_index, 0);
+        crate::app::services::input_service::handle_mouse_event(
+            &mut app,
+            MouseEvent {
+                kind: MouseEventKind::ScrollDown,
+                column: 10,
+                row: 5,
+                modifiers: KeyModifiers::empty(),
+            },
+        );
+        assert_eq!(app.network.selected_app_index, 0);
     }
 
     #[test]
     fn test_execute_action_no_selection() {
         let mut app = App::new();
-        app.selected_action_index = 1;
-        app.execute_action();
-        assert!(!app.show_confirmation);
+        app.ui.selected_action_index = 1;
+        crate::app::services::input_service::execute_action(&mut app);
+        assert!(!app.ui.show_confirmation);
     }
 
     #[test]
     fn test_execute_action_kill_process_no_selection() {
         let mut app = App::new();
-        app.selected_action_index = 1;
-        app.execute_action();
-        assert!(!app.show_confirmation);
+        app.ui.selected_action_index = 1;
+        crate::app::services::input_service::execute_action(&mut app);
+        assert!(!app.ui.show_confirmation);
     }
 
     #[test]
     fn test_execute_action_kill_all_no_selection() {
         let mut app = App::new();
-        app.selected_action_index = 2;
-        app.execute_action();
-        assert!(!app.show_confirmation);
+        app.ui.selected_action_index = 2;
+        crate::app::services::input_service::execute_action(&mut app);
+        assert!(!app.ui.show_confirmation);
     }
 
     #[test]
     fn test_execute_action_search_online_no_selection() {
         let mut app = App::new();
-        app.selected_action_index = 3;
-        app.execute_action();
+        app.ui.selected_action_index = 3;
+        crate::app::services::input_service::execute_action(&mut app);
     }
 
     #[test]
     fn test_execute_action_copy_path_no_selection() {
         let mut app = App::new();
-        app.selected_action_index = 4;
-        app.execute_action();
+        app.ui.selected_action_index = 4;
+        crate::app::services::input_service::execute_action(&mut app);
     }
 
     #[test]
@@ -290,7 +331,7 @@ mod input_tests {
             }
         }
         let mut app = App::new();
-        app.export_to_json();
+        crate::app::services::input_service::export_to_json(&mut app);
         let json_files: Vec<_> = std::fs::read_dir(".")
             .unwrap()
             .filter_map(|e| e.ok())
@@ -327,7 +368,7 @@ mod input_tests {
             }
         }
         let mut app = App::new();
-        app.app_connections = vec![AppConnection {
+        app.network.app_connections = vec![AppConnection {
             process_name: "test.exe".to_string(),
             process_path: "C:\\test.exe".to_string(),
             icon: String::new(),
@@ -348,7 +389,7 @@ mod input_tests {
             risk_level: "LOW".to_string(),
             signature_status: SignatureStatus::Unknown,
         }];
-        app.export_to_json();
+        crate::app::services::input_service::export_to_json(&mut app);
         let json_files: Vec<_> = std::fs::read_dir(".")
             .unwrap()
             .filter_map(|e| e.ok())
@@ -378,179 +419,189 @@ mod input_tests {
     #[test]
     fn test_execute_action_filter_toggle() {
         let mut app = App::new();
-        app.selected_action_index = 6;
-        app.execute_action();
-        assert!(app.filter_high_risk_only);
+        app.ui.selected_action_index = 6;
+        crate::app::services::input_service::execute_action(&mut app);
+        assert!(app.ui.filter_high_risk_only);
     }
 
     #[test]
     fn test_execute_action_firewall_no_selection() {
         let mut app = App::new();
-        app.selected_action_index = 7;
-        app.execute_action();
-        assert!(!app.firewall_mode);
+        app.ui.selected_action_index = 7;
+        crate::app::services::input_service::execute_action(&mut app);
+        assert!(!app.firewall.firewall_mode);
     }
 
     #[test]
     fn test_execute_action_language_modal() {
         let mut app = App::new();
-        app.selected_action_index = 8;
-        app.execute_action();
-        assert!(app.show_language_modal);
+        app.ui.selected_action_index = 8;
+        crate::app::services::input_service::execute_action(&mut app);
+        assert!(app.ui.show_language_modal);
     }
 
     #[test]
     fn test_execute_action_pause_resume_toggle() {
         let mut app = App::new();
-        app.selected_action_index = 0;
-        assert!(!app.analysis_paused);
-        app.execute_action();
-        assert!(app.analysis_paused);
-        app.execute_action();
-        assert!(!app.analysis_paused);
+        app.ui.selected_action_index = 0;
+        assert!(!app.ui.analysis_paused);
+        crate::app::services::input_service::execute_action(&mut app);
+        assert!(app.ui.analysis_paused);
+        crate::app::services::input_service::execute_action(&mut app);
+        assert!(!app.ui.analysis_paused);
     }
 
     #[test]
     fn test_handle_confirmation_keys_n_cancels() {
         let mut app = App::new();
-        app.show_confirmation = true;
-        app.confirmation_message = "kill process test".to_string();
-        app.handle_key_event(press(KeyCode::Char('n')));
-        assert!(!app.show_confirmation);
+        app.ui.show_confirmation = true;
+        app.ui.confirmation_message = "kill process test".to_string();
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char('n')));
+        assert!(!app.ui.show_confirmation);
     }
 
     #[test]
     fn test_handle_confirmation_keys_esc_cancels() {
         let mut app = App::new();
-        app.show_confirmation = true;
-        app.confirmation_message = "test".to_string();
-        app.handle_key_event(press(KeyCode::Esc));
-        assert!(!app.show_confirmation);
+        app.ui.show_confirmation = true;
+        app.ui.confirmation_message = "test".to_string();
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Esc));
+        assert!(!app.ui.show_confirmation);
     }
 
     #[test]
     fn test_handle_password_keys_enter_empty_password() {
         let mut app = App::new();
-        app.show_password_modal = true;
-        app.handle_key_event(press(KeyCode::Enter));
-        assert!(app.show_password_modal);
+        app.install.show_password_modal = true;
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Enter));
+        assert!(app.install.show_password_modal);
     }
 
     #[test]
     fn test_handle_password_keys_esc_cancels() {
         let mut app = App::new();
-        app.show_password_modal = true;
-        app.handle_key_event(press(KeyCode::Esc));
-        assert!(!app.show_password_modal);
+        app.install.show_password_modal = true;
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Esc));
+        assert!(!app.install.show_password_modal);
     }
 
     #[test]
     fn test_handle_install_dialog_keys_esc_cancels() {
         let mut app = App::new();
-        app.show_install_dialog = true;
-        app.handle_key_event(press(KeyCode::Esc));
-        assert!(!app.show_install_dialog);
+        app.install.show_dialog = true;
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Esc));
+        assert!(!app.install.show_dialog);
     }
 
     #[test]
     fn test_toggle_selected_conn_checkbox() {
         let mut app = App::new();
-        app.firewall_conn_checked = vec![false, true, false];
-        app.firewall_conn_index = 0;
-        app.toggle_selected_conn_checkbox();
-        assert!(app.firewall_conn_checked[0]);
-        app.firewall_conn_index = 2;
-        app.toggle_selected_conn_checkbox();
-        assert!(app.firewall_conn_checked[2]);
+        app.firewall.firewall_conn_checked = vec![false, true, false];
+        app.firewall.firewall_conn_index = 0;
+        crate::app::services::input_service::toggle_selected_conn_checkbox(&mut app);
+        assert!(app.firewall.firewall_conn_checked[0]);
+        app.firewall.firewall_conn_index = 2;
+        crate::app::services::input_service::toggle_selected_conn_checkbox(&mut app);
+        assert!(app.firewall.firewall_conn_checked[2]);
     }
 
     #[test]
     fn test_any_conn_checked_none() {
         let app = App::new();
-        assert!(!app.any_conn_checked());
+        assert!(!crate::app::services::input_service::any_conn_checked(&app));
     }
 
     #[test]
     fn test_any_conn_checked_some() {
         let mut app = App::new();
-        app.firewall_conn_checked = vec![false, true];
-        assert!(app.any_conn_checked());
+        app.firewall.firewall_conn_checked = vec![false, true];
+        assert!(crate::app::services::input_service::any_conn_checked(&app));
     }
 
     #[test]
     fn test_any_blocked_checked_none() {
         let app = App::new();
-        assert!(!app.any_blocked_checked());
+        assert!(!crate::app::services::input_service::any_blocked_checked(
+            &app
+        ));
     }
 
     #[test]
     fn test_any_blocked_checked_some() {
         let mut app = App::new();
-        app.firewall_blocked_checked = vec![true];
-        assert!(app.any_blocked_checked());
+        app.firewall.firewall_blocked_checked = vec![true];
+        assert!(crate::app::services::input_service::any_blocked_checked(
+            &app
+        ));
     }
 
     #[test]
     fn test_mouse_event_blocked_by_modals() {
         let mut app = App::new();
-        app.show_language_modal = true;
+        app.ui.show_language_modal = true;
         use crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
-        app.handle_mouse_event(MouseEvent {
-            kind: MouseEventKind::Down(MouseButton::Left),
-            column: 50,
-            row: 10,
-            modifiers: KeyModifiers::empty(),
-        });
-        assert_eq!(app.sidebar_focus as u8, 0);
+        crate::app::services::input_service::handle_mouse_event(
+            &mut app,
+            MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Left),
+                column: 50,
+                row: 10,
+                modifiers: KeyModifiers::empty(),
+            },
+        );
+        assert_eq!(app.ui.sidebar_focus as u8, 1);
     }
 
     #[test]
     fn test_update_dialog_blocks_dashboard() {
         let mut app = App::new();
-        app.show_update_dialog = true;
-        app.handle_key_event(press(KeyCode::Char('q')));
-        assert!(!app.should_quit);
+        app.update.show_update_dialog = true;
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char('q')));
+        assert!(!app.ui.should_quit);
     }
 
     #[test]
     fn test_update_dialog_esc_dismisses() {
         let mut app = App::new();
-        app.show_update_dialog = true;
-        app.handle_key_event(press(KeyCode::Esc));
-        assert!(!app.show_update_dialog);
+        app.update.show_update_dialog = true;
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Esc));
+        assert!(!app.update.show_update_dialog);
     }
 
     #[test]
     fn test_update_dialog_q_dismisses() {
         let mut app = App::new();
-        app.show_update_dialog = true;
-        app.handle_key_event(press(KeyCode::Char('q')));
-        assert!(!app.show_update_dialog);
+        app.update.show_update_dialog = true;
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char('q')));
+        assert!(!app.update.show_update_dialog);
     }
 
     #[tokio::test]
     async fn test_update_dialog_enter_starts_update() {
         let mut app = App::new();
-        app.show_welcome_dialog = false;
-        app.show_update_dialog = true;
-        app.latest_remote_version = "1.1.0".to_string();
-        app.handle_key_event(press(KeyCode::Enter));
-        assert!(app.is_updating);
-        assert!(app.show_update_dialog);
+        app.ui.show_welcome_dialog = false;
+        app.update.show_update_dialog = true;
+        app.update.latest_remote_version = "1.1.0".to_string();
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Enter));
+        assert!(app.update.is_updating);
+        assert!(app.update.show_update_dialog);
     }
 
     #[test]
     fn test_update_dialog_blocked_by_modals() {
         let mut app = App::new();
-        app.show_update_dialog = true;
+        app.update.show_update_dialog = true;
         use crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
-        app.handle_mouse_event(MouseEvent {
-            kind: MouseEventKind::Down(MouseButton::Left),
-            column: 50,
-            row: 10,
-            modifiers: KeyModifiers::empty(),
-        });
-        assert_eq!(app.sidebar_focus as u8, 0);
+        crate::app::services::input_service::handle_mouse_event(
+            &mut app,
+            MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Left),
+                column: 50,
+                row: 10,
+                modifiers: KeyModifiers::empty(),
+            },
+        );
+        assert_eq!(app.ui.sidebar_focus as u8, 1);
     }
 
     fn sample_app_conn(pid: u32, name: &str, num_conns: u8) -> crate::app::types::AppConnection {
@@ -585,17 +636,17 @@ mod input_tests {
     fn test_investigation_blocks_center_keyboard_scroll() {
         use crate::app::types::SidebarFocus;
         let mut app = App::new();
-        app.app_connections = vec![sample_app_conn(1, "app1", 3)];
-        app.selected_app_index = 0;
-        app.selected_connection_index = 2;
-        app.is_investigating = true;
-        app.sidebar_focus = SidebarFocus::Center;
+        app.network.app_connections = vec![sample_app_conn(1, "app1", 3)];
+        app.network.selected_app_index = 0;
+        app.network.selected_connection_index = 2;
+        app.investigation.is_investigating = true;
+        app.ui.sidebar_focus = SidebarFocus::Center;
 
-        app.handle_key_event(press(KeyCode::Up));
-        assert_eq!(app.selected_connection_index, 2);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Up));
+        assert_eq!(app.network.selected_connection_index, 2);
 
-        app.handle_key_event(press(KeyCode::Down));
-        assert_eq!(app.selected_connection_index, 2);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Down));
+        assert_eq!(app.network.selected_connection_index, 2);
     }
 
     #[test]
@@ -603,27 +654,33 @@ mod input_tests {
         use crate::app::types::SidebarFocus;
         use crossterm::event::{MouseEvent, MouseEventKind};
         let mut app = App::new();
-        app.app_connections = vec![sample_app_conn(1, "app1", 3)];
-        app.selected_app_index = 0;
-        app.selected_connection_index = 2;
-        app.is_investigating = true;
-        app.sidebar_focus = SidebarFocus::Center;
+        app.network.app_connections = vec![sample_app_conn(1, "app1", 3)];
+        app.network.selected_app_index = 0;
+        app.network.selected_connection_index = 2;
+        app.investigation.is_investigating = true;
+        app.ui.sidebar_focus = SidebarFocus::Center;
 
-        app.handle_mouse_event(MouseEvent {
-            kind: MouseEventKind::ScrollDown,
-            column: 10,
-            row: 5,
-            modifiers: KeyModifiers::empty(),
-        });
-        assert_eq!(app.selected_connection_index, 2);
+        crate::app::services::input_service::handle_mouse_event(
+            &mut app,
+            MouseEvent {
+                kind: MouseEventKind::ScrollDown,
+                column: 10,
+                row: 5,
+                modifiers: KeyModifiers::empty(),
+            },
+        );
+        assert_eq!(app.network.selected_connection_index, 2);
 
-        app.handle_mouse_event(MouseEvent {
-            kind: MouseEventKind::ScrollUp,
-            column: 10,
-            row: 5,
-            modifiers: KeyModifiers::empty(),
-        });
-        assert_eq!(app.selected_connection_index, 2);
+        crate::app::services::input_service::handle_mouse_event(
+            &mut app,
+            MouseEvent {
+                kind: MouseEventKind::ScrollUp,
+                column: 10,
+                row: 5,
+                modifiers: KeyModifiers::empty(),
+            },
+        );
+        assert_eq!(app.network.selected_connection_index, 2);
     }
 
     #[test]
@@ -631,50 +688,54 @@ mod input_tests {
         use crate::app::types::SidebarFocus;
         use crossterm::event::{MouseEvent, MouseEventKind};
         let mut app = App::new();
-        app.app_connections = vec![sample_app_conn(1, "app1", 1), sample_app_conn(2, "app2", 1)];
-        app.selected_app_index = 0;
-        app.is_investigating = true;
-        app.sidebar_focus = SidebarFocus::Left;
+        app.network.app_connections =
+            vec![sample_app_conn(1, "app1", 1), sample_app_conn(2, "app2", 1)];
+        app.network.selected_app_index = 0;
+        app.investigation.is_investigating = true;
+        app.ui.sidebar_focus = SidebarFocus::Left;
 
-        app.handle_mouse_event(MouseEvent {
-            kind: MouseEventKind::ScrollDown,
-            column: 5,
-            row: 5,
-            modifiers: KeyModifiers::empty(),
-        });
-        assert_eq!(app.selected_app_index, 0);
+        crate::app::services::input_service::handle_mouse_event(
+            &mut app,
+            MouseEvent {
+                kind: MouseEventKind::ScrollDown,
+                column: 5,
+                row: 5,
+                modifiers: KeyModifiers::empty(),
+            },
+        );
+        assert_eq!(app.network.selected_app_index, 0);
     }
 
     #[test]
     fn test_investigation_esc_dismiss_resumes_analysis() {
         let mut app = App::new();
-        app.is_investigating = true;
-        app.analysis_paused = true;
+        app.investigation.is_investigating = true;
+        app.ui.analysis_paused = true;
 
-        app.handle_key_event(press(KeyCode::Esc));
-        assert!(!app.is_investigating);
-        assert!(app.investigation_report.is_none());
-        assert!(!app.analysis_paused);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Esc));
+        assert!(!app.investigation.is_investigating);
+        assert!(app.investigation.investigation_report.is_none());
+        assert!(!app.ui.analysis_paused);
     }
 
     #[test]
     fn test_investigation_q_dismiss_resumes_analysis() {
         let mut app = App::new();
-        app.investigation_report = Some(
+        app.investigation.investigation_report = Some(
             crate::app::investigation_service::InvestigationReport::new("8.8.8.8".to_string(), 443),
         );
-        app.analysis_paused = true;
+        app.ui.analysis_paused = true;
 
-        app.handle_key_event(press(KeyCode::Char('q')));
-        assert!(app.investigation_report.is_none());
-        assert!(!app.analysis_paused);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Char('q')));
+        assert!(app.investigation.investigation_report.is_none());
+        assert!(!app.ui.analysis_paused);
     }
 
     #[test]
     fn test_mouse_scroll_in_firewall_mode() {
         let mut app = App::new();
-        app.firewall_mode = true;
-        app.firewall_connections = vec![crate::app::network::NetworkConnection {
+        app.firewall.firewall_mode = true;
+        app.firewall.firewall_connections = vec![crate::app::network::NetworkConnection {
             protocol: "TCP".to_string(),
             local_address: "0.0.0.0".to_string(),
             local_port: 0,
@@ -685,14 +746,17 @@ mod input_tests {
             location: None,
             isp: None,
         }];
-        app.firewall_conn_checked = vec![false];
+        app.firewall.firewall_conn_checked = vec![false];
         use crossterm::event::{MouseEvent, MouseEventKind};
-        app.handle_mouse_event(MouseEvent {
-            kind: MouseEventKind::ScrollDown,
-            column: 10,
-            row: 5,
-            modifiers: KeyModifiers::empty(),
-        });
-        assert_eq!(app.firewall_conn_index, 0);
+        crate::app::services::input_service::handle_mouse_event(
+            &mut app,
+            MouseEvent {
+                kind: MouseEventKind::ScrollDown,
+                column: 10,
+                row: 5,
+                modifiers: KeyModifiers::empty(),
+            },
+        );
+        assert_eq!(app.firewall.firewall_conn_index, 0);
     }
 }

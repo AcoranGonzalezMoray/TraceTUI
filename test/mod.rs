@@ -3,8 +3,14 @@
 mod main_should;
 
 #[cfg(test)]
+#[path = "app/analysis_serviceShould.rs"]
+mod app_analysis_service_should;
+#[cfg(test)]
 #[path = "app/analysisShould.rs"]
 mod app_analysis_should;
+#[cfg(test)]
+#[path = "app/containersShould.rs"]
+mod app_containers_should;
 #[cfg(test)]
 #[path = "app/firewall_serviceShould.rs"]
 mod app_firewall_service_should;
@@ -24,6 +30,9 @@ mod app_investigation_service_should;
 #[path = "app/ioShould.rs"]
 mod app_io_should;
 #[cfg(test)]
+#[path = "app/librariesShould.rs"]
+mod app_libraries_should;
+#[cfg(test)]
 #[path = "app/modShould.rs"]
 mod app_mod_should;
 #[cfg(test)]
@@ -33,8 +42,20 @@ mod app_nerdfont_should;
 #[path = "app/riskShould.rs"]
 mod app_risk_should;
 #[cfg(test)]
+#[path = "app/statesShould.rs"]
+mod app_states_should;
+#[cfg(test)]
+#[path = "app/storageShould.rs"]
+mod app_storage_should;
+#[cfg(test)]
+#[path = "app/trendShould.rs"]
+mod app_trend_should;
+#[cfg(test)]
 #[path = "app/typesShould.rs"]
 mod app_types_should;
+#[cfg(test)]
+#[path = "app/updateShould.rs"]
+mod app_update_should;
 
 #[cfg(test)]
 #[path = "app/network/modShould.rs"]
@@ -61,6 +82,9 @@ mod app_ui_header_should;
 #[cfg(test)]
 #[path = "app/ui/modShould.rs"]
 mod app_ui_mod_should;
+#[cfg(test)]
+#[path = "app/ui/nav_sidebarShould.rs"]
+mod app_ui_nav_sidebar_should;
 #[cfg(test)]
 #[path = "app/ui/sidebar_leftShould.rs"]
 mod app_ui_sidebar_left_should;

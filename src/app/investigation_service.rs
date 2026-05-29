@@ -116,11 +116,6 @@ impl InvestigationService {
                 if let Some(end_idx) = part.find("ms") {
                     report.ping_ms = Some(part[..end_idx].trim().to_string());
                 }
-            } else if let Some(time_idx) = out_str.find("time=") {
-                let part = &out_str[time_idx + 5..];
-                if let Some(end_idx) = part.find("ms") {
-                    report.ping_ms = Some(part[..end_idx].trim().to_string());
-                }
             } else if out_str.find("bytes from").is_some() {
                 if let Some(rtt_idx) = out_str.find("ttl=") {
                     let part = &out_str[rtt_idx..];
@@ -248,6 +243,16 @@ impl InvestigationReport {
         Self {
             ip,
             port,
+            ..Default::default()
+        }
+    }
+}
+
+impl Default for InvestigationReport {
+    fn default() -> Self {
+        Self {
+            ip: String::new(),
+            port: 0,
             domain: None,
             organization: None,
             city: None,

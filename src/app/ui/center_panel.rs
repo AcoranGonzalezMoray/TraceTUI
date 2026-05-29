@@ -14,7 +14,7 @@ use ratatui::{
     },
 };
 pub fn render_center_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let is_focused = app.sidebar_focus == SidebarFocus::Center;
+    let is_focused = app.ui.sidebar_focus == SidebarFocus::Center;
     let border_color = if is_focused {
         THEME.primary
     } else {
@@ -25,29 +25,32 @@ pub fn render_center_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
     } else {
         BorderType::Rounded
     };
-    if app.is_investigating {
-        render_loading_screen(f, app, area, border_color);
+    if app.investigation.is_investigating {
+        render_loading_screen(f, app, area, border_color, app.ui.frame_count);
         return;
     }
-    if app.is_initial_loading {
+    if app.ui.is_initial_loading {
         render_initial_loading_screen(
             f,
             area,
             border_color,
             border_type,
-            app.frame_count,
-            &app.translator,
+            app.ui.frame_count,
+            &app.ui.translator,
         );
         return;
     }
-    if app.show_map {
-        if let Some(repo) = &app.investigation_report {
+    if app.ui.show_map {
+        if let Some(repo) = &app.investigation.investigation_report {
             render_map_view(f, app, repo, area, border_color);
             return;
         }
     }
-    if let Some(repo) = &app.investigation_report {
+    if let Some(repo) = &app.investigation.investigation_report {
         render_investigation_report(f, app, repo, area, border_color);
+        return;
+    }
+    if area.height < 10 || area.width < 30 {
         return;
     }
     if let Some(selected_app) = app.get_selected_app() {
@@ -61,7 +64,7 @@ pub fn render_center_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
             .split(area);
         render_process_info_section(f, app, selected_app, sections[0], border_color, border_type);
         render_center_tabs(f, app, sections[1], border_color);
-        match app.center_tab {
+        match app.ui.center_tab {
             1 => render_risk_barchart(f, app, sections[2], border_color, border_type),
             2 => render_timeline_chart(f, app, sections[2], border_color, border_type),
             _ => render_connections_section(
@@ -117,8 +120,9 @@ fn render_loading_screen(
     app: &App,
     area: Rect,
     _border_color: ratatui::style::Color,
+    frame_count: u64,
 ) {
-    let t = &app.translator;
+    let t = &app.ui.translator;
     let loading_block = Block::default()
         .borders(Borders::ALL)
         .title(format!(" 󰩠 {} ", tr!(t, "center.loading_title")))
@@ -130,11 +134,15 @@ fn render_loading_screen(
         .border_style(Style::default().fg(THEME.warning))
         .border_type(BorderType::Thick);
 
+    let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+    let s = spinner[(frame_count as usize) % spinner.len()];
     let loading_text = vec![
         Line::from(""),
         Line::from(vec![Span::styled(
-            format!("   {} ", tr!(t, "center.loading_diag")),
-            Style::default().fg(THEME.text_main),
+            format!(" {} {}", s, tr!(t, "center.loading_diag")),
+            Style::default()
+                .fg(THEME.warning)
+                .add_modifier(Modifier::BOLD),
         )]),
         Line::from(""),
         Line::from(vec![Span::styled(
@@ -157,7 +165,9 @@ fn render_loading_screen(
                 .add_modifier(Modifier::ITALIC),
         )]),
     ];
-    let p = Paragraph::new(loading_text).block(loading_block);
+    let p = Paragraph::new(loading_text)
+        .block(loading_block)
+        .alignment(Alignment::Center);
     f.render_widget(p, area);
 }
 fn render_investigation_report(
@@ -174,7 +184,7 @@ fn render_investigation_report(
     } else {
         THEME.danger
     };
-    let t = &app.translator;
+    let t = &app.ui.translator;
     let dashboard_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -290,7 +300,7 @@ fn render_security_remarks(
     area: Rect,
     risk_color: Color,
 ) {
-    let t = &app.translator;
+    let t = &app.ui.translator;
     let block = Block::default()
         .borders(Borders::ALL)
         .title(format!(" {} ", tr!(t, "investigation.remarks")))
@@ -309,7 +319,7 @@ fn render_security_remarks(
             .risk_factors
             .iter()
             .any(|f| f.contains("Domain/Process mismatch") || f.contains("Hidden Identity"));
-    let domain_val = repo.domain.as_deref().unwrap_or("N/A");
+    let domain_val = repo.domain.clone().unwrap_or(tr!(t, "center.na"));
     let process_name = app
         .get_selected_app()
         .map(|a| a.process_name.as_str())
@@ -323,9 +333,9 @@ fn render_security_remarks(
         .any(|p| process_name.contains(p))
         || repo.risk_score < 20;
     let known_val = if known_ok {
-        repo.organization.as_deref().unwrap_or("Known")
+        repo.organization.clone().unwrap_or(tr!(t, "center.known"))
     } else {
-        "Unrecognized"
+        tr!(t, "center.unrecognized")
     };
     let proxy_risk = repo
         .risk_factors
@@ -355,8 +365,8 @@ fn render_security_remarks(
         .add_modifier(Modifier::BOLD);
     let header = Row::new(vec![
         Cell::from(""),
-        Cell::from("Checkpoint"),
-        Cell::from("Detail"),
+        Cell::from(tr!(t, "center.checkpoint")),
+        Cell::from(tr!(t, "center.detail")),
     ])
     .style(header_style)
     .height(1);
@@ -438,8 +448,8 @@ fn render_network_info(
         .add_modifier(Modifier::BOLD);
     let header = Row::new(vec![
         Cell::from(""),
-        Cell::from("Field"),
-        Cell::from("Value"),
+        Cell::from(tr!(t, "center.field")),
+        Cell::from(tr!(t, "center.value")),
     ])
     .style(header_style)
     .height(1);
@@ -449,21 +459,21 @@ fn render_network_info(
         Row::new(vec![
             Cell::from(""),
             Cell::from(tr!(t, "investigation.isp")),
-            Cell::from(repo.isp.as_deref().unwrap_or("N/A"))
+            Cell::from(repo.isp.clone().unwrap_or(tr!(t, "center.na")))
                 .style(Style::default().fg(THEME.text_main)),
         ])
         .height(1),
         Row::new(vec![
             Cell::from(""),
             Cell::from(tr!(t, "investigation.org")),
-            Cell::from(repo.organization.as_deref().unwrap_or("N/A"))
+            Cell::from(repo.organization.clone().unwrap_or(tr!(t, "center.na")))
                 .style(Style::default().fg(THEME.text_main)),
         ])
         .height(1),
         Row::new(vec![
             Cell::from(""),
             Cell::from(tr!(t, "investigation.as")),
-            Cell::from(repo.as_info.as_deref().unwrap_or("N/A"))
+            Cell::from(repo.as_info.clone().unwrap_or(tr!(t, "center.na")))
                 .style(Style::default().fg(THEME.text_main)),
         ])
         .height(1),
@@ -478,7 +488,7 @@ fn render_network_info(
             } else {
                 THEME.success
             })),
-            Cell::from("Proxy/VPN"),
+            Cell::from(tr!(t, "center.proxy_vpn")),
             Cell::from(if repo.proxy.unwrap_or(false) {
                 yes.as_str()
             } else {
@@ -502,7 +512,7 @@ fn render_network_info(
             } else {
                 THEME.success
             })),
-            Cell::from("Hosting/DC"),
+            Cell::from(tr!(t, "center.hosting_dc")),
             Cell::from(if repo.hosting.unwrap_or(false) {
                 yes.as_str()
             } else {
@@ -526,7 +536,7 @@ fn render_network_info(
             } else {
                 THEME.success
             })),
-            Cell::from("Mobile"),
+            Cell::from(tr!(t, "center.mobile")),
             Cell::from(if repo.mobile.unwrap_or(false) {
                 yes.as_str()
             } else {
@@ -566,7 +576,7 @@ fn render_network_route_table(
     let header_style = Style::default()
         .fg(THEME.text_dim)
         .add_modifier(Modifier::BOLD);
-    let header = Row::new(vec![Cell::from("  #"), Cell::from("Hop")])
+    let header = Row::new(vec![Cell::from("  #"), Cell::from(tr!(t, "center.hop"))])
         .style(header_style)
         .height(1);
     let rows: Vec<Row> = repo
@@ -597,7 +607,7 @@ fn render_map_view(
         .borders(Borders::ALL)
         .title(format!(
             " {} {}:{} ",
-            tr!(app.translator, "map.title"),
+            tr!(app.ui.translator, "map.title"),
             repo.ip,
             repo.port
         ))
@@ -623,7 +633,7 @@ fn render_map_view(
             ctx.layer();
 
             let mut route: Vec<(f64, f64)> = Vec::new();
-            if let Some(user) = &app.user_geo {
+            if let Some(user) = &app.geo.user_geo {
                 if user.lat != 0.0 || user.lon != 0.0 {
                     route.push((user.lon, user.lat));
                 }
@@ -639,7 +649,7 @@ fn render_map_view(
             if segments > 0 {
                 let frames_per_seg = 40u64;
                 let cycle = segments as u64 * frames_per_seg;
-                let cf = app.frame_count % cycle;
+                let cf = app.ui.frame_count % cycle;
                 let prog = cf as f64 / cycle as f64;
                 let total = prog * segments as f64;
                 let seg_idx = (total as usize).min(segments - 1);
@@ -687,7 +697,7 @@ fn render_map_view(
                 });
             }
 
-            if let Some(user) = &app.user_geo {
+            if let Some(user) = &app.geo.user_geo {
                 if user.lat != 0.0 || user.lon != 0.0 {
                     ctx.draw(&Points {
                         coords: &[(user.lon, user.lat)],
@@ -726,7 +736,7 @@ fn render_process_info_section(
     border_color: ratatui::style::Color,
     border_type: BorderType,
 ) {
-    let t = &app.translator;
+    let t = &app.ui.translator;
     let main_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(8), Constraint::Length(3)])
@@ -824,9 +834,9 @@ fn render_process_info_section(
     let gauge_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),
-            Constraint::Length(3),
-            Constraint::Length(3),
+            Constraint::Length(2),
+            Constraint::Length(2),
+            Constraint::Length(2),
         ])
         .split(top_chunks[1]);
     let cpu_ratio = (selected_app.cpu_usage as f64 / 100.0).clamp(0.0, 1.0);
@@ -872,8 +882,8 @@ fn render_process_info_section(
         mem_gauge
     };
     f.render_widget(mem_gauge, gauge_layout[1]);
-    if !app.cpu_history.is_empty() {
-        let spark_vals: Vec<u64> = app.cpu_history.iter().map(|&v| v as u64).collect();
+    if !app.trend.cpu_history.is_empty() {
+        let spark_vals: Vec<u64> = app.trend.cpu_history.iter().map(|&v| v as u64).collect();
         let spark = Sparkline::default()
             .block(Block::default().title(format!(" {} ", tr!(t, "center.cpu_history"))))
             .style(Style::default().fg(cpu_color))
@@ -903,7 +913,7 @@ fn render_process_info_section(
     f.render_widget(path_para, main_layout[1]);
 }
 fn render_center_tabs(f: &mut ratatui::Frame, app: &App, area: Rect, border_color: Color) {
-    let t = &app.translator;
+    let t = &app.ui.translator;
     let titles = [
         (1, tr!(t, "center.tab_connections")),
         (2, tr!(t, "center.tab_risk")),
@@ -911,7 +921,7 @@ fn render_center_tabs(f: &mut ratatui::Frame, app: &App, area: Rect, border_colo
     ];
     let mut spans = vec![Span::raw(" ")];
     for (i, (key, title)) in titles.iter().enumerate() {
-        let active = i == app.center_tab;
+        let active = i == app.ui.center_tab;
         if i > 0 {
             spans.push(Span::raw("  "));
         }
@@ -943,7 +953,7 @@ fn render_risk_barchart(
     border_color: Color,
     border_type: BorderType,
 ) {
-    let t = &app.translator;
+    let t = &app.ui.translator;
     let block = Block::default()
         .borders(Borders::ALL)
         .title(format!(" {} ", tr!(t, "center.risk_overview")))
@@ -1005,10 +1015,13 @@ fn render_risk_barchart(
         })
         .collect();
 
+    let bar_count = bars.len().max(1) as u16;
+    let bar_width =
+        ((inner.width.saturating_sub(bar_count.saturating_sub(1))) / bar_count).clamp(3, 20);
     let bar_chart = BarChart::default()
         .data(BarGroup::default().bars(&bars))
         .bar_gap(1)
-        .bar_width(14)
+        .bar_width(bar_width)
         .max(100);
     f.render_widget(bar_chart, inner);
 }
@@ -1019,7 +1032,7 @@ fn render_timeline_chart(
     border_color: Color,
     border_type: BorderType,
 ) {
-    let t = &app.translator;
+    let t = &app.ui.translator;
     let block = Block::default()
         .borders(Borders::ALL)
         .title(format!(" {} ", tr!(t, "center.timeline")))
@@ -1033,7 +1046,7 @@ fn render_timeline_chart(
     f.render_widget(block.clone(), area);
     let inner = block.inner(area);
 
-    if app.conn_count_history.len() < 2 {
+    if app.trend.conn_count_history.len() < 2 {
         let p = Paragraph::new(tr!(t, "center.timeline_wait"))
             .alignment(Alignment::Center)
             .style(Style::default().fg(THEME.text_dim));
@@ -1041,8 +1054,15 @@ fn render_timeline_chart(
         return;
     }
 
-    let max = *app.conn_count_history.iter().max().unwrap_or(&1).max(&1);
+    let max = *app
+        .trend
+        .conn_count_history
+        .iter()
+        .max()
+        .unwrap_or(&1)
+        .max(&1);
     let data: Vec<(f64, f64)> = app
+        .trend
         .conn_count_history
         .iter()
         .enumerate()
@@ -1059,10 +1079,13 @@ fn render_timeline_chart(
         .block(Block::default())
         .x_axis(
             ratatui::widgets::Axis::default()
-                .bounds([0.0, app.conn_count_history.len().saturating_sub(1) as f64])
+                .bounds([
+                    0.0,
+                    app.trend.conn_count_history.len().saturating_sub(1) as f64,
+                ])
                 .labels(vec![
                     "0".into(),
-                    format!("{}", app.conn_count_history.len()),
+                    format!("{}", app.trend.conn_count_history.len()),
                 ]),
         )
         .y_axis(
@@ -1081,7 +1104,7 @@ fn render_connections_section(
     border_color: ratatui::style::Color,
     border_type: BorderType,
 ) {
-    let t = &app.translator;
+    let t = &app.ui.translator;
     if selected_app.connections.is_empty() {
         let empty_text = vec![
             Line::from(""),
@@ -1107,7 +1130,7 @@ fn render_connections_section(
         f.render_widget(empty, area);
         return;
     }
-    let is_focused = app.sidebar_focus == SidebarFocus::Center;
+    let is_focused = app.ui.sidebar_focus == SidebarFocus::Center;
     let sel_bg = if is_focused {
         THEME.primary
     } else {
@@ -1156,7 +1179,7 @@ fn render_connections_section(
         .iter()
         .enumerate()
         .map(|(i, conn)| {
-            let is_selected = i == app.selected_connection_index;
+            let is_selected = i == app.network.selected_connection_index;
             let row_style = if is_selected {
                 Style::default().bg(sel_bg)
             } else {
@@ -1217,7 +1240,7 @@ fn render_connections_section(
         .collect();
 
     let mut table_state = TableState::default();
-    table_state.select(Some(app.selected_connection_index));
+    table_state.select(Some(app.network.selected_connection_index));
 
     let table = Table::new(rows, widths)
         .header(header)
@@ -1232,7 +1255,7 @@ fn render_no_selection_view(
     border_color: ratatui::style::Color,
     border_type: BorderType,
 ) {
-    let t = &app.translator;
+    let t = &app.ui.translator;
     let empty_text = vec![
         Line::from(""),
         Line::from(""),

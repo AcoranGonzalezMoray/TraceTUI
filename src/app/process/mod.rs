@@ -18,21 +18,85 @@ pub struct ProcessManager {
     system: System,
     processes: Vec<ProcessInfo>,
 }
+#[cfg(windows)]
+fn fill_missing_paths(processes: &mut [ProcessInfo]) {
+    let missing: Vec<(usize, u32)> = processes
+        .iter()
+        .enumerate()
+        .filter(|(_, p)| p.path.is_none())
+        .map(|(i, p)| (i, p.pid))
+        .collect();
+
+    if missing.is_empty() {
+        return;
+    }
+    let filter: String = missing
+        .iter()
+        .map(|(_, pid)| format!("ProcessId = {}", pid))
+        .collect::<Vec<_>>()
+        .join(" OR ");
+    let script = format!(
+        "$r = @{{}}; \
+         Get-CimInstance Win32_Process -Filter '{}' | \
+         ForEach-Object {{ $r[$_.ProcessId] = $_.ExecutablePath }}; \
+         Get-CimInstance Win32_Service -Filter '{}' | \
+         ForEach-Object {{ \
+             if (-not $r[$_.ProcessId]) {{ \
+                 $p = $_.PathName; \
+                 if ($p -match '^\"(.*?)\"') {{ $p = $matches[1] }} \
+                 elseif ($p -match '^([^ ]+)') {{ $p = $matches[1] }}; \
+                 $r[$_.ProcessId] = $p \
+             }} \
+         }}; \
+         $r.GetEnumerator() | ForEach-Object {{ \"$($_.Key):$($_.Value)\" }}",
+        filter, filter
+    );
+    match std::process::Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+        .output()
+    {
+        Ok(output) => {
+            if output.status.success() {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                let lines: Vec<&str> = stdout.lines().filter(|l| !l.trim().is_empty()).collect();
+                for line in &lines {
+                    if let Some((pid_str, path)) = line.split_once(':') {
+                        if let Ok(pid) = pid_str.trim().parse::<u32>() {
+                            if !path.is_empty() {
+                                if let Some((idx, _)) = missing.iter().find(|(_, p)| *p == pid) {
+                                    processes[*idx].path = Some(path.to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Err(_e) => {} // PowerShell not available
+    }
+}
+#[cfg(not(windows))]
+fn fill_missing_paths(_processes: &mut Vec<ProcessInfo>) {}
 impl ProcessManager {
     pub fn new() -> Self {
         Self {
-            system: System::new_all(),
+            system: System::new(),
             processes: Vec::new(),
         }
     }
     pub fn refresh_processes(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         self.system.refresh_all();
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        self.system.refresh_all();
         self.processes.clear();
         for (pid, process) in self.system.processes() {
+            let syspath = process.exe().map(|p| p.to_string_lossy().to_string());
+            let name = process.name().to_string();
+            let pid_u32 = pid.as_u32();
             let process_info = ProcessInfo {
-                pid: pid.as_u32(),
-                name: process.name().to_string(),
-                path: process.exe().map(|p| p.to_string_lossy().to_string()),
+                pid: pid_u32,
+                name,
+                path: syspath,
                 command_line: Some(process.cmd().join(" ")),
                 cpu_usage: process.cpu_usage(),
                 memory_usage: process.memory(),
@@ -44,6 +108,7 @@ impl ProcessManager {
             };
             self.processes.push(process_info);
         }
+        fill_missing_paths(&mut self.processes);
         Ok(())
     }
     pub fn get_all_processes(&self) -> &[ProcessInfo] {

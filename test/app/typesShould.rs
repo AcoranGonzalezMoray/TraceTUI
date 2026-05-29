@@ -10,9 +10,10 @@ mod types_tests {
 
     #[test]
     fn test_sidebar_focus_cycling() {
-        assert_eq!(SidebarFocus::Left as u8, 0);
-        assert_eq!(SidebarFocus::Center as u8, 1);
-        assert_eq!(SidebarFocus::Right as u8, 2);
+        assert_eq!(SidebarFocus::Nav as u8, 0);
+        assert_eq!(SidebarFocus::Left as u8, 1);
+        assert_eq!(SidebarFocus::Center as u8, 2);
+        assert_eq!(SidebarFocus::Right as u8, 3);
     }
 
     #[test]

@@ -270,7 +270,10 @@ pub fn spawn_self_update(
 
         let status = tokio::task::spawn_blocking(move || {
             let bin_path = std::env::current_exe().map_err(|e| e.to_string())?;
-            let tmp_dir = bin_path.parent().unwrap().join(".tracetui_update_tmp");
+            let tmp_dir = bin_path
+                .parent()
+                .expect("binary must be in a directory")
+                .join(".tracetui_update_tmp");
 
             std::fs::create_dir_all(&tmp_dir).map_err(|e| e.to_string())?;
             let tmp_path = tmp_dir.join(&name);
@@ -320,15 +323,12 @@ pub fn spawn_self_update(
 
             #[cfg(windows)]
             {
-                // Windows: rename running exe -> .old (works while process is running),
-                // then place the new binary in its place
                 let old_path = bin_path.with_extension("exe.old");
                 let _ = std::fs::rename(&bin_path, &old_path);
                 try_replace_binary(&extracted_bin, &bin_path)?;
             }
             #[cfg(not(windows))]
             {
-                // Linux/macOS: try direct, fallback to sudo if permission denied
                 try_replace_binary(&extracted_bin, &bin_path)?;
             }
 

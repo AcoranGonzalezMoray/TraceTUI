@@ -4,140 +4,133 @@
 
 # TraceTUI
 
-### Modern Terminal Intelligence for Network & Process Investigation
+**Terminal UI for System Process & Network Analysis**
 
-[![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg?style=for-the-badge)](LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=for-the-badge)](CONTRIBUTING.md)
-[![Platform](https://img.shields.io/badge/platform-windows%20%7C%20linux-lightgrey.svg?style=for-the-badge)](#-installation)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/AcoranGonzalezMoray/TraceTUI/pr_checks.yml?style=flat-square)](https://github.com/AcoranGonzalezMoray/TraceTUI/actions)
+[![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg?style=flat-square&logo=rust)](https://www.rust-lang.org/)
+[![Release](https://img.shields.io/github/v/release/AcoranGonzalezMoray/TraceTUI?style=flat-square&logo=github)](https://github.com/AcoranGonzalezMoray/TraceTUI/releases)
+[![Website](https://img.shields.io/badge/Official-Website-blue?style=flat-square&logo=edge)](https://acorangonzalezmoray.github.io/TraceTUI/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
+[![Platform](https://img.shields.io/badge/platform-windows%20%7C%20linux-lightgrey.svg?style=flat-square)](#-installation)
+
+[Features](#-key-features) •
+[Installation](#-installation) •
+[Quick Start](#-quick-start) •
+[Architecture](#-architecture) •
+[Contributing](#-contributing)
 
 </div>
 
+## 📖 Overview
+
+**TraceTUI** is a terminal user interface (TUI) for system process and network analysis. Built with **Rust** and **Ratatui**, it provides real-time monitoring of network connections, process management, storage inspection, library analysis, and container orchestration — all from the terminal.
+
+<img src="./docs/assets/step_init.png" alt="TraceTUI Menu">
+
+## ✨ Key Features
+
+### 🕵️ Real-Time Network Monitoring
+- **Connection Tracking**: Monitor active TCP/UDP connections with sub-second latency.
+- **Filtering**: Exclude common ports (e.g., 80/443) to isolate unusual traffic.
+- **Geo-Location**: Live IP location indicators (via ip-api.com) with batch lookup.
+- **Search**: Filter through connections via live search (`/`).
+<img src="./docs/assets/step_trend.png"  alt="TraceTUI Menu">
+<img src="./docs/assets/step_init.png"  alt="TraceTUI Menu">
+
+### ⚙️ Process & Container Management
+- **Process View**: Complete process visibility with executable paths and command-line arguments.
+- **Resource Monitoring**: Track process-level CPU and memory usage in real time.
+- **Container Integration**: Monitor Docker containers (CPU/Mem/Net I/O), view logs, and execute console commands from the UI.
+- **Process Control**: Terminate processes or drop their network connections.
+
+#### Container Actions
+- Start, stop, restart, pause/unpause containers
+- View container logs (tail 300 lines)
+- Interactive shell console inside containers
+- Docker Hub image search and container creation
+- Start/stop Docker Desktop (Windows) or Docker daemon (Linux)
+
+<img src="./docs/assets/step_conta.png"  alt="TraceTUI Menu">
 
 
-## Overview
+### 🔍 Investigation Suite
+- **IP Analysis**: Geographic location, ISP, ASN, timezone, and connection type (mobile/hosting) for remote endpoints.
+- **Network Diagnostics**: DNS resolution, WHOIS lookups, ping latency, and traceroute with geographic mapping.
+- **Risk Scoring**: Automated evaluation based on domain/process mismatches, anonymity usage (VPN/Tor), and latency anomalies.
 
-**TraceTUI** is a high-performance terminal user interface (TUI) for deep system forensic and network investigation. Built with **Rust** and **Ratatui**, it provides real-time monitoring of network traffic, process management, and suspicious activity analysis.
+#### Library Inspection
+- Loaded DLL/library listing per process with signature verification (Signed/Unsigned/Invalid)
+- Origin classification: System, ProgramFiles, UserSpace, Temp
+- Risk assessment with filterable columns
+- Binary viewer with hex dump and x86 disassembly
+- SHA-256 hash computation
+- Export to JSON/CSV
 
-<img src="./docs/assets/menu.png" alt="TraceTUI Menu">
+<img src="./docs/assets/step_lib.png"  alt="TraceTUI Menu">
 
+#### Storage Explorer
+- Disk usage visualization with usage bars (Windows and Linux)
+- File browser with directory navigation (name/size/date sort)
+- Recursive file search with extension filters (images, documents, code, archives, audio, video)
+- Inline text/log/ANSI file viewer
+- Image preview via PowerShell (Windows) or chafa/catimg (Linux)
 
+<img src="./docs/assets/step_storage.png"  alt="TraceTUI Menu">
 
-## Features
+### 🛡️ Firewall Management
+- **Connection Blocking**: Select endpoints and block them via Windows Firewall.
+- **Rules Review**: Browse blocked IPs and execute batch block/unblock operations.
 
-### Real-time Network Intelligence
-- **Deep Monitoring**: Track active TCP/UDP connections with sub-second latency
-- **Ports Filtering**: Exclude common ports (80/443) to focus on unusual traffic
-- **Geo-Location**: Visual indicators for remote connection endpoints using ip-api.com
-- **Batch GeoIP Lookup**: Efficient bulk IP lookups for improved performance
-- **Sort & Search**: Navigate through hundreds of connections with live search (`/` key)
-- **Filter High Risk**: Show only suspicious connections (`F` key)
-
-### Advanced Process Management
-- **System Enumeration**: Full process visibility including paths and command lines
-- **Resource Tracking**: Real-time CPU and memory usage per process
-- **Secure Termination**: Kill suspicious processes with multi-step confirmation (`X` key)
-- **Connection Termination**: Kill all connections for a process (`-` key)
-- **Window Integration**: (Windows only) Extract application icons and metadata
-- **Clipboard Integration**: Copy process paths to clipboard (`Ctrl+C` or `C` key)
-- **Online Search**: Search for process information online (`G` key)
-
-### Deep Investigation Suite
-- **IP Investigation**: Detailed analysis of remote IPs including:
-  - Geographic location (city, country, coordinates)
-  - ISP and organization details
-  - ASN and network information
-  - Timezone and connection type (mobile/proxy/hosting)
-- **DNS Lookup**: Forward and reverse DNS resolution (`nslookup`/`dig`)
-- **Network Diagnostics**: 
-  - Ping latency measurement
-  - Traceroute with geographic hop mapping
-  - WHOIS record lookup
-- **Risk Assessment**: Automated risk scoring based on:
-  - Domain/process mismatch detection
-  - Network anonymity indicators (proxy, VPN, Tor)
-  - Latency anomalies
-  - Hosting provider and mobile network detection
-- **Visual Mapping**: Interactive map view of connection routes and endpoints
-
-### Automated Batch Analysis
-- **Risk Scoring**: Detect suspicious network patterns and orphaned processes
-- **Heuristic Analysis**: Identify threats based on connection frequency and behavior
-- **Filter Mode**: Auto-filter known-safe signed processes to surface unknowns (`H` key)
-- **JSON Export**: Export full analysis to timestamped JSON files (`S` key or Action #5)
-- **Pause/Resume**: Temporarily halt background analysis (`R` key)
-- **Manual Refresh**: Trigger immediate analysis update (`Ctrl+R` key)
-
-### Firewall Management
-- **Per-Connection Blocking**: Select individual connections to block via Windows Firewall
-- **Blocked IPs Viewer**: Review and unblock previously blocked addresses
-- **Batch Operations**: Block/unblock multiple connections at once
-- **Firewall Mode**: Toggle firewall management (`B` key or Action #7)
-
-### User Experience
-- **Full Input Support**: Comprehensive keyboard shortcuts and mouse interaction
-- **Adaptive Layout**: Auto-scales panels based on terminal size
-- **Multi-language**: Built-in i18n with 9 locales (EN, ES, FR, DE, IT, PT, JA, ZH, RU) (`L` key or Action #8)
-- **Nerd Font Support**: Optional JetBrains Mono Nerd Font for enhanced iconography
-- **System Tray**: Windows system tray integration for background operation
-- **Update Checking**: Automatic version checks with GitHub releases
-- **Installation Helpers**: Scripts for easy setup and dependency installation
-
-### Investigation Panels
-- **Connections View**: Detailed table of network connections with filtering
-- **Risk Analysis**: Process risk scoring and threat indicators
-- **Timeline View**: Historical activity tracking and trends
-- **Map View**: Geographic visualization of connection routes
-- **Process Details**: Executable paths, signatures, and resource usage
-- **Firewall Management**: Connection blocking and IP allowlist/blocklist
+### 💻 User Experience
+- **Nerd Font Support**: Optional JetBrains Mono Nerd Font for enhanced icons.
+- **Multi-language**: 9 built-in locales (EN, ES, FR, DE, IT, PT, JA, ZH, RU) — switch with `L` key.
+- **Adaptive Layout**: Resizes to any terminal dimensions.
 
 ---
 
-## External Dependencies
+## 🌐 External Dependencies
 
 TraceTUI connects to the following external services at runtime:
 
 | Service | URL | Purpose |
 |---|---|---|
-| **ip-api.com** | `http://ip-api.com/json` | Geo-location of remote IP addresses (city, country, ISP, coordinates). Used in the investigation panel and connection location column. |
-| **ip-api.com (Batch)** | `http://ip-api.com/batch` | Bulk geoIP lookups for improved performance during analysis. |
-| **GitHub API** | `https://api.github.com/repos/.../releases/latest` | Version check — compares local version against latest remote release at startup. |
-| **GitHub Releases** | `https://github.com/.../releases/latest` | Opens the download page when the user accepts an update from the update dialog. |
-| **Google Search** | `https://www.google.com/search?q=` | Opens a web search for the selected process name via the "Search Online" action. |
-| **Nerd Fonts** | `https://github.com/ryanoasis/nerd-fonts/releases/.../JetBrainsMono.zip` | Downloads JetBrainsMono Nerd Font when the user opts to install it from the Nerd Font dialog. |
-| **WHOIS Services** | Various | Queries regional WHOIS registries for domain and IP registration information. |
+| **ip-api.com** | `http://ip-api.com/json` | Geo-location of remote IP addresses (city, country, ISP, coordinates). |
+| **ip-api.com (Batch)** | `http://ip-api.com/batch` | Bulk geoIP lookups for performance optimization in analysis. |
+| **GitHub API** | `https://api.github.com/repos/...` | Startup version checker (verifies local against remote release). |
+| **Google Search** | `https://www.google.com/search?q=` | Performs web queries via the "Search Online" feature. |
+| **Nerd Fonts** | `https://github.com/ryanoasis/...` | Downloads the JetBrainsMono Nerd Font if the user chooses to install it. |
+| **WHOIS** | Various Registries | Queries regional WHOIS registries for network block and domain insights. |
 
-All URLs are centralized in [`resources/external_urls.json`](resources/external_urls.json) and loaded at compile time via `include_str!`.
+All URLs are centralized under `resources/external_urls.json` via compile-time loading.
 
 ---
 
-## Installation
+## 🚀 Installation
 
-### Prerequisites
-- **Rust Toolchain** (v1.70+): [Install Rust](https://rustup.rs/)
-- **Administrator Privileges**: Recommended for firewall operations and process termination
-- **Nerd Font**: Recommended for optimal icon display (JetBrains Mono Nerd Font)
+TraceTUI requires **Rust 1.70+**. Administrator privileges are recommended for packet inspection and firewall features.
 
-### From Release Binaries
+### 📥 Pre-built Binaries (Recommended)
 
-Pre-built binaries are available on the [Releases page](https://github.com/AcoranGonzalezMoray/TraceTUI/releases).
+Get the latest executable from the [Releases page](https://github.com/AcoranGonzalezMoray/TraceTUI/releases) or directly from the [Official Website](https://acorangonzalezmoray.github.io/TraceTUI/).
+*(Note: TraceTUI contains a self-updating mechanism to check for newer versions on startup.)*
 
-> **Already installed?** Just run `tracetui` — it checks for updates automatically on every launch.
-> The install script below is only needed for first-time setup.
-
-**Windows:**
-1. Download `tracetui-x86_64-pc-windows-gnu.zip`
-2. Extract and run `installOrUpdate.ps1` (adds `tracetui` to your user PATH)
-3. Restart your terminal and run `tracetui`
+**Windows (PowerShell - Run as Administrator):**
+```powershell
+Invoke-WebRequest -Uri "https://github.com/AcoranGonzalezMoray/TraceTUI/releases/latest/download/tracetui-x86_64-pc-windows-gnu.zip" -OutFile "$env:TEMP\tracetui.zip"
+Expand-Archive -Path "$env:TEMP\tracetui.zip" -DestinationPath "$env:TEMP\tracetui" -Force
+& "$env:TEMP\tracetui\installOrUpdate.ps1"
+```
 
 **Linux:**
-1. Download `tracetui-x86_64-unknown-linux-gnu.tar.gz`
-2. Extract: `tar xzf tracetui-x86_64-unknown-linux-gnu.tar.gz`
-3. Run the install script: `chmod +x installOrUpdate.sh and next sudo sh ./installOrUpdate.sh`
-4. Run `tracetui`
+```bash
+curl -L -o /tmp/tracetui.tar.gz "https://github.com/AcoranGonzalezMoray/TraceTUI/releases/latest/download/tracetui-x86_64-unknown-linux-gnu.tar.gz"
+tar xzf /tmp/tracetui.tar.gz -C /tmp
+chmod +x /tmp/installOrUpdate.sh
+sudo sh /tmp/installOrUpdate.sh
+```
 
-### From Source
-
+### 🛠️ Build from Source
 ```bash
 git clone https://github.com/AcoranGonzalezMoray/TraceTUI.git
 cd TraceTUI
@@ -147,172 +140,109 @@ cargo build --release
 
 ---
 
-## Quick Start
+## ⌨️ Quick Start
 
-| Action | Key / Input |
+Navigate the TUI freely using the following core keybindings:
+
+| Action | Shortcut |
 | :--- | :--- |
-| Navigate panels | `Tab` / `BackTab` |
-| Select app / action | `Up` `Down` |
-| Confirm / enter | `Enter` |
-| Search | `/` then type query |
-| Toggle filter (high risk) | `F` |
-| Toggle hunter mode | `H` |
-| Pause / resume analysis | `R` |
-| Manual batch refresh | `Ctrl+R` |
-| Export to JSON | `S` or Action panel #5 |
-| Firewall mode | `B` or Action panel #7 |
-| Show language modal | `L` or Action panel #8 |
-| Nerd font dialog | Action panel #9 |
-| Center tab: Connections | `1` |
-| Center tab: Risk | `2` *(requires selected app)* |
-| Center tab: Timeline | `3` |
-| Toggle map view | Action panel #0 *(during investigation)* |
-| Kill selected process | `X` or Action panel #1 |
-| Kill all connections | `-` or Action panel #2 |
-| Search online | `G` or Action panel #3 |
-| Copy process path | `Ctrl+C` or `C` or Action panel #4 |
-| Toggle filter | `F` or Action panel #6 |
-| Quit | `Q` or `Esc` |
+| **Navigate Panels** | `Tab` / `Shift+Tab` |
+| **Move Up / Down** | `↑` `↓` `PgUp` `PgDn` |
+| **Deep Investigate** | `Enter` (on a connection/endpoint) |
+| **Close / Exit View** | `Q` or `Esc` |
+| **Search Bar** | `/` |
+| **Toggle Nav Sidebar** | `M` |
+| **Hunter Mode** | `H` |
+| **Kill Process**| `X` |
+| **Kill App Connections** | `-` |
+| **Toggle Firewall Mode** | `B` |
+| **Export to JSON** | `S` |
+| **Language Modal** | `L` |
+
+> *Tip: TraceTUI is fully capable of operating in the background. Press `H` to toggle "Hunter Mode" and filter out safe background processes.*
 
 ---
 
-## Rust Commands
+## 🏗️ Architecture
 
-```bash
-# Build
-cargo build              # Debug build
-cargo build --release    # Release build
+TraceTUI uses asynchronous systems to avoid blocking the UI rendering.
 
-# Run
-cargo run                # Run in debug mode
+### 🗂️ Project Structure
 
-cargo test               # Run all tests
-
-# Lint
-cargo fmt                # Format code
-cargo clippy             # Lint with clippy
-```
-
----
-
-## Architecture
-
-### Project Structure
-
-```
-resources/
-└── external_urls.json      # Centralized external API URLs (loaded at compile time)
-scripts/
-├── installOrUpdate.ps1     # Windows first-time install script
-├── installOrUpdate.sh      # Linux first-time install script
-├── tracetui.desktop        # Linux desktop entry
-└── icon_extractor.ps1      # Windows icon extraction helper
+```text
 src/
 ├── main.rs                 # Entry point
 ├── app/
-│   ├── mod.rs              # App struct, state, core logic
-│   ├── analysis.rs         # Auto-analysis, geo lookup, investigation
-│   ├── firewall_service.rs # Firewall panel state machine
-│   ├── grouping.rs         # ConnectionGrouper: process→connection→risk
-│   ├── input.rs            # Key/mouse event dispatch, actions
-│   ├── installation.rs     # Net-tools installation helpers
-│   ├── investigation_service.rs  # Deep-dive IP investigation
+│   ├── mod.rs              # App struct (12 state fields), shared methods
+│   ├── states/             # 12 state structs for different views
+│   ├── services/           # Background polling, investigation, inputs
+│   ├── ui/                 # UI render dispatch (Ratatui modules)
+│   │   ├── mod.rs
+│   │   ├── center_panel.rs # Connection, risk, timeline tabs
+│   │   ├── sidebar_left.rs # Process list sidebar
+│   │   ├── sidebar_right.rs# Actions sidebar
+│   │   ├── nav_sidebar.rs  # Collapsible nav (Main/Trends/Storage/Libraries/Containers)
+│   │   ├── header.rs       # Top status bar
+│   │   ├── footer.rs       # Keybinding hint bar
+│   │   ├── dialogs.rs      # Confirmation, search, language modals
+│   │   ├── firewall.rs     # Firewall management view
+│   │   ├── trends.rs       # Analytics dashboard (sparklines, KPIs, risk dist)
+│   │   ├── storage.rs      # Disk and file browser
+│   │   ├── libraries.rs    # Library inspection view
+│   │   ├── containers.rs   # Container management view
+│   │   ├── widgets.rs      # Shared UI components
+│   │   └── theme.rs        # Color theme
+│   ├── network/            # NetworkAnalyzer, connection parsing
+│   ├── process/            # ProcessManager, ProcessInfo
+│   ├── containers.rs       # Docker container manager
+│   ├── storage.rs          # Disk/file system access
+│   ├── libraries/          # Library inspection engine
+│   ├── firewall_service.rs # Windows Firewall integration
+│   ├── risk.rs             # Risk scoring logic
+│   ├── investigation_service.rs
+│   ├── grouping.rs         # Connection grouping
+│   ├── installation.rs     # Install/update scripts
+│   ├── nerdfont.rs         # Nerd Font installer
 │   ├── io.rs               # Terminal setup/restore
-│   ├── nerdfont.rs         # Nerd Font detection
-│   ├── risk.rs             # RiskAnalyzer: scoring engine
-│   ├── types.rs            # Core enums, structs, traits
-│   ├── network/
-│   │   ├── mod.rs          # NetworkAnalyzer, connection parsing
-│   ├── process/
-│   │   ├── mod.rs          # ProcessManager, ProcessInfo
-│   └── ui/
-│       ├── mod.rs          # UI render dispatch
-│       ├── center_panel.rs
-│       ├── dialogs.rs
-│       ├── firewall.rs
-│       ├── footer.rs
-│       ├── header.rs
-│       ├── sidebar_left.rs
-│       ├── sidebar_right.rs
-│       ├── theme.rs        # Glassmorphic theme
-│       └── widgets.rs      # Custom widgets (scrollbar, etc.)
-├── resources.rs            # Centralized external URLs (Lazy<ExternalUrls>)
-├── config/
-│   └── mod.rs              # Constants, thresholds, settings
-├── i18n/
-│   ├── mod.rs              # Locale detection
-│   └── translator.rs       # i18n engine with locale files
-├── services/
-│   ├── mod.rs
-│   ├── api_client.rs       # HTTP client for external APIs
-│   └── geoip_service.rs    # GeoIP lookup (private IP skip, flag emoji)
-├── utils/
-│   ├── mod.rs
-│   ├── api_builder.rs      # URL builder for API requests
-│   ├── db.rs               # SQLite database (blocks, investigations)
-│   ├── formatting.rs       # Byte size, memory formatting
-│   ├── icon_extractor.rs   # Icon cache with LRU eviction
-│   ├── rate_limiter.rs     # Token-bucket rate limiter
-│   ├── signatures.rs       # SignatureStatus, SignatureVerifier
-│   └── whois.rs            # WHOIS data cleaner
+│   └── types.rs            # Shared types
+├── config/                 # Constants, thresholds, settings
+├── i18n/                   # Translation engine (11 locales)
+├── services/               # HTTP client, GeoIP service
+└── utils/                  # DB, cache, formatting, WHOIS, rate limiter, icon extractor
 test/
-├── mod.rs                  # Test bridge with #[path] attributes
-├── mainShould.rs
-├── app/                    # Unit tests mirroring src/app/
-├── config/
-├── i18n/
-├── resources/              # Tests for external URL constants
-├── services/
-├── utils/
+├── app/                    # Unit tests
 └── E2E/                    # End-to-end integration tests
-    ├── analysis_lifecycleShould.rs
-    ├── firewall_flowShould.rs
-    └── export_and_investigationShould.rs
 ```
 
-### Key Design Decisions
+### 🧠 Key Design Decisions
 
-- **TUI Layer**: [Ratatui](https://github.com/ratatui-org/ratatui) for terminal rendering
-- **Async Core**: [Tokio](https://tokio.rs/) for background geo-lookup and investigation tasks
-- **State Store**: [SQLite](https://www.sqlite.org/) via `rusqlite` for blocked IPs and investigations
-- **Separation of Concerns**: System polling runs on `std::thread`; UI updates on main thread
-- **Test Structure**: Every `src/` file has a corresponding `test/` file with `#[path]` bridge
-- **Modular Design**: Separate modules for network, process, analysis, UI, and utilities
-- **Error Handling**: Comprehensive error propagation using `anyhow` and `thiserror`
-- **Internationalization**: Built-in translation system with JSON locale files
-- **Performance**: LRU caching for icons, rate limiting for API calls, efficient data structures
+- **Frontend**: [Ratatui](https://github.com/ratatui-org/ratatui) for ANSI rendering.
+- **Concurrency**: [Tokio](https://tokio.rs/) for non-blocking geospatial queries and analysis.
+- **State Storage**: [SQLite](https://www.sqlite.org/) for caching investigation data and firewall rules.
+- **Safety**: Unit tests (`src/`) and E2E integration tests (`test/E2E/`).
 
 ---
 
-## Contributing
+## 🤝 Contributing
 
-We welcome contributions! Please read our [Contributing Guidelines](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md).
+Contributions of any size — bug reports, feature requests, documentation, or code — are welcome!
 
-### Development Setup
+1. Read our [Contributing Guidelines](CONTRIBUTING.md).
+2. Fork the repository & create a feature branch.
+3. Submit a Pull Request.
 
+Make sure to run linting and tests before submitting:
 ```bash
-# Clone and build
-git clone https://github.com/AcoranGonzalezMoray/TraceTUI.git
-cd TraceTUI
-cargo build
-
-# Run tests before submitting PR
+cargo fmt && cargo clippy -- -D warnings 
 cargo test
-
-# Format and lint
-cargo fmt && cargo clippy
 ```
 
----
+## 📜 License
 
-## License
-
-This project is licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
+Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information.
 
 ---
-
-## Acknowledgments
-
-Built with [Ratatui](https://github.com/ratatui-org/ratatui) and [Tokio](https://tokio.rs/)
-
-[Report Bug](https://github.com/AcoranGonzalezMoray/TraceTUI/issues) • [Request Feature](https://github.com/AcoranGonzalezMoray/TraceTUI/issues)
+<div align="center">
+  <b>Built with 🦀 Rust</b><br>
+  <a href="https://github.com/AcoranGonzalezMoray/TraceTUI/issues">Report a Bug</a> • <a href="https://github.com/AcoranGonzalezMoray/TraceTUI/issues">Request a Feature</a>
+</div>

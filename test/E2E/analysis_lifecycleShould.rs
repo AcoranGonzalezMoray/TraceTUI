@@ -59,55 +59,59 @@ mod e2e_analysis_lifecycle {
     fn e2e_analysis_pause_resume_cycle() {
         let mut app = App::new();
 
-        app.auto_analysis_complete = true;
-        app.is_initial_loading = false;
-        app.show_welcome_dialog = false;
-        app.show_update_dialog = false;
-        assert!(!app.analysis_paused);
-        assert_eq!(app.continuous_refresh_counter, 0);
+        app.ui.auto_analysis_complete = true;
+        app.ui.is_initial_loading = false;
+        app.ui.show_welcome_dialog = false;
+        app.update.show_update_dialog = false;
+        assert!(!app.ui.analysis_paused);
+        assert_eq!(app.ui.continuous_refresh_counter, 0);
 
-        app.on_tick();
-        assert_eq!(app.continuous_refresh_counter, 1);
+        crate::app::services::analysis_service::on_tick(&mut app);
+        assert_eq!(app.ui.continuous_refresh_counter, 1);
 
-        app.analysis_paused = true;
-        let before = app.continuous_refresh_counter;
-        app.on_tick();
-        assert_eq!(app.continuous_refresh_counter, before);
+        app.ui.analysis_paused = true;
+        let before = app.ui.continuous_refresh_counter;
+        crate::app::services::analysis_service::on_tick(&mut app);
+        assert_eq!(app.ui.continuous_refresh_counter, before);
 
-        app.analysis_paused = false;
-        app.on_tick();
-        assert_eq!(app.continuous_refresh_counter, before + 1);
+        app.ui.analysis_paused = false;
+        crate::app::services::analysis_service::on_tick(&mut app);
+        assert_eq!(app.ui.continuous_refresh_counter, before + 1);
 
-        app.handle_key_event(crossterm::event::KeyEvent::new(
-            crossterm::event::KeyCode::Char('r'),
-            crossterm::event::KeyModifiers::empty(),
-        ));
-        assert!(app.analysis_paused);
-        assert_eq!(app.continuous_refresh_counter, 0);
+        crate::app::services::input_service::handle_key_event(
+            &mut app,
+            crossterm::event::KeyEvent::new(
+                crossterm::event::KeyCode::Char('r'),
+                crossterm::event::KeyModifiers::empty(),
+            ),
+        );
+        assert!(app.ui.analysis_paused);
+        assert_eq!(app.ui.continuous_refresh_counter, 0);
     }
 
     #[test]
     fn e2e_frame_count_and_history() {
         let mut app = App::new();
         let conns = vec![sample_conn(1, "8.8.8.8")];
-        app.app_connections = vec![build_app_connection(1, "chrome", 15.0, 200_000_000, conns)];
-        app.selected_app_index = 0;
-        app.frame_count = u64::MAX;
-        app.auto_analysis_complete = true;
+        app.network.app_connections =
+            vec![build_app_connection(1, "chrome", 15.0, 200_000_000, conns)];
+        app.network.selected_app_index = 0;
+        app.ui.frame_count = u64::MAX;
+        app.ui.auto_analysis_complete = true;
 
-        app.on_tick();
-        assert_eq!(app.frame_count, 0);
-        assert_eq!(app.cpu_history.len(), 1);
-        assert_eq!(app.cpu_history[0], 15.0);
+        crate::app::services::analysis_service::on_tick(&mut app);
+        assert_eq!(app.ui.frame_count, 0);
+        assert_eq!(app.trend.cpu_history.len(), 1);
+        assert_eq!(app.trend.cpu_history[0], 15.0);
 
-        app.on_tick();
-        assert_eq!(app.cpu_history.len(), 2);
+        crate::app::services::analysis_service::on_tick(&mut app);
+        assert_eq!(app.trend.cpu_history.len(), 2);
     }
 
     #[test]
     fn e2e_combined_filtering() {
         let mut app = App::new();
-        app.app_connections = vec![
+        app.network.app_connections = vec![
             build_app_connection(
                 1,
                 "chrome.exe",
@@ -130,21 +134,21 @@ mod e2e_analysis_lifecycle {
                 vec![sample_conn(3, "1.1.1.1"), sample_conn(3, "2.2.2.2")],
             ),
         ];
-        app.auto_analysis_complete = true;
-        app.is_initial_loading = false;
+        app.ui.auto_analysis_complete = true;
+        app.ui.is_initial_loading = false;
 
         assert_eq!(app.get_filtered_apps().len(), 3);
 
-        app.search_query = "power".to_string();
+        app.ui.search_query = "power".to_string();
         assert_eq!(app.get_filtered_apps().len(), 1);
         assert_eq!(app.get_filtered_apps()[0].process_name, "powershell.exe");
 
-        app.search_query = "8.8.8.8".to_string();
+        app.ui.search_query = "8.8.8.8".to_string();
         assert_eq!(app.get_filtered_apps().len(), 1);
         assert_eq!(app.get_filtered_apps()[0].process_name, "chrome.exe");
 
-        app.search_query.clear();
-        app.filter_high_risk_only = true;
+        app.ui.search_query.clear();
+        app.ui.filter_high_risk_only = true;
         let filtered = app.get_filtered_apps();
         for a in &filtered {
             assert!(
@@ -154,7 +158,7 @@ mod e2e_analysis_lifecycle {
             );
         }
 
-        app.filter_high_risk_only = false;
+        app.ui.filter_high_risk_only = false;
         assert_eq!(app.get_filtered_apps().len(), 3);
     }
 
@@ -164,7 +168,7 @@ mod e2e_analysis_lifecycle {
         let _guard = rt.enter();
         let mut app = App::new();
         use crate::app::network::NetworkConnection;
-        app.app_connections = vec![AppConnection {
+        app.network.app_connections = vec![AppConnection {
             process_name: "test.exe".to_string(),
             process_path: "C:\\test.exe".to_string(),
             icon: String::new(),
@@ -198,36 +202,37 @@ mod e2e_analysis_lifecycle {
             risk_level: "LOW".to_string(),
             signature_status: crate::utils::signatures::SignatureStatus::Unknown,
         }];
-        app.selected_app_index = 0;
-        app.sidebar_focus = crate::app::types::SidebarFocus::Left;
+        app.network.selected_app_index = 0;
+        app.ui.sidebar_focus = crate::app::types::SidebarFocus::Left;
 
-        let before = app.pending_geo_lookups;
+        let before = app.geo.pending_geo_lookups;
         app.trigger_geo_lookup_for_selected_app();
 
-        assert_eq!(app.pending_geo_lookups, before + 1);
+        assert_eq!(app.geo.pending_geo_lookups, before + 1);
     }
 
     #[test]
     fn e2e_start_batch_analysis() {
         let mut app = App::new();
-        app.auto_analysis_complete = true;
-        app.is_initial_loading = true;
+        app.ui.auto_analysis_complete = true;
+        app.ui.is_initial_loading = true;
 
         app.start_batch_analysis();
 
-        assert!(!app.is_initial_loading);
-        assert!(app.auto_analysis_complete);
+        assert!(!app.ui.is_initial_loading);
+        assert!(app.ui.auto_analysis_complete);
     }
 
     #[test]
     fn e2e_icon_cache_persistence() {
         let mut app = App::new();
-        app.icon_cache
+        app.network
+            .icon_cache
             .insert_icon("C:\\test.exe", "test_icon".to_string());
-        let icon = app.icon_cache.get_icon("C:\\test.exe", "test");
+        let icon = app.network.icon_cache.get_icon("C:\\test.exe", "test");
         assert_eq!(icon, "test_icon");
 
-        let icon2 = app.icon_cache.get_icon("C:\\test.exe", "test");
+        let icon2 = app.network.icon_cache.get_icon("C:\\test.exe", "test");
         assert_eq!(icon2, "test_icon");
     }
 
@@ -239,7 +244,7 @@ mod e2e_analysis_lifecycle {
         use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
         let mut app = App::new();
-        app.app_connections = vec![
+        app.network.app_connections = vec![
             build_app_connection(
                 1,
                 "chrome.exe",
@@ -255,34 +260,37 @@ mod e2e_analysis_lifecycle {
                 vec![sample_conn(2, "4.4.4.4")],
             ),
         ];
-        app.auto_analysis_complete = true;
-        app.is_initial_loading = false;
+        app.ui.auto_analysis_complete = true;
+        app.ui.is_initial_loading = false;
 
         fn press(key: KeyCode) -> KeyEvent {
             KeyEvent::new(key, KeyModifiers::empty())
         }
 
-        assert_eq!(app.sidebar_focus, SidebarFocus::Left);
-        assert_eq!(app.selected_app_index, 0);
+        assert_eq!(app.ui.sidebar_focus, SidebarFocus::Left);
+        assert_eq!(app.network.selected_app_index, 0);
 
-        app.handle_key_event(press(KeyCode::Down));
-        assert_eq!(app.selected_app_index, 1);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Down));
+        assert_eq!(app.network.selected_app_index, 1);
         assert_eq!(app.get_selected_app().unwrap().process_name, "firefox.exe");
 
-        app.handle_key_event(press(KeyCode::Up));
-        assert_eq!(app.selected_app_index, 0);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Up));
+        assert_eq!(app.network.selected_app_index, 0);
 
-        app.handle_key_event(press(KeyCode::Enter));
-        assert_eq!(app.sidebar_focus, SidebarFocus::Center);
-        assert_eq!(app.selected_connection_index, 0);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Enter));
+        assert_eq!(app.ui.sidebar_focus, SidebarFocus::Center);
+        assert_eq!(app.network.selected_connection_index, 0);
 
-        app.handle_key_event(press(KeyCode::Down));
-        assert_eq!(app.selected_connection_index, 1);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Down));
+        assert_eq!(app.network.selected_connection_index, 1);
 
-        app.handle_key_event(press(KeyCode::Tab));
-        assert_eq!(app.sidebar_focus, SidebarFocus::Right);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Tab));
+        assert_eq!(app.ui.sidebar_focus, SidebarFocus::Right);
 
-        app.handle_key_event(press(KeyCode::Tab));
-        assert_eq!(app.sidebar_focus, SidebarFocus::Left);
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Tab));
+        assert_eq!(app.ui.sidebar_focus, SidebarFocus::Nav);
+
+        crate::app::services::input_service::handle_key_event(&mut app, press(KeyCode::Tab));
+        assert_eq!(app.ui.sidebar_focus, SidebarFocus::Left);
     }
 }

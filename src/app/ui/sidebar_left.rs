@@ -10,11 +10,11 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph, Wrap},
 };
 pub fn render_left_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    if let Some(repo) = &app.investigation_report {
+    if let Some(repo) = &app.investigation.investigation_report {
         render_investigation_left_sidebar(f, app, repo, area);
         return;
     }
-    let is_focused = app.sidebar_focus == SidebarFocus::Left;
+    let is_focused = app.ui.sidebar_focus == SidebarFocus::Left;
     let border_color = if is_focused {
         THEME.primary
     } else {
@@ -34,7 +34,7 @@ pub fn render_left_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .borders(Borders::ALL)
         .title(format!(
             " 󰲚 {} ",
-            tr!(app.translator, "sidebar.processes", filtered_apps.len())
+            tr!(app.ui.translator, "sidebar.processes", filtered_apps.len())
         ))
         .title_style(
             Style::default()
@@ -58,7 +58,7 @@ pub fn render_left_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .iter()
         .enumerate()
         .map(|(i, app_conn)| {
-            let is_selected = i == app.selected_app_index;
+            let is_selected = i == app.network.selected_app_index;
             let (risk_icon, risk_color) = match app_conn.risk_level.as_str() {
                 "CRITICAL" => ("󰈸", THEME.danger),
                 "HIGH" => ("󰀪", THEME.danger),
@@ -87,7 +87,11 @@ pub fn render_left_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
                 Line::from(vec![
                     Span::raw("    "),
                     Span::styled(
-                        tr!(app.translator, "sidebar.items", app_conn.connections.len()),
+                        tr!(
+                            app.ui.translator,
+                            "sidebar.items",
+                            app_conn.connections.len()
+                        ),
                         Style::default().fg(THEME.text_dim),
                     ),
                     Span::styled(" │ ", Style::default().fg(THEME.secondary)),
@@ -105,14 +109,14 @@ pub fn render_left_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
         })
         .collect();
     let mut list_state = ListState::default();
-    list_state.select(Some(app.selected_app_index));
+    list_state.select(Some(app.network.selected_app_index));
     let list = List::new(items).block(Block::default());
     f.render_stateful_widget(list, list_area, &mut list_state);
     widgets::render_scrollbar(
         f,
         scrollbar_area,
         filtered_apps.len(),
-        app.selected_app_index,
+        app.network.selected_app_index,
     );
 }
 fn render_empty_state(
@@ -130,13 +134,13 @@ fn render_empty_state(
         )]),
         Line::from(""),
         Line::from(vec![Span::styled(
-            tr!(app.translator, "sidebar.no_conns"),
+            tr!(app.ui.translator, "sidebar.no_conns"),
             Style::default().fg(THEME.text_dim),
         )]),
         Line::from(""),
         Line::from(vec![
             Span::styled(
-                tr!(app.translator, "sidebar.press_r"),
+                tr!(app.ui.translator, "sidebar.press_r"),
                 Style::default().fg(THEME.text_dim),
             ),
             Span::styled(
@@ -147,7 +151,7 @@ fn render_empty_state(
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
-                tr!(app.translator, "sidebar.to_refresh"),
+                tr!(app.ui.translator, "sidebar.to_refresh"),
                 Style::default().fg(THEME.text_dim),
             ),
         ]),
@@ -158,7 +162,7 @@ fn render_empty_state(
                 .borders(Borders::ALL)
                 .title(format!(
                     " 󰲚 {} ",
-                    tr!(app.translator, "sidebar.processes", "")
+                    tr!(app.ui.translator, "sidebar.processes", "")
                 ))
                 .title_style(
                     Style::default()
@@ -177,13 +181,13 @@ fn render_investigation_left_sidebar(
     repo: &InvestigationReport,
     area: Rect,
 ) {
-    let is_focused = app.sidebar_focus == SidebarFocus::Left;
+    let is_focused = app.ui.sidebar_focus == SidebarFocus::Left;
     let border_type = if is_focused {
         BorderType::Thick
     } else {
         BorderType::Rounded
     };
-    let t = &app.translator;
+    let t = &app.ui.translator;
     let unknown = tr!(t, "investigation.unknown");
     let risk_color = if repo.risk_score < 30 {
         THEME.success
@@ -228,7 +232,7 @@ fn render_investigation_left_sidebar(
             ),
         ]),
         Line::from(vec![
-            Span::styled(" IP:", Style::default().fg(THEME.secondary)),
+            Span::styled(tr!(t, "sidebar.ip"), Style::default().fg(THEME.secondary)),
             Span::styled(
                 &repo.ip,
                 Style::default()
@@ -237,7 +241,7 @@ fn render_investigation_left_sidebar(
             ),
         ]),
         Line::from(vec![
-            Span::styled(" Port:", Style::default().fg(THEME.secondary)),
+            Span::styled(tr!(t, "sidebar.port"), Style::default().fg(THEME.secondary)),
             Span::styled(repo.port.to_string(), Style::default().fg(THEME.text_main)),
         ]),
         Line::from(vec![

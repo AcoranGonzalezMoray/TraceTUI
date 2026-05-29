@@ -7,6 +7,8 @@ mod services;
 #[path = "../test/mod.rs"]
 mod test_tests;
 mod utils;
+use app::services::analysis_service;
+use app::services::input_service;
 use app::ui::render_ui;
 use app::{restore_terminal, setup_terminal, App};
 use crossterm::event;
@@ -18,12 +20,12 @@ async fn main() -> Result<()> {
     let mut app = App::new();
     let mut last_tick = Instant::now();
     let tick_rate = config::tick_rate();
-    app.perform_auto_analysis();
-    app.check_for_updates();
-    while !app.should_quit {
+    analysis_service::perform_auto_analysis(&mut app);
+    analysis_service::check_for_updates(&mut app);
+    while !app.ui.should_quit {
         terminal.draw(|f| render_ui(f, &app))?;
 
-        let timeout = if !app.auto_analysis_complete {
+        let timeout = if !app.ui.auto_analysis_complete {
             config::auto_analyze_sleep()
         } else {
             tick_rate.saturating_sub(last_tick.elapsed())
@@ -31,15 +33,25 @@ async fn main() -> Result<()> {
 
         if crossterm::event::poll(timeout)? {
             match event::read()? {
-                crossterm::event::Event::Key(key) => app.handle_key_event(key),
-                crossterm::event::Event::Mouse(mouse) => app.handle_mouse_event(mouse),
+                crossterm::event::Event::Key(key) => input_service::handle_key_event(&mut app, key),
+                crossterm::event::Event::Mouse(mouse) => {
+                    input_service::handle_mouse_event(&mut app, mouse)
+                }
+                crossterm::event::Event::Resize(_, _) => {
+                    app.ui.needs_clear = true;
+                }
                 _ => {}
             }
         }
 
-        if last_tick.elapsed() >= tick_rate || !app.auto_analysis_complete {
-            app.on_tick();
-            if app.auto_analysis_complete && last_tick.elapsed() >= tick_rate {
+        if app.ui.needs_clear {
+            terminal.clear()?;
+            app.ui.needs_clear = false;
+        }
+
+        if last_tick.elapsed() >= tick_rate || !app.ui.auto_analysis_complete {
+            analysis_service::on_tick(&mut app);
+            if app.ui.auto_analysis_complete && last_tick.elapsed() >= tick_rate {
                 last_tick = Instant::now();
             }
         }

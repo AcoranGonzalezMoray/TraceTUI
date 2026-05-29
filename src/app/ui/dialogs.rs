@@ -16,8 +16,8 @@ pub fn render_install_dialog(f: &mut ratatui::Frame, app: &App) {
         width: f.area().width * 3 / 5,
         height: 12,
     };
-    if app.is_installing && !app.install_done {
-        let spinner = match app.frame_count % 4 {
+    if app.install.installing && !app.install.done {
+        let spinner = match app.ui.frame_count % 4 {
             0 => "/",
             1 => "-",
             2 => "\\",
@@ -29,7 +29,7 @@ pub fn render_install_dialog(f: &mut ratatui::Frame, app: &App) {
                 format!(
                     "  {}  {} ",
                     spinner,
-                    tr!(app.translator, "dialog.net_tools_installing")
+                    tr!(app.ui.translator, "dialog.net_tools_installing")
                 ),
                 Style::default()
                     .fg(THEME.warning)
@@ -37,7 +37,7 @@ pub fn render_install_dialog(f: &mut ratatui::Frame, app: &App) {
             )]),
             Line::from(""),
             Line::from(vec![Span::styled(
-                format!("  {} ", app.install_message),
+                format!("  {} ", app.install.message),
                 Style::default().fg(THEME.text_main),
             )]),
             Line::from(""),
@@ -51,7 +51,7 @@ pub fn render_install_dialog(f: &mut ratatui::Frame, app: &App) {
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(
-                    format!(" {}", tr!(app.translator, "dialog.to_cancel")),
+                    format!(" {}", tr!(app.ui.translator, "dialog.to_cancel")),
                     Style::default().fg(THEME.text_main),
                 ),
             ]),
@@ -60,7 +60,7 @@ pub fn render_install_dialog(f: &mut ratatui::Frame, app: &App) {
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .title(format!(" {} ", tr!(app.translator, "dialog.net_tools")))
+                    .title(format!(" {} ", tr!(app.ui.translator, "dialog.net_tools")))
                     .title_style(
                         Style::default()
                             .fg(THEME.warning)
@@ -73,21 +73,319 @@ pub fn render_install_dialog(f: &mut ratatui::Frame, app: &App) {
             .alignment(Alignment::Left);
         f.render_widget(Clear, popup_area);
         f.render_widget(dialog, popup_area);
-    } else if app.install_done {
-        let (icon, border_color, title) = if app.install_success {
+    } else if app.install.done {
+        let (icon, border_color, title) = if app.install.success {
             (
                 "[OK]",
                 THEME.success,
-                format!(" {} ", tr!(app.translator, "dialog.net_tools_complete")),
+                format!(" {} ", tr!(app.ui.translator, "dialog.net_tools_complete")),
             )
         } else {
             (
                 "[FAIL]",
                 THEME.danger,
-                format!(" {} ", tr!(app.translator, "dialog.net_tools_failed")),
+                format!(" {} ", tr!(app.ui.translator, "dialog.net_tools_failed")),
             )
         };
         let lines: Vec<Line> = app
+            .install
+            .message
+            .lines()
+            .map(|l| {
+                Line::from(Span::styled(
+                    format!("  {} ", l),
+                    Style::default().fg(THEME.text_main),
+                ))
+            })
+            .collect();
+        let mut dialog_text = vec![
+            Line::from(""),
+            Line::from(vec![Span::styled(
+                format!("  {} ", icon),
+                Style::default()
+                    .fg(THEME.background)
+                    .bg(border_color)
+                    .add_modifier(Modifier::BOLD),
+            )]),
+            Line::from(""),
+        ];
+        dialog_text.extend(lines);
+        dialog_text.push(Line::from(""));
+        dialog_text.push(Line::from(vec![
+            Span::styled("   Press ", Style::default().fg(THEME.text_dim)),
+            Span::styled(
+                " Enter ",
+                Style::default()
+                    .fg(THEME.background)
+                    .bg(THEME.success)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!(" {} ", tr!(app.ui.translator, "dialog.or")),
+                Style::default().fg(THEME.text_dim),
+            ),
+            Span::styled(
+                " Esc ",
+                Style::default()
+                    .fg(THEME.background)
+                    .bg(THEME.danger)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!(" {}", tr!(app.ui.translator, "dialog.to_dismiss")),
+                Style::default().fg(THEME.text_main),
+            ),
+        ]));
+        let dialog = Paragraph::new(dialog_text)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(title)
+                    .title_style(
+                        Style::default()
+                            .fg(border_color)
+                            .add_modifier(Modifier::BOLD),
+                    )
+                    .border_style(Style::default().fg(border_color))
+                    .border_type(BorderType::Thick),
+            )
+            .style(Style::default().bg(THEME.background))
+            .alignment(Alignment::Left);
+        f.render_widget(Clear, popup_area);
+        f.render_widget(dialog, popup_area);
+    } else {
+        let dialog_text = vec![
+            Line::from(""),
+            Line::from(vec![Span::styled(
+                format!("  {} ", tr!(app.ui.translator, "dialog.net_tools_title")),
+                Style::default()
+                    .fg(THEME.warning)
+                    .add_modifier(Modifier::BOLD),
+            )]),
+            Line::from(""),
+            Line::from(vec![Span::styled(
+                &app.install.message,
+                Style::default().fg(THEME.text_main),
+            )]),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("   Press ", Style::default().fg(THEME.text_dim)),
+                Span::styled(
+                    " Enter ",
+                    Style::default()
+                        .fg(THEME.background)
+                        .bg(THEME.success)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    format!(" {} ", tr!(app.ui.translator, "dialog.or")),
+                    Style::default().fg(THEME.text_dim),
+                ),
+                Span::styled(
+                    " Y ",
+                    Style::default()
+                        .fg(THEME.background)
+                        .bg(THEME.success)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    format!(" {}   ", tr!(app.ui.translator, "dialog.install")),
+                    Style::default().fg(THEME.text_main),
+                ),
+                Span::styled(
+                    " N ",
+                    Style::default()
+                        .fg(THEME.background)
+                        .bg(THEME.danger)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    format!(" {}", tr!(app.ui.translator, "dialog.cancel")),
+                    Style::default().fg(THEME.text_main),
+                ),
+            ]),
+        ];
+        let dialog = Paragraph::new(dialog_text)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(format!(" {} ", tr!(app.ui.translator, "dialog.net_tools")))
+                    .title_style(
+                        Style::default()
+                            .fg(THEME.warning)
+                            .add_modifier(Modifier::BOLD),
+                    )
+                    .border_style(Style::default().fg(THEME.warning))
+                    .border_type(BorderType::Thick),
+            )
+            .style(Style::default().bg(THEME.background))
+            .alignment(Alignment::Left);
+        f.render_widget(Clear, popup_area);
+        f.render_widget(dialog, popup_area);
+    }
+}
+pub fn render_password_modal(f: &mut ratatui::Frame, app: &App) {
+    let popup_area = Rect {
+        x: (f.area().width / 4),
+        y: (f.area().height / 3),
+        width: f.area().width / 2,
+        height: 10,
+    };
+    let masked: String = app.install.password.chars().map(|_| '*').collect();
+    let cursor = if app.ui.frame_count.is_multiple_of(2) {
+        "█"
+    } else {
+        " "
+    };
+    let dialog_text = vec![
+        Line::from(""),
+        Line::from(vec![Span::styled(
+            format!("  {} ", tr!(app.ui.translator, "dialog.password_required")),
+            Style::default()
+                .fg(THEME.warning)
+                .add_modifier(Modifier::BOLD),
+        )]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled(
+                format!("  {} ", tr!(app.ui.translator, "dialog.password_label")),
+                Style::default().fg(THEME.text_dim),
+            ),
+            Span::styled(masked, Style::default().fg(THEME.text_main)),
+            Span::styled(cursor, Style::default().fg(THEME.primary)),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("   Press ", Style::default().fg(THEME.text_dim)),
+            Span::styled(
+                " Enter ",
+                Style::default()
+                    .fg(THEME.background)
+                    .bg(THEME.success)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!(" {}   ", tr!(app.ui.translator, "dialog.confirm")),
+                Style::default().fg(THEME.text_main),
+            ),
+            Span::styled(
+                " Esc ",
+                Style::default()
+                    .fg(THEME.background)
+                    .bg(THEME.danger)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!(" {}", tr!(app.ui.translator, "dialog.cancel")),
+                Style::default().fg(THEME.text_main),
+            ),
+        ]),
+    ];
+    let dialog = Paragraph::new(dialog_text)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(format!(
+                    " 󰰍 {} ",
+                    tr!(app.ui.translator, "dialog.password_title")
+                ))
+                .title_style(
+                    Style::default()
+                        .fg(THEME.warning)
+                        .add_modifier(Modifier::BOLD),
+                )
+                .border_style(Style::default().fg(THEME.warning))
+                .border_type(BorderType::Thick),
+        )
+        .style(Style::default().bg(THEME.background))
+        .alignment(Alignment::Left);
+    f.render_widget(Clear, popup_area);
+    f.render_widget(dialog, popup_area);
+}
+pub fn render_nerdfont_dialog(f: &mut ratatui::Frame, app: &App) {
+    let popup_area = Rect {
+        x: (f.area().width / 6),
+        y: (f.area().height / 4),
+        width: f.area().width * 2 / 3,
+        height: 14,
+    };
+    if app.nerdfont.installing && !app.nerdfont.install_done {
+        let spinner = match app.ui.frame_count % 4 {
+            0 => "/",
+            1 => "-",
+            2 => "\\",
+            _ => "|",
+        };
+        let dialog_text = vec![
+            Line::from(""),
+            Line::from(vec![Span::styled(
+                format!(
+                    "  {}  {} ",
+                    spinner,
+                    tr!(app.ui.translator, "dialog.nerdfont_installing")
+                ),
+                Style::default()
+                    .fg(THEME.warning)
+                    .add_modifier(Modifier::BOLD),
+            )]),
+            Line::from(""),
+            Line::from(vec![Span::styled(
+                format!("  {} ", app.nerdfont.install_message),
+                Style::default().fg(THEME.text_main),
+            )]),
+            Line::from(""),
+            Line::from(vec![Span::styled(
+                format!("  {}", tr!(app.ui.translator, "dialog.nerdfont_wait1")),
+                Style::default().fg(THEME.text_dim),
+            )]),
+            Line::from(vec![Span::styled(
+                format!("  {}", tr!(app.ui.translator, "dialog.nerdfont_wait2")),
+                Style::default().fg(THEME.text_dim),
+            )]),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("   Press ", Style::default().fg(THEME.text_dim)),
+                Span::styled(
+                    " Esc ",
+                    Style::default()
+                        .fg(THEME.background)
+                        .bg(THEME.danger)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    format!(" {}", tr!(app.ui.translator, "dialog.to_cancel")),
+                    Style::default().fg(THEME.text_main),
+                ),
+            ]),
+        ];
+        let dialog = Paragraph::new(dialog_text)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(format!(
+                        " {} ",
+                        tr!(app.ui.translator, "dialog.nerdfont_complete")
+                    ))
+                    .title_style(
+                        Style::default()
+                            .fg(THEME.warning)
+                            .add_modifier(Modifier::BOLD),
+                    )
+                    .border_style(Style::default().fg(THEME.warning))
+                    .border_type(BorderType::Thick),
+            )
+            .style(Style::default().bg(THEME.background))
+            .alignment(Alignment::Left);
+        f.render_widget(Clear, popup_area);
+        f.render_widget(dialog, popup_area);
+    } else if app.nerdfont.install_done {
+        let (icon, border_color) = if app.nerdfont.install_success {
+            ("[OK]", THEME.success)
+        } else {
+            ("[FAIL]", THEME.danger)
+        };
+        let lines: Vec<Line> = app
+            .nerdfont
             .install_message
             .lines()
             .map(|l| {
@@ -120,7 +418,7 @@ pub fn render_install_dialog(f: &mut ratatui::Frame, app: &App) {
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
-                format!(" {} ", tr!(app.translator, "dialog.or")),
+                format!(" {} ", tr!(app.ui.translator, "dialog.or")),
                 Style::default().fg(THEME.text_dim),
             ),
             Span::styled(
@@ -131,303 +429,7 @@ pub fn render_install_dialog(f: &mut ratatui::Frame, app: &App) {
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
-                format!(" {}", tr!(app.translator, "dialog.to_dismiss")),
-                Style::default().fg(THEME.text_main),
-            ),
-        ]));
-        let dialog = Paragraph::new(dialog_text)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(title)
-                    .title_style(
-                        Style::default()
-                            .fg(border_color)
-                            .add_modifier(Modifier::BOLD),
-                    )
-                    .border_style(Style::default().fg(border_color))
-                    .border_type(BorderType::Thick),
-            )
-            .style(Style::default().bg(THEME.background))
-            .alignment(Alignment::Left);
-        f.render_widget(Clear, popup_area);
-        f.render_widget(dialog, popup_area);
-    } else {
-        let dialog_text = vec![
-            Line::from(""),
-            Line::from(vec![Span::styled(
-                format!("  {} ", tr!(app.translator, "dialog.net_tools_title")),
-                Style::default()
-                    .fg(THEME.warning)
-                    .add_modifier(Modifier::BOLD),
-            )]),
-            Line::from(""),
-            Line::from(vec![Span::styled(
-                &app.install_message,
-                Style::default().fg(THEME.text_main),
-            )]),
-            Line::from(""),
-            Line::from(vec![
-                Span::styled("   Press ", Style::default().fg(THEME.text_dim)),
-                Span::styled(
-                    " Enter ",
-                    Style::default()
-                        .fg(THEME.background)
-                        .bg(THEME.success)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::styled(
-                    format!(" {} ", tr!(app.translator, "dialog.or")),
-                    Style::default().fg(THEME.text_dim),
-                ),
-                Span::styled(
-                    " Y ",
-                    Style::default()
-                        .fg(THEME.background)
-                        .bg(THEME.success)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::styled(
-                    format!(" {}   ", tr!(app.translator, "dialog.install")),
-                    Style::default().fg(THEME.text_main),
-                ),
-                Span::styled(
-                    " N ",
-                    Style::default()
-                        .fg(THEME.background)
-                        .bg(THEME.danger)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::styled(
-                    format!(" {}", tr!(app.translator, "dialog.cancel")),
-                    Style::default().fg(THEME.text_main),
-                ),
-            ]),
-        ];
-        let dialog = Paragraph::new(dialog_text)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(format!(" {} ", tr!(app.translator, "dialog.net_tools")))
-                    .title_style(
-                        Style::default()
-                            .fg(THEME.warning)
-                            .add_modifier(Modifier::BOLD),
-                    )
-                    .border_style(Style::default().fg(THEME.warning))
-                    .border_type(BorderType::Thick),
-            )
-            .style(Style::default().bg(THEME.background))
-            .alignment(Alignment::Left);
-        f.render_widget(Clear, popup_area);
-        f.render_widget(dialog, popup_area);
-    }
-}
-pub fn render_password_modal(f: &mut ratatui::Frame, app: &App) {
-    let popup_area = Rect {
-        x: (f.area().width / 4),
-        y: (f.area().height / 3),
-        width: f.area().width / 2,
-        height: 10,
-    };
-    let masked: String = app.install_password.chars().map(|_| '*').collect();
-    let cursor = if app.frame_count.is_multiple_of(2) {
-        "█"
-    } else {
-        " "
-    };
-    let dialog_text = vec![
-        Line::from(""),
-        Line::from(vec![Span::styled(
-            format!("  {} ", tr!(app.translator, "dialog.password_required")),
-            Style::default()
-                .fg(THEME.warning)
-                .add_modifier(Modifier::BOLD),
-        )]),
-        Line::from(""),
-        Line::from(vec![
-            Span::styled(
-                format!("  {} ", tr!(app.translator, "dialog.password_label")),
-                Style::default().fg(THEME.text_dim),
-            ),
-            Span::styled(masked, Style::default().fg(THEME.text_main)),
-            Span::styled(cursor, Style::default().fg(THEME.primary)),
-        ]),
-        Line::from(""),
-        Line::from(vec![
-            Span::styled("   Press ", Style::default().fg(THEME.text_dim)),
-            Span::styled(
-                " Enter ",
-                Style::default()
-                    .fg(THEME.background)
-                    .bg(THEME.success)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::styled(
-                format!(" {}   ", tr!(app.translator, "dialog.confirm")),
-                Style::default().fg(THEME.text_main),
-            ),
-            Span::styled(
-                " Esc ",
-                Style::default()
-                    .fg(THEME.background)
-                    .bg(THEME.danger)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::styled(
-                format!(" {}", tr!(app.translator, "dialog.cancel")),
-                Style::default().fg(THEME.text_main),
-            ),
-        ]),
-    ];
-    let dialog = Paragraph::new(dialog_text)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(format!(
-                    " 󰰍 {} ",
-                    tr!(app.translator, "dialog.password_title")
-                ))
-                .title_style(
-                    Style::default()
-                        .fg(THEME.warning)
-                        .add_modifier(Modifier::BOLD),
-                )
-                .border_style(Style::default().fg(THEME.warning))
-                .border_type(BorderType::Thick),
-        )
-        .style(Style::default().bg(THEME.background))
-        .alignment(Alignment::Left);
-    f.render_widget(Clear, popup_area);
-    f.render_widget(dialog, popup_area);
-}
-pub fn render_nerdfont_dialog(f: &mut ratatui::Frame, app: &App) {
-    let popup_area = Rect {
-        x: (f.area().width / 6),
-        y: (f.area().height / 4),
-        width: f.area().width * 2 / 3,
-        height: 14,
-    };
-    if app.nerdfont_installing && !app.nerdfont_install_done {
-        let spinner = match app.frame_count % 4 {
-            0 => "/",
-            1 => "-",
-            2 => "\\",
-            _ => "|",
-        };
-        let dialog_text = vec![
-            Line::from(""),
-            Line::from(vec![Span::styled(
-                format!(
-                    "  {}  {} ",
-                    spinner,
-                    tr!(app.translator, "dialog.nerdfont_installing")
-                ),
-                Style::default()
-                    .fg(THEME.warning)
-                    .add_modifier(Modifier::BOLD),
-            )]),
-            Line::from(""),
-            Line::from(vec![Span::styled(
-                format!("  {} ", app.nerdfont_install_message),
-                Style::default().fg(THEME.text_main),
-            )]),
-            Line::from(""),
-            Line::from(vec![Span::styled(
-                format!("  {}", tr!(app.translator, "dialog.nerdfont_wait1")),
-                Style::default().fg(THEME.text_dim),
-            )]),
-            Line::from(vec![Span::styled(
-                format!("  {}", tr!(app.translator, "dialog.nerdfont_wait2")),
-                Style::default().fg(THEME.text_dim),
-            )]),
-            Line::from(""),
-            Line::from(vec![
-                Span::styled("   Press ", Style::default().fg(THEME.text_dim)),
-                Span::styled(
-                    " Esc ",
-                    Style::default()
-                        .fg(THEME.background)
-                        .bg(THEME.danger)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::styled(
-                    format!(" {}", tr!(app.translator, "dialog.to_cancel")),
-                    Style::default().fg(THEME.text_main),
-                ),
-            ]),
-        ];
-        let dialog = Paragraph::new(dialog_text)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(format!(
-                        " {} ",
-                        tr!(app.translator, "dialog.nerdfont_complete")
-                    ))
-                    .title_style(
-                        Style::default()
-                            .fg(THEME.warning)
-                            .add_modifier(Modifier::BOLD),
-                    )
-                    .border_style(Style::default().fg(THEME.warning))
-                    .border_type(BorderType::Thick),
-            )
-            .style(Style::default().bg(THEME.background))
-            .alignment(Alignment::Left);
-        f.render_widget(Clear, popup_area);
-        f.render_widget(dialog, popup_area);
-    } else if app.nerdfont_install_done {
-        let (icon, border_color) = if app.nerdfont_install_success {
-            ("[OK]", THEME.success)
-        } else {
-            ("[FAIL]", THEME.danger)
-        };
-        let lines: Vec<Line> = app
-            .nerdfont_install_message
-            .lines()
-            .map(|l| {
-                Line::from(Span::styled(
-                    format!("  {} ", l),
-                    Style::default().fg(THEME.text_main),
-                ))
-            })
-            .collect();
-        let mut dialog_text = vec![
-            Line::from(""),
-            Line::from(vec![Span::styled(
-                format!("  {} ", icon),
-                Style::default()
-                    .fg(THEME.background)
-                    .bg(border_color)
-                    .add_modifier(Modifier::BOLD),
-            )]),
-            Line::from(""),
-        ];
-        dialog_text.extend(lines);
-        dialog_text.push(Line::from(""));
-        dialog_text.push(Line::from(vec![
-            Span::styled("   Press ", Style::default().fg(THEME.text_dim)),
-            Span::styled(
-                " Enter ",
-                Style::default()
-                    .fg(THEME.background)
-                    .bg(THEME.success)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::styled(
-                format!(" {} ", tr!(app.translator, "dialog.or")),
-                Style::default().fg(THEME.text_dim),
-            ),
-            Span::styled(
-                " Esc ",
-                Style::default()
-                    .fg(THEME.background)
-                    .bg(THEME.danger)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::styled(
-                format!(" {}", tr!(app.translator, "dialog.to_dismiss")),
+                format!(" {}", tr!(app.ui.translator, "dialog.to_dismiss")),
                 Style::default().fg(THEME.text_main),
             ),
         ]));
@@ -437,7 +439,7 @@ pub fn render_nerdfont_dialog(f: &mut ratatui::Frame, app: &App) {
                     .borders(Borders::ALL)
                     .title(format!(
                         " {} ",
-                        tr!(app.translator, "dialog.nerdfont_complete")
+                        tr!(app.ui.translator, "dialog.nerdfont_complete")
                     ))
                     .title_style(
                         Style::default()
@@ -455,31 +457,31 @@ pub fn render_nerdfont_dialog(f: &mut ratatui::Frame, app: &App) {
         let dialog_text = vec![
             Line::from(""),
             Line::from(vec![Span::styled(
-                format!("  {} ", tr!(app.translator, "dialog.nerdfont_required")),
+                format!("  {} ", tr!(app.ui.translator, "dialog.nerdfont_required")),
                 Style::default()
                     .fg(THEME.warning)
                     .add_modifier(Modifier::BOLD),
             )]),
             Line::from(""),
             Line::from(vec![Span::styled(
-                format!("  {}", tr!(app.translator, "dialog.nerdfont_intro1")),
+                format!("  {}", tr!(app.ui.translator, "dialog.nerdfont_intro1")),
                 Style::default().fg(THEME.text_main),
             )]),
             Line::from(vec![Span::styled(
-                format!("  {}", tr!(app.translator, "dialog.nerdfont_intro2")),
+                format!("  {}", tr!(app.ui.translator, "dialog.nerdfont_intro2")),
                 Style::default().fg(THEME.text_main),
             )]),
             Line::from(vec![Span::styled(
-                format!("  {}", tr!(app.translator, "dialog.nerdfont_intro3")),
+                format!("  {}", tr!(app.ui.translator, "dialog.nerdfont_intro3")),
                 Style::default().fg(THEME.text_main),
             )]),
             Line::from(""),
             Line::from(vec![Span::styled(
-                format!("  {}", tr!(app.translator, "dialog.nerdfont_prompt1")),
+                format!("  {}", tr!(app.ui.translator, "dialog.nerdfont_prompt1")),
                 Style::default().fg(THEME.text_dim),
             )]),
             Line::from(vec![Span::styled(
-                format!("  {}", tr!(app.translator, "dialog.nerdfont_prompt2")),
+                format!("  {}", tr!(app.ui.translator, "dialog.nerdfont_prompt2")),
                 Style::default().fg(THEME.text_dim),
             )]),
             Line::from(""),
@@ -493,7 +495,7 @@ pub fn render_nerdfont_dialog(f: &mut ratatui::Frame, app: &App) {
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(
-                    format!(" {}   ", tr!(app.translator, "dialog.install")),
+                    format!(" {}   ", tr!(app.ui.translator, "dialog.install")),
                     Style::default().fg(THEME.text_main),
                 ),
                 Span::styled(
@@ -504,7 +506,7 @@ pub fn render_nerdfont_dialog(f: &mut ratatui::Frame, app: &App) {
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(
-                    format!(" {}", tr!(app.translator, "dialog.nerdfont_skip")),
+                    format!(" {}", tr!(app.ui.translator, "dialog.nerdfont_skip")),
                     Style::default().fg(THEME.text_main),
                 ),
             ]),
@@ -515,7 +517,7 @@ pub fn render_nerdfont_dialog(f: &mut ratatui::Frame, app: &App) {
                     .borders(Borders::ALL)
                     .title(format!(
                         " {} ",
-                        tr!(app.translator, "dialog.nerdfont_title")
+                        tr!(app.ui.translator, "dialog.nerdfont_title")
                     ))
                     .title_style(
                         Style::default()
@@ -546,8 +548,8 @@ pub fn render_language_modal(f: &mut ratatui::Frame, app: &App) {
         height: popup_height,
     };
 
-    let locale_key = format!("locale.{}", app.translator.locale);
-    let locale_name = app.translator.get(&locale_key).to_string();
+    let locale_key = format!("locale.{}", app.ui.translator.locale);
+    let locale_name = app.ui.translator.get(&locale_key).to_string();
 
     let mut lines: Vec<Line> = Vec::new();
 
@@ -566,12 +568,12 @@ pub fn render_language_modal(f: &mut ratatui::Frame, app: &App) {
     lines.push(Line::from(vec![
         Span::raw("  "),
         Span::styled(
-            tr!(app.translator, "language.prompt"),
+            tr!(app.ui.translator, "language.prompt"),
             Style::default().fg(THEME.text_dim),
         ),
     ]));
 
-    let offset = app.language_scroll_offset;
+    let offset = app.ui.language_scroll_offset;
     let scrollbar_chars = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"];
     for rel_i in 0..visible {
         let abs_i = offset + rel_i;
@@ -579,7 +581,7 @@ pub fn render_language_modal(f: &mut ratatui::Frame, app: &App) {
             break;
         }
         let (_code, name) = &locales[abs_i];
-        let is_selected = abs_i == app.language_selection_index;
+        let is_selected = abs_i == app.ui.language_selection_index;
         let item = if is_selected {
             Line::from(vec![
                 Span::styled(" ▎", Style::default().fg(THEME.primary)),
@@ -601,7 +603,8 @@ pub fn render_language_modal(f: &mut ratatui::Frame, app: &App) {
     }
 
     if total > visible {
-        let thumb_pos = (app.language_selection_index * (scrollbar_chars.len() - 1)) / total.max(1);
+        let thumb_pos =
+            (app.ui.language_selection_index * (scrollbar_chars.len() - 1)) / total.max(1);
         let thumb = scrollbar_chars[thumb_pos.min(scrollbar_chars.len() - 1)];
         let pad_w = popup_width.saturating_sub(6);
         let pad = " ".repeat(pad_w as usize);
@@ -617,7 +620,7 @@ pub fn render_language_modal(f: &mut ratatui::Frame, app: &App) {
     let paragraph = Paragraph::new(lines).alignment(Alignment::Left);
     let block = Block::default()
         .borders(Borders::ALL)
-        .title(tr!(app.translator, "language.title"))
+        .title(tr!(app.ui.translator, "language.title"))
         .title_style(
             Style::default()
                 .fg(THEME.warning)
@@ -638,8 +641,8 @@ pub fn render_update_dialog(f: &mut ratatui::Frame, app: &App) {
         height: popup_height.min(f.area().height),
     };
 
-    if app.is_updating && !app.update_done {
-        let spinner = match app.frame_count % 4 {
+    if app.update.is_updating && !app.update.update_done {
+        let spinner = match app.ui.frame_count % 4 {
             0 => "/",
             1 => "-",
             2 => "\\",
@@ -661,7 +664,7 @@ pub fn render_update_dialog(f: &mut ratatui::Frame, app: &App) {
                 format!(
                     "  {}  {} ",
                     spinner,
-                    tr!(app.translator, "dialog.update_downloading")
+                    tr!(app.ui.translator, "dialog.update_downloading")
                 ),
                 Style::default()
                     .fg(THEME.warning)
@@ -669,7 +672,7 @@ pub fn render_update_dialog(f: &mut ratatui::Frame, app: &App) {
             )]),
             Line::from(""),
             Line::from(vec![Span::styled(
-                format!("  {} ", tr!(app.translator, "dialog.nerdfont_wait1")),
+                format!("  {} ", tr!(app.ui.translator, "dialog.nerdfont_wait1")),
                 Style::default().fg(THEME.text_dim),
             )]),
         ];
@@ -686,14 +689,17 @@ pub fn render_update_dialog(f: &mut ratatui::Frame, app: &App) {
                     .bg(THEME.background)
                     .add_modifier(Modifier::BOLD),
             )
-            .percent(app.update_progress as u16)
-            .label(format!("{:.1}%", app.update_progress));
+            .percent(app.update.update_progress as u16)
+            .label(format!("{:.1}%", app.update.update_progress));
 
         let dialog = Paragraph::new(dialog_text)
             .block(
                 Block::default()
                     .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
-                    .title(format!(" {} ", tr!(app.translator, "dialog.update_title")))
+                    .title(format!(
+                        " {} ",
+                        tr!(app.ui.translator, "dialog.update_title")
+                    ))
                     .title_style(
                         Style::default()
                             .fg(THEME.warning)
@@ -730,7 +736,7 @@ pub fn render_update_dialog(f: &mut ratatui::Frame, app: &App) {
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(
-                    format!(" {}", tr!(app.translator, "dialog.to_cancel")),
+                    format!(" {}", tr!(app.ui.translator, "dialog.to_cancel")),
                     Style::default().fg(THEME.text_main),
                 ),
             ]),
@@ -742,18 +748,18 @@ pub fn render_update_dialog(f: &mut ratatui::Frame, app: &App) {
                 .border_type(BorderType::Thick),
         );
         f.render_widget(footer, progress_chunks[2]);
-    } else if app.update_done {
-        let (icon, border_color, title) = if app.update_success {
+    } else if app.update.update_done {
+        let (icon, border_color, title) = if app.update.update_success {
             (
                 "\u{2705}",
                 THEME.success,
-                tr!(app.translator, "dialog.update_success"),
+                tr!(app.ui.translator, "dialog.update_success"),
             )
         } else {
             (
                 "\u{274C}",
                 THEME.danger,
-                tr!(app.translator, "dialog.update_failed"),
+                tr!(app.ui.translator, "dialog.update_failed"),
             )
         };
         let dialog_text = vec![
@@ -767,7 +773,7 @@ pub fn render_update_dialog(f: &mut ratatui::Frame, app: &App) {
             )]),
             Line::from(""),
             Line::from(vec![Span::styled(
-                format!("  {} ", app.update_message),
+                format!("  {} ", app.update.update_message),
                 Style::default().fg(THEME.text_main),
             )]),
             Line::from(""),
@@ -781,7 +787,7 @@ pub fn render_update_dialog(f: &mut ratatui::Frame, app: &App) {
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(
-                    format!(" {}", tr!(app.translator, "dialog.to_dismiss")),
+                    format!(" {}", tr!(app.ui.translator, "dialog.to_dismiss")),
                     Style::default().fg(THEME.text_main),
                 ),
             ]),
@@ -807,7 +813,7 @@ pub fn render_update_dialog(f: &mut ratatui::Frame, app: &App) {
         let dialog_text = vec![
             Line::from(""),
             Line::from(vec![Span::styled(
-                format!("  {} ", tr!(app.translator, "dialog.update_available")),
+                format!("  {} ", tr!(app.ui.translator, "dialog.update_available")),
                 Style::default()
                     .fg(THEME.warning)
                     .add_modifier(Modifier::BOLD),
@@ -819,7 +825,7 @@ pub fn render_update_dialog(f: &mut ratatui::Frame, app: &App) {
                     format!(
                         "v{} → v{}",
                         env!("CARGO_PKG_VERSION"),
-                        app.latest_remote_version,
+                        app.update.latest_remote_version,
                     ),
                     Style::default().fg(THEME.text_main),
                 ),
@@ -828,7 +834,7 @@ pub fn render_update_dialog(f: &mut ratatui::Frame, app: &App) {
             Line::from(vec![
                 Span::styled("  ", Style::default()),
                 Span::styled(
-                    tr!(app.translator, "dialog.update_prompt"),
+                    tr!(app.ui.translator, "dialog.update_prompt"),
                     Style::default().fg(THEME.text_dim),
                 ),
             ]),
@@ -843,7 +849,7 @@ pub fn render_update_dialog(f: &mut ratatui::Frame, app: &App) {
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(
-                    format!(" {}   ", tr!(app.translator, "dialog.download")),
+                    format!(" {}   ", tr!(app.ui.translator, "dialog.download")),
                     Style::default().fg(THEME.text_main),
                 ),
                 Span::styled(
@@ -854,7 +860,7 @@ pub fn render_update_dialog(f: &mut ratatui::Frame, app: &App) {
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(
-                    format!(" {}", tr!(app.translator, "dialog.to_dismiss")),
+                    format!(" {}", tr!(app.ui.translator, "dialog.to_dismiss")),
                     Style::default().fg(THEME.text_main),
                 ),
             ]),
@@ -863,7 +869,10 @@ pub fn render_update_dialog(f: &mut ratatui::Frame, app: &App) {
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .title(format!(" {} ", tr!(app.translator, "dialog.update_title")))
+                    .title(format!(
+                        " {} ",
+                        tr!(app.ui.translator, "dialog.update_title")
+                    ))
                     .title_style(
                         Style::default()
                             .fg(THEME.warning)
@@ -890,19 +899,22 @@ pub fn render_confirmation_dialog(f: &mut ratatui::Frame, app: &App) {
     let dialog_text = vec![
         Line::from(""),
         Line::from(vec![Span::styled(
-            format!("  󰆐  {} ", tr!(app.translator, "dialog.confirm_attention")),
+            format!(
+                "  󰆐  {} ",
+                tr!(app.ui.translator, "dialog.confirm_attention")
+            ),
             Style::default()
                 .fg(THEME.danger)
                 .add_modifier(Modifier::BOLD),
         )]),
         Line::from(""),
         Line::from(vec![Span::styled(
-            format!("  {} ", app.confirmation_message),
+            format!("  {} ", app.ui.confirmation_message),
             Style::default().fg(THEME.text_main),
         )]),
         Line::from(""),
         Line::from(vec![Span::styled(
-            format!("  {} ", tr!(app.translator, "dialog.admin_required")),
+            format!("  {} ", tr!(app.ui.translator, "dialog.admin_required")),
             Style::default()
                 .fg(THEME.warning)
                 .add_modifier(Modifier::ITALIC),
@@ -918,7 +930,7 @@ pub fn render_confirmation_dialog(f: &mut ratatui::Frame, app: &App) {
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
-                format!(" {}   ", tr!(app.translator, "dialog.confirm")),
+                format!(" {}   ", tr!(app.ui.translator, "dialog.confirm")),
                 Style::default().fg(THEME.text_main),
             ),
             Span::styled(
@@ -929,7 +941,7 @@ pub fn render_confirmation_dialog(f: &mut ratatui::Frame, app: &App) {
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
-                format!(" {}", tr!(app.translator, "dialog.cancel")),
+                format!(" {}", tr!(app.ui.translator, "dialog.cancel")),
                 Style::default().fg(THEME.text_main),
             ),
         ]),
@@ -941,7 +953,7 @@ pub fn render_confirmation_dialog(f: &mut ratatui::Frame, app: &App) {
                 .borders(Borders::ALL)
                 .title(format!(
                     " 󰰍 {} ",
-                    tr!(app.translator, "dialog.confirm_title")
+                    tr!(app.ui.translator, "dialog.confirm_title")
                 ))
                 .title_style(
                     Style::default()
@@ -973,7 +985,7 @@ pub fn render_welcome_dialog(f: &mut ratatui::Frame, app: &App) {
         .border_style(Style::default().fg(THEME.success))
         .title(format!(
             " 🎉 {} 🎉 ",
-            tr!(app.translator, "dialog.welcome_title")
+            tr!(app.ui.translator, "dialog.welcome_title")
         ))
         .title_alignment(Alignment::Center)
         .style(Style::default().bg(THEME.background));
@@ -991,7 +1003,7 @@ pub fn render_welcome_dialog(f: &mut ratatui::Frame, app: &App) {
     let current_version = env!("CARGO_PKG_VERSION");
     let content = vec![Line::from(vec![
         Span::styled(
-            format!("{} ", tr!(app.translator, "dialog.welcome_message")),
+            format!("{} ", tr!(app.ui.translator, "dialog.welcome_message")),
             Style::default().fg(THEME.text_main),
         ),
         Span::styled(
@@ -1018,7 +1030,7 @@ pub fn render_welcome_dialog(f: &mut ratatui::Frame, app: &App) {
         ])
         .split(inner_chunks[1]);
 
-    let btn_continue_style = if app.welcome_index == 0 {
+    let btn_continue_style = if app.ui.welcome_index == crate::config::WELCOME_PAGE_COUNT - 2 {
         Style::default()
             .fg(THEME.background)
             .bg(THEME.success)
@@ -1027,7 +1039,7 @@ pub fn render_welcome_dialog(f: &mut ratatui::Frame, app: &App) {
         Style::default().fg(THEME.text_dim).bg(THEME.background)
     };
 
-    let btn_changes_style = if app.welcome_index == 1 {
+    let btn_changes_style = if app.ui.welcome_index == crate::config::WELCOME_PAGE_COUNT - 1 {
         Style::default()
             .fg(THEME.background)
             .bg(THEME.primary)
@@ -1036,35 +1048,39 @@ pub fn render_welcome_dialog(f: &mut ratatui::Frame, app: &App) {
         Style::default().fg(THEME.text_dim).bg(THEME.background)
     };
 
-    let btn_continue = Paragraph::new(tr!(app.translator, "dialog.confirm"))
+    let btn_continue = Paragraph::new(tr!(app.ui.translator, "dialog.confirm"))
         .alignment(Alignment::Center)
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(if app.welcome_index == 0 {
-                    THEME.success
-                } else {
-                    THEME.text_dim
-                })),
+                .border_style(Style::default().fg(
+                    if app.ui.welcome_index == crate::config::WELCOME_PAGE_COUNT - 2 {
+                        THEME.success
+                    } else {
+                        THEME.text_dim
+                    },
+                )),
         );
 
-    let btn_changes = Paragraph::new(tr!(app.translator, "dialog.view_changes"))
+    let btn_changes = Paragraph::new(tr!(app.ui.translator, "dialog.view_changes"))
         .alignment(Alignment::Center)
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(if app.welcome_index == 1 {
-                    THEME.primary
-                } else {
-                    THEME.text_dim
-                })),
+                .border_style(Style::default().fg(
+                    if app.ui.welcome_index == crate::config::WELCOME_PAGE_COUNT - 1 {
+                        THEME.primary
+                    } else {
+                        THEME.text_dim
+                    },
+                )),
         );
 
     f.render_widget(Clear, area);
     f.render_widget(block, area);
     f.render_widget(content_para, inner_chunks[0]);
 
-    if app.welcome_index == 0 {
+    if app.ui.welcome_index == crate::config::WELCOME_PAGE_COUNT - 2 {
         f.render_widget(Block::default().style(btn_continue_style), button_area[1]);
     } else {
         f.render_widget(Block::default().style(btn_changes_style), button_area[3]);
