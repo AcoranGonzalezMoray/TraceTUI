@@ -2464,26 +2464,72 @@ fn pick_save_path(_app: &App, default_name: &str) -> Option<std::path::PathBuf> 
     #[cfg(target_os = "linux")]
     {
         use std::process::Command;
-        let output = Command::new("zenity")
+
+        // Try Zenity first
+        if let Ok(output) = Command::new("zenity")
             .args([
                 "--file-selection",
                 "--save",
+                "--confirm-overwrite",
                 "--title=Export Network Analysis",
                 &format!("--filename={}", default_name),
             ])
             .output()
-            .ok()?;
-        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        if path.is_empty() {
-            None
-        } else {
-            Some(std::path::PathBuf::from(path))
+        {
+            if output.status.success() {
+                let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !path.is_empty() {
+                    return Some(std::path::PathBuf::from(path));
+                }
+            }
         }
+
+        // Try KDialog
+        if let Ok(output) = Command::new("kdialog")
+            .args([
+                "--getsavefilename",
+                ".",
+                default_name,
+                "--title",
+                "Export Network Analysis",
+            ])
+            .output()
+        {
+            if output.status.success() {
+                let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !path.is_empty() {
+                    return Some(std::path::PathBuf::from(path));
+                }
+            }
+        }
+
+        // Try Python with Tkinter as last resort
+        let py_script = format!(
+            "import tkinter as tk; from tkinter import filedialog; root = tk.Tk(); root.withdraw(); \
+             path = filedialog.asksaveasfilename(initialfile='{}', title='Export Network Analysis', \
+             filetypes=[('JSON files','*.json'),('All files','*')]); print(path)",
+            default_name
+        );
+        if let Ok(output) = Command::new("python3").args(["-c", &py_script]).output() {
+            if output.status.success() {
+                let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !path.is_empty() {
+                    return Some(std::path::PathBuf::from(path));
+                }
+            }
+        }
+
+        None
     }
+
     #[cfg(not(any(target_os = "windows", target_os = "linux")))]
     {
         None
     }
+}
+#[allow(dead_code)]
+pub fn pick_save_path_for_test(app: &App, default_name: &str) -> Option<std::path::PathBuf> {
+    pick_save_path(app, default_name)
 }
 pub fn toggle_selected_conn_checkbox(app: &mut App) {
     if let Some(checked) = app

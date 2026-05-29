@@ -1,14 +1,21 @@
 # UNRELEASED
 
 ## 2026-05-29  V2.0.1
-- 🐛: Fixed export functionality on Linux and kill process action on Windows/Linux
-- 🐧 **Linux Parity**: Added native file explorer integration for export actions (Zenity/KDialog support).
-- 🚀 **User Experience**: Added visual action loaders for process termination and connection closing.
-- ⌨️ **Improved Controls**: Added `Enter` key support for confirmation dialogs across the application.
-- 🌐 **i18n Polish**: Fully synchronized and translated all status messages for 9 supported languages (EN, ES, FR, DE, IT, PT, RU, ZH, JA).
-- 🛡️ **System Stability**: Fixed process termination logic for both Windows (taskkill) and Linux (kill -9) with better permission handling.
-- 🧹 **Code Quality**: Resolved all Clippy lint warnings and performed heavy code cleanup in `input_service.rs`.
-- 🎨 **UI Improvements**: Fixed image visualization in Linux storage explorer and improved icon extraction feedback.
+🐛: Fixed export functionality on Linux and kill process action on Windows/Linux
+
+🐧: **Linux Parity** — Native file explorer dialog for export actions (Zenity → KDialog → Python/Tkinter fallback chain) now applied consistently in Networks and Libraries sections
+
+🚀: **Action Loaders** — Visual loading modal while killing processes or closing connections, with i18n status messages
+
+⌨️: **Improved Controls** — `Enter` key now confirms action dialogs across all panels alongside the existing `Y`/`S` keys
+
+🌐: **i18n Polish** — Fully synchronized and translated `status.closing_connections`, `status.killing_process` and `status.please_wait` across all 9 supported languages (EN, ES, FR, DE, IT, PT, RU, ZH, JA)
+
+🛡️: **System Stability** — Fixed process termination logic for Windows (`taskkill /F`) and Linux (`kill -9`) with better access-denied and not-found error messages
+
+🧹: **Code Quality** — Resolved all Clippy lint warnings (unused imports, useless `as_ref`, etc.) and cleaned up `input_service.rs`
+
+🎨: **UI Improvements** — Fixed image visualization in the Linux storage explorer; improved icon extraction feedback
 
 # RELEASED
 
