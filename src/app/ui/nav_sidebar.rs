@@ -46,7 +46,9 @@ pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
         "󰅩"
     };
 
-    let agents_icon = if app.agents.agents.iter().any(|a| matches!(a.status, crate::app::types::AgentStatus::Running(_) | crate::app::types::AgentStatus::Queued))
+    let agents_icon = if app.agents.completed_notifications > 0 && app.ui.current_nav_view != NavView::Agents {
+        "●"
+    } else if app.agents.agents.iter().any(|a| matches!(a.status, crate::app::types::AgentStatus::Running(_) | crate::app::types::AgentStatus::Queued))
         && app.ui.current_nav_view != NavView::Agents
     {
         spinners[(app.ui.frame_count as usize) % spinners.len()]

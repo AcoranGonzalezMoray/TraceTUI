@@ -673,7 +673,6 @@ fn process_ollama_fetch(app: &mut App) {
 }
 
 fn process_agent_status(app: &mut App) {
-    let mut next_launch: Option<(usize, crate::app::types::AgentLaunchData)> = None;
     if let Some(rx) = &mut app.agents.agent_status_rx {
         while let Ok((idx, new_status)) = rx.try_recv() {
             if idx < app.agents.agents.len() {
@@ -689,14 +688,17 @@ fn process_agent_status(app: &mut App) {
                 match &new_status {
                     AgentStatus::Completed(_) | AgentStatus::Failed(_) => {
                         app.agents.agents[idx].completed_at_frame = Some(app.ui.frame_count);
-                        if !app.agents.agent_launch_queue.is_empty() {
-                            app.agents.agent_launch_queue.remove(0);
-                        }
-                        if next_launch.is_none() {
-                            if let Some(launch) = app.agents.agent_launch_queue.first() {
-                                if let Some(qi) = app.agents.agents.iter().position(|a| matches!(a.status, AgentStatus::Queued)) {
-                                    next_launch = Some((qi, launch.clone()));
-                                }
+                        app.agents.running_agent_count = app.agents.running_agent_count.saturating_sub(1);
+                        if let AgentStatus::Completed(report) = &new_status {
+                            if let Some(path) = crate::app::agents::save_agent_report(
+                                &app.agents.agents[idx].target_name,
+                                app.agents.agents[idx].mission,
+                                report,
+                            ) {
+                                app.agents.agents[idx].history_path = Some(path);
+                            }
+                            if app.ui.current_nav_view != crate::app::NavView::Agents {
+                                app.agents.completed_notifications = app.agents.completed_notifications.saturating_add(1);
                             }
                         }
                     }
@@ -706,10 +708,30 @@ fn process_agent_status(app: &mut App) {
             }
         }
     }
-    if let Some((queued_idx, launch)) = next_launch {
-        app.agents.agents[queued_idx].status = AgentStatus::Running("Analyzing process...".to_string());
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    while app.agents.running_agent_count < app.agents.max_parallel_agents {
+        let Some(queued_idx) = app.agents.agents.iter().position(|a| matches!(a.status, AgentStatus::Queued)) else {
+            break;
+        };
+        let Some(launch) = app.agents.agents[queued_idx].launch_data.clone() else {
+            app.agents.agents[queued_idx].status = AgentStatus::Failed("Missing launch data".to_string());
+            break;
+        };
+        app.agents.agents[queued_idx].status = AgentStatus::Running("Starting...".to_string());
+        app.agents.agents[queued_idx].started_at_frame = app.ui.frame_count;
+        let tx = if let Some(tx) = app.agents.agent_status_tx.clone() {
+            tx
+        } else {
+            let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+            app.agents.agent_status_tx = Some(tx.clone());
+            app.agents.agent_status_rx = Some(rx);
+            tx
+        };
         let locale = app.ui.translator.locale.clone();
+        let abort = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        if app.agents.agent_abort_flags.len() <= queued_idx {
+            app.agents.agent_abort_flags.resize_with(queued_idx + 1, || std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)));
+        }
+        app.agents.agent_abort_flags[queued_idx] = abort.clone();
         crate::app::agents::spawn_agent_async(
             launch.mission,
             launch.model,
@@ -719,8 +741,10 @@ fn process_agent_status(app: &mut App) {
             launch.processes,
             launch.networks,
             locale,
+            launch.dependency_context,
+            abort,
         );
-        app.agents.agent_status_rx = Some(rx);
+        app.agents.running_agent_count += 1;
     }
 }
 

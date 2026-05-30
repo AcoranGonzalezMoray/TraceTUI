@@ -1,4 +1,4 @@
-use crate::app::types::OllamaConfig;
+use crate::app::types::{AgentProvider, AgentProviderConfig, OllamaConfig};
 use std::path::PathBuf;
 use std::time::Duration;
 pub const TICK_RATE_MS: u64 = 250;
@@ -123,6 +123,18 @@ pub struct AppConfig {
     pub ollama_url: String,
     #[serde(default)]
     pub ollama_models: Vec<String>,
+    #[serde(default = "default_agent_provider")]
+    pub agent_provider: AgentProvider,
+    #[serde(default)]
+    pub agent_api_url: String,
+    #[serde(default)]
+    pub agent_api_key: String,
+    #[serde(default)]
+    pub agent_models: Vec<String>,
+}
+
+fn default_agent_provider() -> AgentProvider {
+    AgentProvider::Ollama
 }
 
 pub fn save_config(config: &AppConfig) {
@@ -167,17 +179,19 @@ pub fn load_language() -> Option<String> {
 
 pub fn load_ollama_config() -> OllamaConfig {
     let config = load_config();
-    OllamaConfig {
-        api_url: if config.ollama_url.is_empty() {
-            "http://localhost:11434".to_string()
-        } else {
-            config.ollama_url
-        },
-        models: if config.ollama_models.is_empty() {
-            vec!["llama3.2:latest".to_string()]
-        } else {
-            config.ollama_models
-        },
+    if !config.agent_api_url.is_empty() || !config.agent_models.is_empty() {
+        return AgentProviderConfig {
+            provider: config.agent_provider,
+            api_url: config.agent_api_url,
+            api_key: config.agent_api_key,
+            models: config.agent_models,
+        };
+    }
+    AgentProviderConfig {
+        provider: AgentProvider::Ollama,
+        api_url: if config.ollama_url.is_empty() { "http://localhost:11434".to_string() } else { config.ollama_url },
+        api_key: String::new(),
+        models: if config.ollama_models.is_empty() { vec!["llama3.2:latest".to_string()] } else { config.ollama_models },
     }
 }
 
@@ -185,5 +199,9 @@ pub fn save_ollama_config(ollama: &OllamaConfig) {
     let mut config = load_config();
     config.ollama_url = ollama.api_url.clone();
     config.ollama_models = ollama.models.clone();
+    config.agent_provider = ollama.provider;
+    config.agent_api_url = ollama.api_url.clone();
+    config.agent_api_key = ollama.api_key.clone();
+    config.agent_models = ollama.models.clone();
     save_config(&config);
 }

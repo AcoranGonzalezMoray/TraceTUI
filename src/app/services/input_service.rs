@@ -8,7 +8,6 @@ use crate::app::App;
 use crate::config;
 use crate::resources;
 use crate::tr;
-use tokio::sync::mpsc;
 use crossterm::event::{
     KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
 };
@@ -51,6 +50,9 @@ fn switch_nav_view(app: &mut App, view: NavView) {
         if app.ui.auto_analysis_complete {
             app.refresh_libraries();
         }
+    }
+    if view == NavView::Agents {
+        app.agents.completed_notifications = 0;
     }
 }
 
@@ -146,14 +148,30 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) {
 }
 fn handle_provider_modal_keys(app: &mut App, key: KeyEvent) {
     match key.code {
+        KeyCode::Esc if app.agents.agent_search_mode => {
+            app.agents.agent_search_mode = false;
+        }
+        KeyCode::Backspace if app.agents.agent_search_mode => {
+            app.agents.agent_search_query.pop();
+            app.agents.agent_detail_scroll = 0;
+        }
+        KeyCode::Enter if app.agents.agent_search_mode => {
+            app.agents.agent_search_mode = false;
+        }
+        KeyCode::Char(c) if app.agents.agent_search_mode => {
+            if !key.modifiers.contains(KeyModifiers::CONTROL) {
+                app.agents.agent_search_query.push(c);
+                app.agents.agent_detail_scroll = 0;
+            }
+        }
         KeyCode::Tab => {
             app.agents.provider_modal_focus =
-                (app.agents.provider_modal_focus + 1) % 6;
+                (app.agents.provider_modal_focus + 1) % 8;
         }
         KeyCode::BackTab => {
             app.agents.provider_modal_focus =
                 if app.agents.provider_modal_focus == 0 {
-                    5
+                    7
                 } else {
                     app.agents.provider_modal_focus - 1
                 };
@@ -163,34 +181,49 @@ fn handle_provider_modal_keys(app: &mut App, key: KeyEvent) {
         }
         KeyCode::Enter => {
             match app.agents.provider_modal_focus {
-                1 => {
+                0 => {
+                    app.agents.ollama.provider = app.agents.ollama.provider.next();
+                    if app.agents.ollama_url_input.trim().is_empty()
+                        || app.agents.ollama_url_input.contains("localhost:11434")
+                        || app.agents.ollama_url_input.contains("api.openai.com")
+                        || app.agents.ollama_url_input.contains("api.anthropic.com")
+                    {
+                        app.agents.ollama_url_input = match app.agents.ollama.provider {
+                            crate::app::types::AgentProvider::Ollama => "http://localhost:11434".to_string(),
+                            crate::app::types::AgentProvider::OpenAI => "https://api.openai.com".to_string(),
+                            crate::app::types::AgentProvider::Anthropic => "https://api.anthropic.com".to_string(),
+                            crate::app::types::AgentProvider::LlamaCpp => "http://localhost:8080".to_string(),
+                        };
+                    }
+                }
+                2 => {
                     let model = app.agents.ollama_model_input.trim().to_string();
                     if !model.is_empty() && !app.agents.ollama_models.contains(&model) {
                         app.agents.ollama_models.push(model);
                     }
                     app.agents.ollama_model_input.clear();
                 }
-                3 => execute_fetch_ollama(app),
-                4 => execute_save_ollama(app),
-                5 => app.agents.show_provider_modal = false,
+                5 => execute_fetch_ollama(app),
+                6 => execute_save_ollama(app),
+                7 => app.agents.show_provider_modal = false,
                 _ => execute_save_ollama(app),
             }
         }
         KeyCode::Char('f') | KeyCode::Char('F') => {
             execute_fetch_ollama(app);
         }
-        KeyCode::Up if app.agents.provider_modal_focus == 2 => {
+        KeyCode::Up if app.agents.provider_modal_focus == 4 => {
             if app.agents.selected_model_index > 0 {
                 app.agents.selected_model_index -= 1;
             }
         }
-        KeyCode::Down if app.agents.provider_modal_focus == 2 => {
+        KeyCode::Down if app.agents.provider_modal_focus == 4 => {
             let max = app.agents.ollama_models.len().saturating_sub(1);
             if app.agents.selected_model_index < max {
                 app.agents.selected_model_index += 1;
             }
         }
-        KeyCode::Delete if app.agents.provider_modal_focus == 2 => {
+        KeyCode::Delete if app.agents.provider_modal_focus == 4 => {
             if app.agents.selected_model_index < app.agents.ollama_models.len() {
                 app.agents.ollama_models.remove(app.agents.selected_model_index);
                 if app.agents.selected_model_index >= app.agents.ollama_models.len() {
@@ -200,16 +233,18 @@ fn handle_provider_modal_keys(app: &mut App, key: KeyEvent) {
         }
         KeyCode::Backspace => {
             match app.agents.provider_modal_focus {
-                0 => { app.agents.ollama_url_input.pop(); }
-                1 => { app.agents.ollama_model_input.pop(); }
+                1 => { app.agents.ollama_url_input.pop(); }
+                2 => { app.agents.ollama_model_input.pop(); }
+                3 => { app.agents.agent_api_key_input.pop(); }
                 _ => {}
             }
         }
         KeyCode::Char(c) => {
             if !key.modifiers.contains(KeyModifiers::CONTROL) {
                 match app.agents.provider_modal_focus {
-                    0 => app.agents.ollama_url_input.push(c),
-                    1 => app.agents.ollama_model_input.push(c),
+                    1 => app.agents.ollama_url_input.push(c),
+                    2 => app.agents.ollama_model_input.push(c),
+                    3 => app.agents.agent_api_key_input.push(c),
                     _ => {}
                 }
             }
@@ -231,6 +266,8 @@ fn execute_fetch_ollama(app: &mut App) {
 
 fn execute_save_ollama(app: &mut App) {
     app.agents.ollama.api_url = app.agents.ollama_url_input.clone();
+    app.agents.ollama.api_key = app.agents.agent_api_key_input.clone();
+    app.agents.provider = app.agents.ollama.provider;
     let sel = app.agents.selected_model_index;
     if sel < app.agents.ollama_models.len() {
         let m = app.agents.ollama_models.remove(sel);
@@ -253,18 +290,28 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
                 }
             }
             KeyCode::Down => {
-                if app.agents.agent_type_selector_index < 1 {
+                if app.agents.agent_type_selector_index < 8 {
                     app.agents.agent_type_selector_index += 1;
                 }
             }
             KeyCode::Enter => {
                 let mission = match app.agents.agent_type_selector_index {
                     0 => AgentMission::ProcessAnalysis,
-                    _ => AgentMission::NetworkAnalysis,
+                    1 => AgentMission::NetworkAnalysis,
+                    2 => AgentMission::DnsAnalysis,
+                    3 => AgentMission::FileAnalyzer,
+                    4 => AgentMission::PortScanner,
+                    5 => AgentMission::LogAnalyzer,
+                    6 => AgentMission::MemoryAnalyzer,
+                    7 => AgentMission::VulnerabilityCheck,
+                    _ => AgentMission::ThreatIntel,
                 };
                 app.agents.show_agent_type_selector = false;
                 match mission {
-                    AgentMission::ProcessAnalysis => {
+                    AgentMission::ProcessAnalysis
+                    | AgentMission::FileAnalyzer
+                    | AgentMission::LogAnalyzer
+                    | AgentMission::MemoryAnalyzer => {
                         if app.agents.ollama.models.is_empty() {
                             app.ui.status_message =
                                 tr!(app.ui.translator, "agents.no_models").to_string();
@@ -278,7 +325,11 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
                             app.agents.selected_model_index = 0;
                         }
                     }
-                    AgentMission::NetworkAnalysis => {
+                    AgentMission::NetworkAnalysis
+                    | AgentMission::DnsAnalysis
+                    | AgentMission::PortScanner
+                    | AgentMission::VulnerabilityCheck
+                    | AgentMission::ThreatIntel => {
                         if app.agents.ollama.models.is_empty() {
                             app.ui.status_message =
                                 tr!(app.ui.translator, "agents.no_models").to_string();
@@ -341,8 +392,6 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
                     let model_p = app.agents.ollama.models.first().cloned().unwrap_or_default();
                     let config_p = app.agents.ollama.clone();
                     let process_data = app.network.processes.clone();
-                    let locale_p = app.ui.translator.locale.clone();
-
                     let mut first_idx = None;
                     let mut queue_p = Vec::new();
 
@@ -352,24 +401,29 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
                         let tp = procs_for_agent.first().and_then(|p| p.path.clone());
                         let agent_idx = app.agents.agents.len();
 
+                        let launch_data = crate::app::types::AgentLaunchData {
+                            mission: mission_p,
+                            model: model_p.clone(),
+                            config: config_p.clone(),
+                            processes: Some(procs_for_agent.clone()),
+                            networks: None,
+                            dependency_context: None,
+                        };
+
                         app.agents.agents.push(AgentInstance {
                             mission: mission_p,
-                            provider: crate::app::types::AgentProvider::Ollama,
+                            provider: config_p.provider,
                             model: model_p.clone(),
                             status: AgentStatus::Queued,
                             started_at_frame: app.ui.frame_count,
                             completed_at_frame: None,
                             target_name: tn.clone(),
                             target_path: tp.clone(),
+                            launch_data: Some(launch_data.clone()),
+                            history_path: None,
                         });
 
-                        queue_p.push(crate::app::types::AgentLaunchData {
-                            mission: mission_p,
-                            model: model_p.clone(),
-                            config: config_p.clone(),
-                            processes: Some(procs_for_agent),
-                            networks: None,
-                        });
+                        queue_p.push(launch_data);
 
                         if first_idx.is_none() {
                             first_idx = Some(agent_idx);
@@ -377,24 +431,12 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
                     }
 
                     app.agents.agent_launch_queue = queue_p;
-                    if let Some(idx) = first_idx {
-                        if let Some(agent) = app.agents.agents.get_mut(idx) {
-                            agent.status = AgentStatus::Running("Analyzing process...".to_string());
-                        }
-                        if let Some(launch) = app.agents.agent_launch_queue.first() {
-                            let (tx_q, rx_q) = mpsc::unbounded_channel();
-                            crate::app::agents::spawn_agent_async(
-                                launch.mission,
-                                launch.model.clone(),
-                                launch.config.clone(),
-                                idx,
-                                tx_q,
-                                launch.processes.clone(),
-                                None,
-                                locale_p,
-                            );
-                            app.agents.agent_status_rx = Some(rx_q);
-                        }
+                    if first_idx.is_some() {
+                        app.ui.status_message = tr!(
+                            app.ui.translator,
+                            "agents.status_queued_count",
+                            app.agents.selected_pids.len()
+                        );
                     }
 
                     app.agents.show_process_selector = false;
@@ -453,8 +495,6 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
                     let model_n = app.agents.ollama.models.first().cloned().unwrap_or_default();
                     let config_n = app.agents.ollama.clone();
                     let conns_n = app.network.app_connections.clone();
-                    let locale_n = app.ui.translator.locale.clone();
-
                     let mut first_idx_n = None;
                     let mut queue_n = Vec::new();
 
@@ -467,24 +507,41 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
                         };
                         let agent_idx = app.agents.agents.len();
 
+                        let dependency_context = if matches!(mission_n, AgentMission::VulnerabilityCheck) {
+                            app.agents
+                                .agents
+                                .iter()
+                                .rev()
+                                .find_map(|agent| match (&agent.mission, &agent.status) {
+                                    (AgentMission::PortScanner, AgentStatus::Completed(report)) => Some(report.clone()),
+                                    _ => None,
+                                })
+                        } else {
+                            None
+                        };
+                        let launch_data = crate::app::types::AgentLaunchData {
+                            mission: mission_n,
+                            model: model_n.clone(),
+                            config: config_n.clone(),
+                            processes: None,
+                            networks: Some((net_conns.clone(), net_proc_name.clone())),
+                            dependency_context,
+                        };
+
                         app.agents.agents.push(AgentInstance {
                             mission: mission_n,
-                            provider: crate::app::types::AgentProvider::Ollama,
+                            provider: config_n.provider,
                             model: model_n.clone(),
                             status: AgentStatus::Queued,
                             started_at_frame: app.ui.frame_count,
                             completed_at_frame: None,
                             target_name: net_proc_name.clone(),
                             target_path: None,
+                            launch_data: Some(launch_data.clone()),
+                            history_path: None,
                         });
 
-                        queue_n.push(crate::app::types::AgentLaunchData {
-                            mission: mission_n,
-                            model: model_n.clone(),
-                            config: config_n.clone(),
-                            processes: None,
-                            networks: Some((net_conns, net_proc_name)),
-                        });
+                        queue_n.push(launch_data);
 
                         if first_idx_n.is_none() {
                             first_idx_n = Some(agent_idx);
@@ -492,24 +549,12 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
                     }
 
                     app.agents.agent_launch_queue = queue_n;
-                    if let Some(idx) = first_idx_n {
-                        if let Some(agent) = app.agents.agents.get_mut(idx) {
-                            agent.status = AgentStatus::Running("Analyzing process...".to_string());
-                        }
-                        if let Some(launch) = app.agents.agent_launch_queue.first() {
-                            let (tx_n, rx_n) = mpsc::unbounded_channel();
-                            crate::app::agents::spawn_agent_async(
-                                launch.mission,
-                                launch.model.clone(),
-                                launch.config.clone(),
-                                idx,
-                                tx_n,
-                                None,
-                                launch.networks.clone(),
-                                locale_n,
-                            );
-                            app.agents.agent_status_rx = Some(rx_n);
-                        }
+                    if first_idx_n.is_some() {
+                        app.ui.status_message = tr!(
+                            app.ui.translator,
+                            "agents.status_queued_count",
+                            app.agents.selected_connection_idxs.len()
+                        );
                     }
 
                     app.agents.show_network_selector = false;
@@ -633,6 +678,7 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
             } else {
                 app.agents.show_provider_modal = true;
                 app.agents.ollama_url_input = app.agents.ollama.api_url.clone();
+                app.agents.agent_api_key_input = app.agents.ollama.api_key.clone();
                 app.agents.ollama_models = app.agents.ollama.models.clone();
                 app.agents.provider_modal_focus = 0;
             }
@@ -677,6 +723,43 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
                 }
             }
         }
+        KeyCode::Char('/') => {
+            app.agents.agent_search_mode = true;
+            app.agents.agent_search_query.clear();
+            app.agents.agent_detail_scroll = 0;
+        }
+        KeyCode::Char('z') | KeyCode::Char('Z') => {
+            app.agents.collapse_sections = !app.agents.collapse_sections;
+            app.agents.agent_detail_scroll = 0;
+        }
+        KeyCode::Char('+') | KeyCode::Char('=') => {
+            app.agents.max_parallel_agents = (app.agents.max_parallel_agents + 1).min(8);
+            app.ui.status_message = tr!(
+                app.ui.translator,
+                "agents.status_parallel",
+                app.agents.max_parallel_agents
+            );
+        }
+        KeyCode::Char('-') => {
+            app.agents.max_parallel_agents = app.agents.max_parallel_agents.saturating_sub(1).max(1);
+            app.ui.status_message = tr!(
+                app.ui.translator,
+                "agents.status_parallel",
+                app.agents.max_parallel_agents
+            );
+        }
+        KeyCode::Char('r') | KeyCode::Char('R') => {
+            retry_selected_agent(app);
+        }
+        KeyCode::Char('e') | KeyCode::Char('E') => {
+            export_selected_agent_report(app, "md");
+        }
+        KeyCode::Char('j') | KeyCode::Char('J') => {
+            export_selected_agent_report(app, "json");
+        }
+        KeyCode::Char('s') | KeyCode::Char('S') => {
+            cancel_selected_agent(app);
+        }
         KeyCode::Char('l') | KeyCode::Char('L') => {
             app.ui.show_language_modal = true;
         }
@@ -697,6 +780,7 @@ fn execute_agent_action(app: &mut App) {
         0 => {
             app.agents.show_provider_modal = true;
             app.agents.ollama_url_input = app.agents.ollama.api_url.clone();
+            app.agents.agent_api_key_input = app.agents.ollama.api_key.clone();
             app.agents.ollama_models = app.agents.ollama.models.clone();
             app.agents.provider_modal_focus = 0;
         }
@@ -710,25 +794,88 @@ fn execute_agent_action(app: &mut App) {
             }
         }
         2 => {
-            if app.agents.ollama.models.is_empty() {
-                app.ui.status_message =
-                    tr!(app.ui.translator, "agents.no_models").to_string();
-            } else if app.network.app_connections.is_empty() {
-                app.ui.status_message =
-                    tr!(app.ui.translator, "agents.no_networks").to_string();
-            } else {
-                app.agents.selected_mission = Some(AgentMission::NetworkAnalysis);
-                app.agents.show_network_selector = true;
-                app.agents.selected_connection_idxs.clear();
-                app.agents.selected_model_index = 0;
-            }
+            retry_selected_agent(app);
         }
         3 => {
             app.agents.agents.clear();
+            app.agents.agent_abort_flags.clear();
+            app.agents.running_agent_count = 0;
             app.agents.selected_agent_index = 0;
             app.agents.agent_detail_scroll = 0;
         }
         _ => {}
+    }
+}
+
+fn cancel_selected_agent(app: &mut App) {
+    let idx = app.agents.selected_agent_index;
+    if let Some(flag) = app.agents.agent_abort_flags.get(idx) {
+        flag.store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+    if let Some(agent) = app.agents.agents.get_mut(idx) {
+        if matches!(agent.status, AgentStatus::Queued) {
+            agent.status = AgentStatus::Failed(tr!(app.ui.translator, "agents.action_cancel"));
+        }
+    }
+    app.ui.status_message = tr!(app.ui.translator, "agents.status_cancel_requested");
+}
+
+fn retry_selected_agent(app: &mut App) {
+    let idx = app.agents.selected_agent_index;
+    if let Some(agent) = app.agents.agents.get_mut(idx) {
+        if agent.launch_data.is_some() {
+            agent.status = AgentStatus::Queued;
+            agent.completed_at_frame = None;
+            agent.history_path = None;
+            agent.started_at_frame = app.ui.frame_count;
+            app.ui.status_message = tr!(app.ui.translator, "agents.status_retrying", idx);
+        } else {
+            app.ui.status_message = tr!(app.ui.translator, "agents.status_retry_missing");
+        }
+    }
+}
+
+fn export_selected_agent_report(app: &mut App, format: &str) {
+    let Some(agent) = app.agents.agents.get(app.agents.selected_agent_index) else {
+        app.ui.status_message = tr!(app.ui.translator, "agents.status_no_agent");
+        return;
+    };
+    let report = match &agent.status {
+        AgentStatus::Running(text) | AgentStatus::Completed(text) | AgentStatus::Failed(text) => text,
+        _ => {
+            app.ui.status_message = tr!(app.ui.translator, "agents.status_no_report");
+            return;
+        }
+    };
+    let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
+    let target = if agent.target_name.is_empty() { "agent" } else { &agent.target_name };
+    let clean_target: String = target
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .collect();
+    let filename = format!("agent_report_{}_{}.{}", timestamp, clean_target, format);
+    let path = std::path::PathBuf::from(&filename);
+    let content = if format == "json" {
+        serde_json::json!({
+            "mission": format!("{:?}", agent.mission),
+            "provider": agent.provider.label(),
+            "model": agent.model,
+            "target": agent.target_name,
+            "report": report,
+        })
+        .to_string()
+    } else {
+        report.clone()
+    };
+    match std::fs::write(&path, content) {
+        Ok(_) => {
+            app.ui.status_message = tr!(
+                app.ui.translator,
+                "agents.status_exported",
+                path.display().to_string()
+            )
+        }
+        Err(e) => app.ui.status_message = tr!(app.ui.translator, "agents.status_export_failed", e),
     }
 }
 

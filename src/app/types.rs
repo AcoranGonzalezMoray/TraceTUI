@@ -12,19 +12,60 @@ pub enum NavView {
     Containers,
     Agents,
 }
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum AgentProvider {
     Ollama,
+    OpenAI,
+    Anthropic,
+    LlamaCpp,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OllamaConfig {
+pub struct AgentProviderConfig {
+    pub provider: AgentProvider,
     pub api_url: String,
+    pub api_key: String,
     pub models: Vec<String>,
 }
-#[derive(Debug, Clone, Copy, PartialEq)]
+
+pub type OllamaConfig = AgentProviderConfig;
+
+impl AgentProvider {
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::Ollama => "Ollama",
+            Self::OpenAI => "OpenAI",
+            Self::Anthropic => "Anthropic",
+            Self::LlamaCpp => "llama.cpp",
+        }
+    }
+
+    pub fn next(&self) -> Self {
+        match self {
+            Self::Ollama => Self::OpenAI,
+            Self::OpenAI => Self::Anthropic,
+            Self::Anthropic => Self::LlamaCpp,
+            Self::LlamaCpp => Self::Ollama,
+        }
+    }
+}
+
+impl Default for AgentProvider {
+    fn default() -> Self {
+        Self::Ollama
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum AgentMission {
     ProcessAnalysis,
     NetworkAnalysis,
+    DnsAnalysis,
+    FileAnalyzer,
+    PortScanner,
+    LogAnalyzer,
+    MemoryAnalyzer,
+    VulnerabilityCheck,
+    ThreatIntel,
 }
 #[derive(Debug, Clone)]
 pub enum AgentStatus {
@@ -39,9 +80,10 @@ pub enum AgentStatus {
 pub struct AgentLaunchData {
     pub mission: AgentMission,
     pub model: String,
-    pub config: OllamaConfig,
+    pub config: AgentProviderConfig,
     pub processes: Option<Vec<crate::app::process::ProcessInfo>>,
     pub networks: Option<(Vec<crate::app::network::NetworkConnection>, String)>,
+    pub dependency_context: Option<String>,
 }
 #[derive(Debug, Clone)]
 pub struct AgentInstance {
@@ -53,6 +95,8 @@ pub struct AgentInstance {
     pub completed_at_frame: Option<u64>,
     pub target_name: String,
     pub target_path: Option<String>,
+    pub launch_data: Option<AgentLaunchData>,
+    pub history_path: Option<String>,
 }
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SidebarFocus {
