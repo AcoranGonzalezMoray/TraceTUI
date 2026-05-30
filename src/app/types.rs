@@ -10,6 +10,49 @@ pub enum NavView {
     Storage,
     LibraryInspection,
     Containers,
+    Agents,
+}
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum AgentProvider {
+    Ollama,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OllamaConfig {
+    pub api_url: String,
+    pub models: Vec<String>,
+}
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum AgentMission {
+    ProcessAnalysis,
+    NetworkAnalysis,
+}
+#[derive(Debug, Clone)]
+pub enum AgentStatus {
+    Idle,
+    Queued,
+    Running(String),
+    Completed(String),
+    Failed(String),
+}
+
+#[derive(Debug, Clone)]
+pub struct AgentLaunchData {
+    pub mission: AgentMission,
+    pub model: String,
+    pub config: OllamaConfig,
+    pub processes: Option<Vec<crate::app::process::ProcessInfo>>,
+    pub networks: Option<(Vec<crate::app::network::NetworkConnection>, String)>,
+}
+#[derive(Debug, Clone)]
+pub struct AgentInstance {
+    pub mission: AgentMission,
+    pub provider: AgentProvider,
+    pub model: String,
+    pub status: AgentStatus,
+    pub started_at_frame: u64,
+    pub completed_at_frame: Option<u64>,
+    pub target_name: String,
+    pub target_path: Option<String>,
 }
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SidebarFocus {

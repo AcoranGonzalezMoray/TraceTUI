@@ -1,10 +1,14 @@
 use crate::app::firewall_service::FirewallManager;
 use crate::app::storage::fmt_size;
-use crate::app::types::{ConfirmationAction, FirewallPanel, NavView, SidebarFocus};
+use crate::app::types::{
+    AgentInstance, AgentMission, AgentStatus, ConfirmationAction, FirewallPanel, NavView,
+    SidebarFocus,
+};
 use crate::app::App;
 use crate::config;
 use crate::resources;
 use crate::tr;
+use tokio::sync::mpsc;
 use crossterm::event::{
     KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
 };
@@ -130,8 +134,604 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) {
         }
         return;
     }
+    if app.ui.current_nav_view == NavView::Agents && app.agents.show_provider_modal {
+        handle_provider_modal_keys(app, key);
+        return;
+    }
+    if app.ui.current_nav_view == NavView::Agents {
+        handle_agent_keys(app, key);
+        return;
+    }
     handle_dashboard_keys(app, key);
 }
+fn handle_provider_modal_keys(app: &mut App, key: KeyEvent) {
+    match key.code {
+        KeyCode::Tab => {
+            app.agents.provider_modal_focus =
+                (app.agents.provider_modal_focus + 1) % 6;
+        }
+        KeyCode::BackTab => {
+            app.agents.provider_modal_focus =
+                if app.agents.provider_modal_focus == 0 {
+                    5
+                } else {
+                    app.agents.provider_modal_focus - 1
+                };
+        }
+        KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('Q') => {
+            app.agents.show_provider_modal = false;
+        }
+        KeyCode::Enter => {
+            match app.agents.provider_modal_focus {
+                1 => {
+                    let model = app.agents.ollama_model_input.trim().to_string();
+                    if !model.is_empty() && !app.agents.ollama_models.contains(&model) {
+                        app.agents.ollama_models.push(model);
+                    }
+                    app.agents.ollama_model_input.clear();
+                }
+                3 => execute_fetch_ollama(app),
+                4 => execute_save_ollama(app),
+                5 => app.agents.show_provider_modal = false,
+                _ => execute_save_ollama(app),
+            }
+        }
+        KeyCode::Char('f') | KeyCode::Char('F') => {
+            execute_fetch_ollama(app);
+        }
+        KeyCode::Up if app.agents.provider_modal_focus == 2 => {
+            if app.agents.selected_model_index > 0 {
+                app.agents.selected_model_index -= 1;
+            }
+        }
+        KeyCode::Down if app.agents.provider_modal_focus == 2 => {
+            let max = app.agents.ollama_models.len().saturating_sub(1);
+            if app.agents.selected_model_index < max {
+                app.agents.selected_model_index += 1;
+            }
+        }
+        KeyCode::Delete if app.agents.provider_modal_focus == 2 => {
+            if app.agents.selected_model_index < app.agents.ollama_models.len() {
+                app.agents.ollama_models.remove(app.agents.selected_model_index);
+                if app.agents.selected_model_index >= app.agents.ollama_models.len() {
+                    app.agents.selected_model_index = app.agents.ollama_models.len().saturating_sub(1);
+                }
+            }
+        }
+        KeyCode::Backspace => {
+            match app.agents.provider_modal_focus {
+                0 => { app.agents.ollama_url_input.pop(); }
+                1 => { app.agents.ollama_model_input.pop(); }
+                _ => {}
+            }
+        }
+        KeyCode::Char(c) => {
+            if !key.modifiers.contains(KeyModifiers::CONTROL) {
+                match app.agents.provider_modal_focus {
+                    0 => app.agents.ollama_url_input.push(c),
+                    1 => app.agents.ollama_model_input.push(c),
+                    _ => {}
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+fn execute_fetch_ollama(app: &mut App) {
+    let url = app.agents.ollama_url_input.clone();
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    app.agents.ollama_fetch_rx = Some(rx);
+    tokio::spawn(async move {
+        let result = crate::app::agents::fetch_ollama_models(&url).await;
+        let _ = tx.send(result);
+    });
+    app.ui.status_message = tr!(app.ui.translator, "agents.fetching").to_string();
+}
+
+fn execute_save_ollama(app: &mut App) {
+    app.agents.ollama.api_url = app.agents.ollama_url_input.clone();
+    let sel = app.agents.selected_model_index;
+    if sel < app.agents.ollama_models.len() {
+        let m = app.agents.ollama_models.remove(sel);
+        app.agents.ollama_models.insert(0, m);
+    }
+    app.agents.ollama.models = app.agents.ollama_models.clone();
+    app.agents.selected_model_index = 0;
+    crate::config::save_ollama_config(&app.agents.ollama);
+    app.agents.show_provider_modal = false;
+    app.ui.status_message =
+        tr!(app.ui.translator, "agents.saved").to_string();
+}
+
+fn handle_agent_keys(app: &mut App, key: KeyEvent) {
+    if app.agents.show_agent_type_selector {
+        match key.code {
+            KeyCode::Up => {
+                if app.agents.agent_type_selector_index > 0 {
+                    app.agents.agent_type_selector_index -= 1;
+                }
+            }
+            KeyCode::Down => {
+                if app.agents.agent_type_selector_index < 1 {
+                    app.agents.agent_type_selector_index += 1;
+                }
+            }
+            KeyCode::Enter => {
+                let mission = match app.agents.agent_type_selector_index {
+                    0 => AgentMission::ProcessAnalysis,
+                    _ => AgentMission::NetworkAnalysis,
+                };
+                app.agents.show_agent_type_selector = false;
+                match mission {
+                    AgentMission::ProcessAnalysis => {
+                        if app.agents.ollama.models.is_empty() {
+                            app.ui.status_message =
+                                tr!(app.ui.translator, "agents.no_models").to_string();
+                        } else if app.network.processes.is_empty() {
+                            app.ui.status_message =
+                                tr!(app.ui.translator, "agents.no_processes").to_string();
+                        } else {
+                            app.agents.selected_mission = Some(mission);
+                            app.agents.show_process_selector = true;
+                            app.agents.selected_pids.clear();
+                            app.agents.selected_model_index = 0;
+                        }
+                    }
+                    AgentMission::NetworkAnalysis => {
+                        if app.agents.ollama.models.is_empty() {
+                            app.ui.status_message =
+                                tr!(app.ui.translator, "agents.no_models").to_string();
+                        } else if app.network.app_connections.is_empty() {
+                            app.ui.status_message =
+                                tr!(app.ui.translator, "agents.no_networks").to_string();
+                        } else {
+                            app.agents.selected_mission = Some(mission);
+                            app.agents.show_network_selector = true;
+                            app.agents.selected_connection_idxs.clear();
+                            app.agents.selected_model_index = 0;
+                        }
+                    }
+                }
+            }
+            KeyCode::Esc => {
+                app.agents.show_agent_type_selector = false;
+                app.agents.agent_type_selector_index = 0;
+            }
+            _ => {}
+        }
+        return;
+    }
+
+    if app.agents.show_process_selector {
+        let total_p = app.network.processes.len();
+        match key.code {
+            KeyCode::Up => {
+                if app.agents.selected_model_index > 0 {
+                    app.agents.selected_model_index -= 1;
+                }
+            }
+            KeyCode::Down => {
+                if app.agents.selected_model_index + 1 < total_p {
+                    app.agents.selected_model_index += 1;
+                }
+            }
+            KeyCode::PageUp => {
+                app.agents.selected_model_index = app.agents.selected_model_index.saturating_sub(10);
+            }
+            KeyCode::PageDown => {
+                if total_p > 0 {
+                    app.agents.selected_model_index = (app.agents.selected_model_index + 10).min(total_p.saturating_sub(1));
+                }
+            }
+            KeyCode::Home => { app.agents.selected_model_index = 0; }
+            KeyCode::End => { app.agents.selected_model_index = total_p.saturating_sub(1); }
+            KeyCode::Char(' ') => {
+                if let Some(proc) = app.network.processes.get(app.agents.selected_model_index) {
+                    if app.agents.selected_pids.contains(&proc.pid) {
+                        app.agents.selected_pids.retain(|p| *p != proc.pid);
+                    } else {
+                        app.agents.selected_pids.push(proc.pid);
+                    }
+                }
+            }
+            KeyCode::Enter => {
+                if !app.agents.selected_pids.is_empty() && app.agents.selected_mission.is_some() {
+                    let mission_p = app.agents.selected_mission.unwrap();
+                    let model_p = app.agents.ollama.models.first().cloned().unwrap_or_default();
+                    let config_p = app.agents.ollama.clone();
+                    let process_data = app.network.processes.clone();
+                    let locale_p = app.ui.translator.locale.clone();
+
+                    let mut first_idx = None;
+                    let mut queue_p = Vec::new();
+
+                    for &pid in &app.agents.selected_pids {
+                        let procs_for_agent: Vec<_> = process_data.iter().filter(|p| p.pid == pid).cloned().collect();
+                        let tn = procs_for_agent.first().map(|p| p.name.clone()).unwrap_or_default();
+                        let tp = procs_for_agent.first().and_then(|p| p.path.clone());
+                        let agent_idx = app.agents.agents.len();
+
+                        app.agents.agents.push(AgentInstance {
+                            mission: mission_p,
+                            provider: crate::app::types::AgentProvider::Ollama,
+                            model: model_p.clone(),
+                            status: AgentStatus::Queued,
+                            started_at_frame: app.ui.frame_count,
+                            completed_at_frame: None,
+                            target_name: tn.clone(),
+                            target_path: tp.clone(),
+                        });
+
+                        queue_p.push(crate::app::types::AgentLaunchData {
+                            mission: mission_p,
+                            model: model_p.clone(),
+                            config: config_p.clone(),
+                            processes: Some(procs_for_agent),
+                            networks: None,
+                        });
+
+                        if first_idx.is_none() {
+                            first_idx = Some(agent_idx);
+                        }
+                    }
+
+                    app.agents.agent_launch_queue = queue_p;
+                    if let Some(idx) = first_idx {
+                        if let Some(agent) = app.agents.agents.get_mut(idx) {
+                            agent.status = AgentStatus::Running("Analyzing process...".to_string());
+                        }
+                        if let Some(launch) = app.agents.agent_launch_queue.first() {
+                            let (tx_q, rx_q) = mpsc::unbounded_channel();
+                            crate::app::agents::spawn_agent_async(
+                                launch.mission,
+                                launch.model.clone(),
+                                launch.config.clone(),
+                                idx,
+                                tx_q,
+                                launch.processes.clone(),
+                                None,
+                                locale_p,
+                            );
+                            app.agents.agent_status_rx = Some(rx_q);
+                        }
+                    }
+
+                    app.agents.show_process_selector = false;
+                    app.agents.selected_pids.clear();
+                    app.agents.selected_mission = None;
+                    app.agents.selected_model_index = 0;
+                }
+            }
+            KeyCode::Esc => {
+                app.agents.show_process_selector = false;
+                app.agents.selected_pids.clear();
+                app.agents.selected_mission = None;
+                app.agents.selected_model_index = 0;
+            }
+            _ => {}
+        }
+        return;
+    }
+
+    if app.agents.show_network_selector {
+        let total_n = app.network.app_connections.len();
+        match key.code {
+            KeyCode::Up => {
+                if app.agents.selected_model_index > 0 {
+                    app.agents.selected_model_index -= 1;
+                }
+            }
+            KeyCode::Down => {
+                if app.agents.selected_model_index + 1 < total_n {
+                    app.agents.selected_model_index += 1;
+                }
+            }
+            KeyCode::PageUp => {
+                app.agents.selected_model_index = app.agents.selected_model_index.saturating_sub(10);
+            }
+            KeyCode::PageDown => {
+                if total_n > 0 {
+                    app.agents.selected_model_index = (app.agents.selected_model_index + 10).min(total_n.saturating_sub(1));
+                }
+            }
+            KeyCode::Home => { app.agents.selected_model_index = 0; }
+            KeyCode::End => { app.agents.selected_model_index = total_n.saturating_sub(1); }
+            KeyCode::Char(' ') => {
+                let idx = app.agents.selected_model_index;
+                if idx < total_n {
+                    if app.agents.selected_connection_idxs.contains(&idx) {
+                        app.agents.selected_connection_idxs.retain(|i| *i != idx);
+                    } else {
+                        app.agents.selected_connection_idxs.push(idx);
+                    }
+                }
+            }
+            KeyCode::Enter => {
+                if !app.agents.selected_connection_idxs.is_empty() && app.agents.selected_mission.is_some() {
+                    let mission_n = app.agents.selected_mission.unwrap();
+                    let model_n = app.agents.ollama.models.first().cloned().unwrap_or_default();
+                    let config_n = app.agents.ollama.clone();
+                    let conns_n = app.network.app_connections.clone();
+                    let locale_n = app.ui.translator.locale.clone();
+
+                    let mut first_idx_n = None;
+                    let mut queue_n = Vec::new();
+
+                    for &sel_idx in &app.agents.selected_connection_idxs {
+                        let (net_conns, net_proc_name) = if sel_idx < conns_n.len() {
+                            let ac = &conns_n[sel_idx];
+                            (ac.connections.clone(), ac.process_name.clone())
+                        } else {
+                            (Vec::new(), String::new())
+                        };
+                        let agent_idx = app.agents.agents.len();
+
+                        app.agents.agents.push(AgentInstance {
+                            mission: mission_n,
+                            provider: crate::app::types::AgentProvider::Ollama,
+                            model: model_n.clone(),
+                            status: AgentStatus::Queued,
+                            started_at_frame: app.ui.frame_count,
+                            completed_at_frame: None,
+                            target_name: net_proc_name.clone(),
+                            target_path: None,
+                        });
+
+                        queue_n.push(crate::app::types::AgentLaunchData {
+                            mission: mission_n,
+                            model: model_n.clone(),
+                            config: config_n.clone(),
+                            processes: None,
+                            networks: Some((net_conns, net_proc_name)),
+                        });
+
+                        if first_idx_n.is_none() {
+                            first_idx_n = Some(agent_idx);
+                        }
+                    }
+
+                    app.agents.agent_launch_queue = queue_n;
+                    if let Some(idx) = first_idx_n {
+                        if let Some(agent) = app.agents.agents.get_mut(idx) {
+                            agent.status = AgentStatus::Running("Analyzing process...".to_string());
+                        }
+                        if let Some(launch) = app.agents.agent_launch_queue.first() {
+                            let (tx_n, rx_n) = mpsc::unbounded_channel();
+                            crate::app::agents::spawn_agent_async(
+                                launch.mission,
+                                launch.model.clone(),
+                                launch.config.clone(),
+                                idx,
+                                tx_n,
+                                None,
+                                launch.networks.clone(),
+                                locale_n,
+                            );
+                            app.agents.agent_status_rx = Some(rx_n);
+                        }
+                    }
+
+                    app.agents.show_network_selector = false;
+                    app.agents.selected_connection_idxs.clear();
+                    app.agents.selected_mission = None;
+                    app.agents.selected_model_index = 0;
+                }
+            }
+            KeyCode::Esc => {
+                app.agents.show_network_selector = false;
+                app.agents.selected_connection_idxs.clear();
+                app.agents.selected_mission = None;
+                app.agents.selected_model_index = 0;
+            }
+            _ => {}
+        }
+        return;
+    }
+
+    match key.code {
+        KeyCode::Tab => {
+            app.ui.sidebar_focus = match app.ui.sidebar_focus {
+                SidebarFocus::Nav => SidebarFocus::Left,
+                SidebarFocus::Left => SidebarFocus::Center,
+                SidebarFocus::Center => SidebarFocus::Right,
+                SidebarFocus::Right => SidebarFocus::Nav,
+            };
+            app.ui.status_message = tr!(
+                app.ui.translator,
+                "status.focus",
+                format!("{:?}", app.ui.sidebar_focus)
+            )
+            .to_string();
+        }
+        KeyCode::BackTab => {
+            app.ui.sidebar_focus = match app.ui.sidebar_focus {
+                SidebarFocus::Nav => SidebarFocus::Right,
+                SidebarFocus::Left => SidebarFocus::Nav,
+                SidebarFocus::Center => SidebarFocus::Left,
+                SidebarFocus::Right => SidebarFocus::Center,
+            };
+        }
+        KeyCode::Up => match app.ui.sidebar_focus {
+            SidebarFocus::Nav => {
+                let next = match app.ui.current_nav_view {
+                    NavView::Main => NavView::Containers,
+                    NavView::TrendGraphs => NavView::Main,
+                    NavView::Storage => NavView::TrendGraphs,
+                    NavView::LibraryInspection => NavView::Storage,
+                    NavView::Containers => NavView::LibraryInspection,
+                    NavView::Agents => NavView::Containers,
+                };
+                switch_nav_view(app, next);
+            }
+            SidebarFocus::Left if app.agents.selected_agent_index > 0 => {
+                app.agents.selected_agent_index -= 1;
+                app.agents.agent_detail_scroll = 0;
+            }
+            SidebarFocus::Right if app.agents.agent_action_index > 0 => {
+                app.agents.agent_action_index -= 1;
+            }
+            SidebarFocus::Center if app.agents.agent_detail_scroll > 0 => {
+                app.agents.agent_detail_scroll -= 1;
+            }
+            _ => {}
+        },
+        KeyCode::Down => match app.ui.sidebar_focus {
+            SidebarFocus::Nav => {
+                let next = match app.ui.current_nav_view {
+                    NavView::Main => NavView::TrendGraphs,
+                    NavView::TrendGraphs => NavView::Storage,
+                    NavView::Storage => NavView::LibraryInspection,
+                    NavView::LibraryInspection => NavView::Containers,
+                    NavView::Containers => NavView::Agents,
+                    NavView::Agents => NavView::Main,
+                };
+                switch_nav_view(app, next);
+            }
+            SidebarFocus::Left => {
+                let max = app.agents.agents.len().saturating_sub(1);
+                if app.agents.selected_agent_index < max {
+                    app.agents.selected_agent_index += 1;
+                    app.agents.agent_detail_scroll = 0;
+                }
+            }
+            SidebarFocus::Right => {
+                let max = 3usize;
+                if app.agents.agent_action_index < max {
+                    app.agents.agent_action_index += 1;
+                }
+            }
+            SidebarFocus::Center => {
+                if let Some(agent) = app.agents.agents.get(app.agents.selected_agent_index) {
+                    let line_count = match &agent.status {
+                        AgentStatus::Running(m) | AgentStatus::Completed(m) | AgentStatus::Failed(m) => {
+                            m.lines().count()
+                        }
+                        _ => 0,
+                    };
+                    if app.agents.agent_detail_scroll < line_count.saturating_sub(1) {
+                        app.agents.agent_detail_scroll += 1;
+                    }
+                }
+            }
+        },
+        KeyCode::Enter => match app.ui.sidebar_focus {
+            SidebarFocus::Nav => {
+                app.ui.nav_sidebar_expanded = !app.ui.nav_sidebar_expanded;
+                app.ui.sidebar_focus = SidebarFocus::Nav;
+            }
+            SidebarFocus::Right => execute_agent_action(app),
+            SidebarFocus::Left => {
+                app.ui.sidebar_focus = SidebarFocus::Center;
+                app.agents.agent_detail_scroll = 0;
+            }
+            _ => {}
+        },
+        KeyCode::Char('c') | KeyCode::Char('C') => {
+            if key.modifiers.contains(KeyModifiers::CONTROL) {
+                app.ui.should_quit = true;
+            } else {
+                app.agents.show_provider_modal = true;
+                app.agents.ollama_url_input = app.agents.ollama.api_url.clone();
+                app.agents.ollama_models = app.agents.ollama.models.clone();
+                app.agents.provider_modal_focus = 0;
+            }
+        }
+        KeyCode::Char('p') | KeyCode::Char('P') => {
+            if app.agents.ollama.models.is_empty() {
+                app.ui.status_message =
+                    tr!(app.ui.translator, "agents.no_models").to_string();
+            } else if app.network.processes.is_empty() {
+                app.ui.status_message =
+                    tr!(app.ui.translator, "agents.no_processes").to_string();
+            } else {
+                app.agents.selected_mission = Some(AgentMission::ProcessAnalysis);
+                app.agents.show_process_selector = true;
+                app.agents.selected_pids.clear();
+                app.agents.selected_model_index = 0;
+            }
+        }
+        KeyCode::Char('n') | KeyCode::Char('N') => {
+            if app.agents.ollama.models.is_empty() {
+                app.ui.status_message =
+                    tr!(app.ui.translator, "agents.no_models").to_string();
+            } else if app.network.app_connections.is_empty() {
+                app.ui.status_message =
+                    tr!(app.ui.translator, "agents.no_networks").to_string();
+            } else {
+                app.agents.selected_mission = Some(AgentMission::NetworkAnalysis);
+                app.agents.show_network_selector = true;
+                app.agents.selected_connection_idxs.clear();
+                app.agents.selected_model_index = 0;
+            }
+        }
+        KeyCode::Char('x') | KeyCode::Char('X') => {
+            if !app.agents.agents.is_empty() {
+                let idx = app.agents.selected_agent_index;
+                if idx < app.agents.agents.len() {
+                    app.agents.agents.remove(idx);
+                    if app.agents.selected_agent_index >= app.agents.agents.len() {
+                        app.agents.selected_agent_index = app.agents.agents.len().saturating_sub(1);
+                    }
+                    app.agents.agent_detail_scroll = 0;
+                }
+            }
+        }
+        KeyCode::Char('l') | KeyCode::Char('L') => {
+            app.ui.show_language_modal = true;
+        }
+        KeyCode::Char('m') | KeyCode::Char('M') => {
+            app.ui.nav_sidebar_expanded = !app.ui.nav_sidebar_expanded;
+            app.ui.sidebar_focus = SidebarFocus::Nav;
+        }
+        KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('Q') => {
+            switch_nav_view(app, NavView::Main);
+            app.ui.sidebar_focus = SidebarFocus::Nav;
+        }
+        _ => {}
+    }
+}
+
+fn execute_agent_action(app: &mut App) {
+    match app.agents.agent_action_index {
+        0 => {
+            app.agents.show_provider_modal = true;
+            app.agents.ollama_url_input = app.agents.ollama.api_url.clone();
+            app.agents.ollama_models = app.agents.ollama.models.clone();
+            app.agents.provider_modal_focus = 0;
+        }
+        1 => {
+            if app.agents.ollama.models.is_empty() {
+                app.ui.status_message =
+                    tr!(app.ui.translator, "agents.no_models").to_string();
+            } else {
+                app.agents.show_agent_type_selector = true;
+                app.agents.agent_type_selector_index = 0;
+            }
+        }
+        2 => {
+            if app.agents.ollama.models.is_empty() {
+                app.ui.status_message =
+                    tr!(app.ui.translator, "agents.no_models").to_string();
+            } else if app.network.app_connections.is_empty() {
+                app.ui.status_message =
+                    tr!(app.ui.translator, "agents.no_networks").to_string();
+            } else {
+                app.agents.selected_mission = Some(AgentMission::NetworkAnalysis);
+                app.agents.show_network_selector = true;
+                app.agents.selected_connection_idxs.clear();
+                app.agents.selected_model_index = 0;
+            }
+        }
+        3 => {
+            app.agents.agents.clear();
+            app.agents.selected_agent_index = 0;
+            app.agents.agent_detail_scroll = 0;
+        }
+        _ => {}
+    }
+}
+
 fn handle_dashboard_keys(app: &mut App, key: KeyEvent) {
     match key.code {
         KeyCode::Tab => {
@@ -168,11 +768,12 @@ fn handle_dashboard_keys(app: &mut App, key: KeyEvent) {
             match app.ui.sidebar_focus {
                 SidebarFocus::Nav => {
                     let next = match app.ui.current_nav_view {
-                        NavView::Main => NavView::Containers,
+                        NavView::Main => NavView::Agents,
                         NavView::TrendGraphs => NavView::Main,
                         NavView::Storage => NavView::TrendGraphs,
                         NavView::LibraryInspection => NavView::Storage,
                         NavView::Containers => NavView::LibraryInspection,
+                        NavView::Agents => NavView::Containers,
                     };
                     switch_nav_view(app, next);
                 }
@@ -202,7 +803,8 @@ fn handle_dashboard_keys(app: &mut App, key: KeyEvent) {
                         NavView::TrendGraphs => NavView::Storage,
                         NavView::Storage => NavView::LibraryInspection,
                         NavView::LibraryInspection => NavView::Containers,
-                        NavView::Containers => NavView::Main,
+                        NavView::Containers => NavView::Agents,
+                        NavView::Agents => NavView::Main,
                     };
                     switch_nav_view(app, next);
                 }
@@ -463,7 +1065,7 @@ fn handle_container_keys(app: &mut App, key: KeyEvent) {
         },
         KeyCode::Down => match app.ui.sidebar_focus {
             SidebarFocus::Nav => {
-                switch_nav_view(app, NavView::Main);
+                switch_nav_view(app, NavView::Agents);
             }
             SidebarFocus::Left => {
                 let max = app.containers.containers.len().saturating_sub(1);
@@ -890,11 +1492,12 @@ fn handle_libraries_keys(app: &mut App, key: KeyEvent) {
 
         KeyCode::Up if app.ui.sidebar_focus == SidebarFocus::Nav => {
             let next = match app.ui.current_nav_view {
-                NavView::Main => NavView::Containers,
+                NavView::Main => NavView::Agents,
                 NavView::TrendGraphs => NavView::Main,
                 NavView::Storage => NavView::TrendGraphs,
                 NavView::LibraryInspection => NavView::Storage,
                 NavView::Containers => NavView::LibraryInspection,
+                NavView::Agents => NavView::Containers,
             };
             switch_nav_view(app, next);
         }
@@ -904,7 +1507,8 @@ fn handle_libraries_keys(app: &mut App, key: KeyEvent) {
                 NavView::TrendGraphs => NavView::Storage,
                 NavView::Storage => NavView::LibraryInspection,
                 NavView::LibraryInspection => NavView::Containers,
-                NavView::Containers => NavView::Main,
+                NavView::Containers => NavView::Agents,
+                NavView::Agents => NavView::Main,
             };
             switch_nav_view(app, next);
         }
@@ -1137,11 +1741,12 @@ fn handle_storage_keys(app: &mut App, key: KeyEvent) {
         KeyCode::Up => {
             if app.ui.sidebar_focus == SidebarFocus::Nav {
                 let next = match app.ui.current_nav_view {
-                    NavView::Main => NavView::Containers,
+                    NavView::Main => NavView::Agents,
                     NavView::TrendGraphs => NavView::Main,
                     NavView::Storage => NavView::TrendGraphs,
                     NavView::LibraryInspection => NavView::Storage,
                     NavView::Containers => NavView::LibraryInspection,
+                    NavView::Agents => NavView::Containers,
                 };
                 switch_nav_view(app, next);
             } else {
@@ -1167,7 +1772,8 @@ fn handle_storage_keys(app: &mut App, key: KeyEvent) {
                     NavView::TrendGraphs => NavView::Storage,
                     NavView::Storage => NavView::LibraryInspection,
                     NavView::LibraryInspection => NavView::Containers,
-                    NavView::Containers => NavView::Main,
+                    NavView::Containers => NavView::Agents,
+                    NavView::Agents => NavView::Main,
                 };
                 switch_nav_view(app, next);
             } else {
@@ -1922,6 +2528,40 @@ pub fn handle_mouse_event(app: &mut App, mouse: MouseEvent) {
     {
         return;
     }
+    if app.agents.show_process_selector {
+        match mouse.kind {
+            MouseEventKind::ScrollDown => {
+                let max = app.network.processes.len().saturating_sub(1);
+                if app.agents.selected_model_index < max {
+                    app.agents.selected_model_index += 1;
+                }
+            }
+            MouseEventKind::ScrollUp => {
+                if app.agents.selected_model_index > 0 {
+                    app.agents.selected_model_index -= 1;
+                }
+            }
+            _ => {}
+        }
+        return;
+    }
+    if app.agents.show_network_selector {
+        match mouse.kind {
+            MouseEventKind::ScrollDown => {
+                let max = app.network.app_connections.len().saturating_sub(1);
+                if app.agents.selected_model_index < max {
+                    app.agents.selected_model_index += 1;
+                }
+            }
+            MouseEventKind::ScrollUp => {
+                if app.agents.selected_model_index > 0 {
+                    app.agents.selected_model_index -= 1;
+                }
+            }
+            _ => {}
+        }
+        return;
+    }
     if app.containers.show_container_logs_modal {
         match mouse.kind {
             MouseEventKind::ScrollDown => {
@@ -2024,22 +2664,31 @@ fn handle_mouse_scroll(app: &mut App, delta: i32) {
                     NavView::TrendGraphs => NavView::Storage,
                     NavView::Storage => NavView::LibraryInspection,
                     NavView::LibraryInspection => NavView::Containers,
-                    NavView::Containers => NavView::Main,
+                    NavView::Containers => NavView::Agents,
+                    NavView::Agents => NavView::Main,
                 };
                 switch_nav_view(app, next);
             } else {
                 let next = match app.ui.current_nav_view {
-                    NavView::Main => NavView::Containers,
+                    NavView::Main => NavView::Agents,
                     NavView::TrendGraphs => NavView::Main,
                     NavView::Storage => NavView::TrendGraphs,
                     NavView::LibraryInspection => NavView::Storage,
                     NavView::Containers => NavView::LibraryInspection,
+                    NavView::Agents => NavView::Containers,
                 };
                 switch_nav_view(app, next);
             }
         }
         SidebarFocus::Left => {
-            if app.ui.current_nav_view == NavView::Containers {
+            if app.ui.current_nav_view == NavView::Agents {
+                let max = app.agents.agents.len().saturating_sub(1);
+                if apply_scroll_bool(app.agents.selected_agent_index, delta, max) {
+                    app.agents.selected_agent_index =
+                        apply_scroll(app.agents.selected_agent_index, delta, max);
+                    app.agents.agent_detail_scroll = 0;
+                }
+            } else if app.ui.current_nav_view == NavView::Containers {
                 let max = app.containers.containers.len().saturating_sub(1);
                 if apply_scroll_bool(app.containers.selected_container_index, delta, max) {
                     app.containers.selected_container_index =
@@ -2072,7 +2721,19 @@ fn handle_mouse_scroll(app: &mut App, delta: i32) {
             }
         }
         SidebarFocus::Center => {
-            if app.ui.current_nav_view == NavView::Containers {
+            if app.ui.current_nav_view == NavView::Agents {
+                if let Some(agent) = app.agents.agents.get(app.agents.selected_agent_index) {
+                    let line_count = match &agent.status {
+                        AgentStatus::Running(m) | AgentStatus::Completed(m) | AgentStatus::Failed(m) => {
+                            m.lines().count()
+                        }
+                        _ => 0,
+                    };
+                    let max = line_count.saturating_sub(1);
+                    app.agents.agent_detail_scroll =
+                        apply_scroll(app.agents.agent_detail_scroll, delta, max);
+                }
+            } else if app.ui.current_nav_view == NavView::Containers {
                 if app.containers.show_container_logs_modal {
                     let max = app.containers.container_logs.len().saturating_sub(1);
                     app.containers.container_logs_scroll =
@@ -2101,7 +2762,11 @@ fn handle_mouse_scroll(app: &mut App, delta: i32) {
             }
         }
         SidebarFocus::Right => {
-            if app.ui.current_nav_view == NavView::Containers {
+            if app.ui.current_nav_view == NavView::Agents {
+                let max = 3usize;
+                app.agents.agent_action_index =
+                    apply_scroll(app.agents.agent_action_index, delta, max);
+            } else if app.ui.current_nav_view == NavView::Containers {
                 let max = crate::app::containers::CONTAINER_RIGHT_ACTION_COUNT.saturating_sub(1);
                 app.containers.selected_container_action_index =
                     apply_scroll(app.containers.selected_container_action_index, delta, max);

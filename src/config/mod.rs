@@ -1,3 +1,4 @@
+use crate::app::types::OllamaConfig;
 use std::path::PathBuf;
 use std::time::Duration;
 pub const TICK_RATE_MS: u64 = 250;
@@ -118,6 +119,10 @@ pub struct AppConfig {
     pub locale: String,
     #[serde(default)]
     pub last_version: String,
+    #[serde(default)]
+    pub ollama_url: String,
+    #[serde(default)]
+    pub ollama_models: Vec<String>,
 }
 
 pub fn save_config(config: &AppConfig) {
@@ -158,4 +163,27 @@ pub fn load_language() -> Option<String> {
     } else {
         Some(config.locale)
     }
+}
+
+pub fn load_ollama_config() -> OllamaConfig {
+    let config = load_config();
+    OllamaConfig {
+        api_url: if config.ollama_url.is_empty() {
+            "http://localhost:11434".to_string()
+        } else {
+            config.ollama_url
+        },
+        models: if config.ollama_models.is_empty() {
+            vec!["llama3.2:latest".to_string()]
+        } else {
+            config.ollama_models
+        },
+    }
+}
+
+pub fn save_ollama_config(ollama: &OllamaConfig) {
+    let mut config = load_config();
+    config.ollama_url = ollama.api_url.clone();
+    config.ollama_models = ollama.models.clone();
+    save_config(&config);
 }

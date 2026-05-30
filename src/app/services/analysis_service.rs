@@ -2,6 +2,7 @@ use crate::app::grouping::ConnectionGrouper;
 use crate::app::nerdfont;
 use crate::app::risk::RiskAnalyzer;
 use crate::app::App;
+use crate::app::types::AgentStatus;
 use crate::config;
 use crate::resources;
 use crate::tr;
@@ -54,6 +55,8 @@ pub fn on_tick(app: &mut App) {
     app.process_container_results();
     app.process_container_action_results();
     app.process_libraries_results();
+    process_ollama_fetch(app);
+    process_agent_status(app);
     if app.ui.current_nav_view == crate::app::NavView::Containers
         && !app.containers.containers_loaded_once
         && !app.containers.containers_loading
@@ -643,6 +646,81 @@ fn check_nerdfont_install_complete(app: &mut App) {
                 tr!(app.ui.translator, "status.nerdfont_fail", first_line)
             };
         }
+    }
+}
+
+fn process_ollama_fetch(app: &mut App) {
+    if let Some(rx) = &mut app.agents.ollama_fetch_rx {
+        if let Ok(result) = rx.try_recv() {
+            match result {
+                Ok(models) => {
+                    app.agents.ollama_models = models;
+                    app.agents.ollama.models = app.agents.ollama_models.clone();
+                    app.agents.selected_model_index = 0;
+                    crate::config::save_ollama_config(&app.agents.ollama);
+                    app.ui.status_message = format!(
+                        "[+] {} {}",
+                        app.agents.ollama_models.len(),
+                        tr!(app.ui.translator, "agents.models_fetched")
+                    );
+                }
+                Err(e) => {
+                    app.ui.status_message = format!("[-] {}", e);
+                }
+            }
+        }
+    }
+}
+
+fn process_agent_status(app: &mut App) {
+    let mut next_launch: Option<(usize, crate::app::types::AgentLaunchData)> = None;
+    if let Some(rx) = &mut app.agents.agent_status_rx {
+        while let Ok((idx, new_status)) = rx.try_recv() {
+            if idx < app.agents.agents.len() {
+                let status_text = match &new_status {
+                    AgentStatus::Running(m) => format!("[*] Agent {}: {}", idx, m),
+                    AgentStatus::Completed(_) => format!("[+] Agent {} completed", idx),
+                    AgentStatus::Failed(m) => format!("[-] Agent {}: {}", idx, m),
+                    _ => String::new(),
+                };
+                if !status_text.is_empty() {
+                    app.ui.status_message = status_text;
+                }
+                match &new_status {
+                    AgentStatus::Completed(_) | AgentStatus::Failed(_) => {
+                        app.agents.agents[idx].completed_at_frame = Some(app.ui.frame_count);
+                        if !app.agents.agent_launch_queue.is_empty() {
+                            app.agents.agent_launch_queue.remove(0);
+                        }
+                        if next_launch.is_none() {
+                            if let Some(launch) = app.agents.agent_launch_queue.first() {
+                                if let Some(qi) = app.agents.agents.iter().position(|a| matches!(a.status, AgentStatus::Queued)) {
+                                    next_launch = Some((qi, launch.clone()));
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+                app.agents.agents[idx].status = new_status;
+            }
+        }
+    }
+    if let Some((queued_idx, launch)) = next_launch {
+        app.agents.agents[queued_idx].status = AgentStatus::Running("Analyzing process...".to_string());
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let locale = app.ui.translator.locale.clone();
+        crate::app::agents::spawn_agent_async(
+            launch.mission,
+            launch.model,
+            launch.config,
+            queued_idx,
+            tx,
+            launch.processes,
+            launch.networks,
+            locale,
+        );
+        app.agents.agent_status_rx = Some(rx);
     }
 }
 

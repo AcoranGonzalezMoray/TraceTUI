@@ -7,6 +7,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Paragraph},
 };
+pub mod agents;
 pub mod center_panel;
 pub mod containers;
 pub mod dialogs;
@@ -21,6 +22,10 @@ pub mod storage;
 pub mod theme;
 pub mod trends;
 pub mod widgets;
+pub use agents::{
+    render_agents_view, render_agent_type_selector, render_network_selector,
+    render_process_selector, render_provider_modal,
+};
 pub use center_panel::render_center_panel;
 pub use containers::{
     render_container_action_loading_modal, render_container_console_modal,
@@ -356,6 +361,18 @@ pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
     if app.libraries.show_library_binary_viewer {
         render_library_binary_viewer(f, app);
     }
+    if app.ui.current_nav_view == NavView::Agents && app.agents.show_provider_modal {
+        render_provider_modal(f, app);
+    }
+    if app.ui.current_nav_view == NavView::Agents && app.agents.show_agent_type_selector {
+        render_agent_type_selector(f, app);
+    }
+    if app.ui.current_nav_view == NavView::Agents && app.agents.show_process_selector {
+        render_process_selector(f, app);
+    }
+    if app.ui.current_nav_view == NavView::Agents && app.agents.show_network_selector {
+        render_network_selector(f, app);
+    }
     if app.ui.action_in_progress.is_some() {
         render_action_loader(f, app);
     }
@@ -432,6 +449,7 @@ fn render_main_layout_with_nav(f: &mut ratatui::Frame, app: &App, area: Rect) {
         NavView::Storage => render_storage_view(f, app, main_layout[1]),
         NavView::LibraryInspection => render_libraries_view(f, app, main_layout[1]),
         NavView::Containers => render_containers_view(f, app, main_layout[1]),
+        NavView::Agents => render_agents_view(f, app, main_layout[1]),
     }
 }
 

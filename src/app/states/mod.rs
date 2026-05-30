@@ -469,3 +469,60 @@ impl TrendState {
         }
     }
 }
+
+pub struct AgentState {
+    pub agents: Vec<crate::app::types::AgentInstance>,
+    pub provider: crate::app::types::AgentProvider,
+    pub ollama: crate::app::types::OllamaConfig,
+    pub show_provider_modal: bool,
+    pub show_process_selector: bool,
+    pub show_network_selector: bool,
+    pub selected_mission: Option<crate::app::types::AgentMission>,
+    pub ollama_url_input: String,
+    pub ollama_model_input: String,
+    pub ollama_models: Vec<String>,
+    pub provider_modal_focus: usize,
+    pub selected_model_index: usize,
+    pub selected_agent_index: usize,
+    pub agent_detail_scroll: usize,
+    pub agent_action_index: usize,
+    pub selected_pids: Vec<u32>,
+    pub selected_connection_idxs: Vec<usize>,
+    pub agent_type_selector_index: usize,
+    pub agent_status_rx: Option<tokio::sync::mpsc::UnboundedReceiver<(usize, crate::app::types::AgentStatus)>>,
+    pub ollama_fetch_rx: Option<tokio::sync::oneshot::Receiver<Result<Vec<String>, String>>>,
+    pub show_agent_type_selector: bool,
+    pub agent_launch_queue: Vec<crate::app::types::AgentLaunchData>,
+}
+
+impl AgentState {
+    pub fn new() -> Self {
+        let ollama = crate::config::load_ollama_config();
+        let url = ollama.api_url.clone();
+        let models = ollama.models.clone();
+        Self {
+            agents: Vec::new(),
+            provider: crate::app::types::AgentProvider::Ollama,
+            ollama,
+            show_provider_modal: false,
+            show_process_selector: false,
+            show_network_selector: false,
+            selected_mission: None,
+            ollama_url_input: url,
+            ollama_model_input: String::new(),
+            ollama_models: models,
+            provider_modal_focus: 0,
+            selected_model_index: 0,
+            selected_agent_index: 0,
+            agent_detail_scroll: 0,
+            agent_action_index: 0,
+            selected_pids: Vec::new(),
+            selected_connection_idxs: Vec::new(),
+            agent_type_selector_index: 0,
+            agent_status_rx: None,
+            ollama_fetch_rx: None,
+            show_agent_type_selector: false,
+            agent_launch_queue: Vec::new(),
+        }
+    }
+}

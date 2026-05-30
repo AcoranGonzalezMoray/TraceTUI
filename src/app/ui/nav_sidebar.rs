@@ -46,6 +46,14 @@ pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
         "󰅩"
     };
 
+    let agents_icon = if app.agents.agents.iter().any(|a| matches!(a.status, crate::app::types::AgentStatus::Running(_) | crate::app::types::AgentStatus::Queued))
+        && app.ui.current_nav_view != NavView::Agents
+    {
+        spinners[(app.ui.frame_count as usize) % spinners.len()]
+    } else {
+        "󰚩"
+    };
+
     let nav_items = vec![
         (NavView::Main, "󰞶", tr!(app.ui.translator, "nav.main")),
         (
@@ -67,6 +75,11 @@ pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
             NavView::Containers,
             "󰡨",
             tr!(app.ui.translator, "nav.containers"),
+        ),
+        (
+            NavView::Agents,
+            agents_icon,
+            tr!(app.ui.translator, "nav.agents"),
         ),
     ];
 
