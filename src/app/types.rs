@@ -50,7 +50,6 @@ impl AgentProvider {
     }
 }
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum AgentMission {
     ProcessAnalysis,

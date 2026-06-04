@@ -247,7 +247,11 @@ fn agents_footer_spans(app: &App) -> Vec<Span<'_>> {
         Span::styled(
             format!(
                 " {} ",
-                tr!(app.ui.translator, "agents.footer_reports", app.agents.agents.len())
+                tr!(
+                    app.ui.translator,
+                    "agents.footer_reports",
+                    app.agents.agents.len()
+                )
             ),
             Style::default().fg(THEME.secondary),
         ),
@@ -255,7 +259,11 @@ fn agents_footer_spans(app: &App) -> Vec<Span<'_>> {
         Span::styled(
             format!(
                 " {} ",
-                tr!(app.ui.translator, "agents.footer_models", app.agents.ollama.models.len())
+                tr!(
+                    app.ui.translator,
+                    "agents.footer_models",
+                    app.agents.ollama.models.len()
+                )
             ),
             Style::default().fg(THEME.text_dim),
         ),

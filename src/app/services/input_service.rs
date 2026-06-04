@@ -159,8 +159,7 @@ fn handle_provider_modal_keys(app: &mut App, key: KeyEvent) {
             app.agents.agent_search_mode = false;
         }
         KeyCode::Char(c)
-            if app.agents.agent_search_mode
-                && !key.modifiers.contains(KeyModifiers::CONTROL) =>
+            if app.agents.agent_search_mode && !key.modifiers.contains(KeyModifiers::CONTROL) =>
         {
             app.agents.agent_search_query.push(c);
             app.agents.agent_detail_scroll = 0;
@@ -222,8 +221,7 @@ fn handle_provider_modal_keys(app: &mut App, key: KeyEvent) {
             execute_fetch_ollama(app);
         }
         KeyCode::Up
-            if app.agents.provider_modal_focus == 4
-                && app.agents.selected_model_index > 0 =>
+            if app.agents.provider_modal_focus == 4 && app.agents.selected_model_index > 0 =>
         {
             app.agents.selected_model_index -= 1;
         }
@@ -241,8 +239,7 @@ fn handle_provider_modal_keys(app: &mut App, key: KeyEvent) {
                 .ollama_models
                 .remove(app.agents.selected_model_index);
             if app.agents.selected_model_index >= app.agents.ollama_models.len() {
-                app.agents.selected_model_index =
-                    app.agents.ollama_models.len().saturating_sub(1);
+                app.agents.selected_model_index = app.agents.ollama_models.len().saturating_sub(1);
             }
         }
         KeyCode::Backspace => match app.agents.provider_modal_focus {
@@ -257,9 +254,7 @@ fn handle_provider_modal_keys(app: &mut App, key: KeyEvent) {
             }
             _ => {}
         },
-        KeyCode::Char(c)
-            if !key.modifiers.contains(KeyModifiers::CONTROL) =>
-        {
+        KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
             match app.agents.provider_modal_focus {
                 1 => app.agents.ollama_url_input.push(c),
                 2 => app.agents.ollama_model_input.push(c),
@@ -318,14 +313,10 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
     }
     if app.agents.show_agent_type_selector {
         match key.code {
-            KeyCode::Up
-                if app.agents.agent_type_selector_index > 0 =>
-            {
+            KeyCode::Up if app.agents.agent_type_selector_index > 0 => {
                 app.agents.agent_type_selector_index -= 1;
             }
-            KeyCode::Down
-                if app.agents.agent_type_selector_index < 8 =>
-            {
+            KeyCode::Down if app.agents.agent_type_selector_index < 8 => {
                 app.agents.agent_type_selector_index += 1;
             }
             KeyCode::Enter => {
@@ -391,23 +382,17 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
     if app.agents.show_process_selector {
         let total_p = app.network.processes.len();
         match key.code {
-            KeyCode::Up
-                if app.agents.selected_model_index > 0 =>
-            {
+            KeyCode::Up if app.agents.selected_model_index > 0 => {
                 app.agents.selected_model_index -= 1;
             }
-            KeyCode::Down
-                if app.agents.selected_model_index + 1 < total_p =>
-            {
+            KeyCode::Down if app.agents.selected_model_index + 1 < total_p => {
                 app.agents.selected_model_index += 1;
             }
             KeyCode::PageUp => {
                 app.agents.selected_model_index =
                     app.agents.selected_model_index.saturating_sub(10);
             }
-            KeyCode::PageDown
-                if total_p > 0 =>
-            {
+            KeyCode::PageDown if total_p > 0 => {
                 app.agents.selected_model_index =
                     (app.agents.selected_model_index + 10).min(total_p.saturating_sub(1));
             }
@@ -427,7 +412,8 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
                 }
             }
             KeyCode::Enter
-                if !app.agents.selected_pids.is_empty() && app.agents.selected_mission.is_some() =>
+                if !app.agents.selected_pids.is_empty()
+                    && app.agents.selected_mission.is_some() =>
             {
                 let mission_p = app.agents.selected_mission.unwrap();
                 let model_p = app
@@ -512,23 +498,17 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
     if app.agents.show_network_selector {
         let total_n = app.network.app_connections.len();
         match key.code {
-            KeyCode::Up
-                if app.agents.selected_model_index > 0 =>
-            {
+            KeyCode::Up if app.agents.selected_model_index > 0 => {
                 app.agents.selected_model_index -= 1;
             }
-            KeyCode::Down
-                if app.agents.selected_model_index + 1 < total_n =>
-            {
+            KeyCode::Down if app.agents.selected_model_index + 1 < total_n => {
                 app.agents.selected_model_index += 1;
             }
             KeyCode::PageUp => {
                 app.agents.selected_model_index =
                     app.agents.selected_model_index.saturating_sub(10);
             }
-            KeyCode::PageDown
-                if total_n > 0 =>
-            {
+            KeyCode::PageDown if total_n > 0 => {
                 app.agents.selected_model_index =
                     (app.agents.selected_model_index + 10).min(total_n.saturating_sub(1));
             }
@@ -578,10 +558,9 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
                         if matches!(mission_n, AgentMission::VulnerabilityCheck) {
                             app.agents.agents.iter().rev().find_map(|agent| {
                                 match (&agent.mission, &agent.status) {
-                                    (
-                                        AgentMission::PortScanner,
-                                        AgentStatus::Completed(report),
-                                    ) => Some(report.clone()),
+                                    (AgentMission::PortScanner, AgentStatus::Completed(report)) => {
+                                        Some(report.clone())
+                                    }
                                     _ => None,
                                 }
                             })
@@ -784,9 +763,7 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
                 app.agents.selected_model_index = 0;
             }
         }
-        KeyCode::Char('x') | KeyCode::Char('X')
-            if !app.agents.agents.is_empty() =>
-        {
+        KeyCode::Char('x') | KeyCode::Char('X') if !app.agents.agents.is_empty() => {
             let idx = app.agents.selected_agent_index;
             if idx < app.agents.agents.len() {
                 let path_to_delete = app.agents.agents[idx].history_path.clone();
@@ -799,7 +776,7 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
                 }
                 app.agents.agent_detail_scroll = 0;
             }
-            }
+        }
         KeyCode::Char('/') => {
             app.ui.search_mode = true;
             app.ui.search_query.clear();
@@ -830,9 +807,7 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
                 app.agents.max_parallel_agents
             );
         }
-        KeyCode::Char('r') | KeyCode::Char('R')
-            if !app.agents.history_loading =>
-        {
+        KeyCode::Char('r') | KeyCode::Char('R') if !app.agents.history_loading => {
             retry_selected_agent(app);
         }
         KeyCode::Char('e') | KeyCode::Char('E') => {
@@ -841,9 +816,7 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
         KeyCode::Char('j') | KeyCode::Char('J') => {
             export_selected_agent_report(app, "json");
         }
-        KeyCode::Char('s') | KeyCode::Char('S')
-            if !app.agents.history_loading =>
-        {
+        KeyCode::Char('s') | KeyCode::Char('S') if !app.agents.history_loading => {
             cancel_selected_agent(app);
         }
         KeyCode::Char('l') | KeyCode::Char('L') => {
@@ -866,9 +839,7 @@ fn execute_agent_action(app: &mut App) {
         .agents
         .agents
         .get(app.agents.selected_agent_index)
-        .is_some_and(|a| {
-            matches!(a.status, AgentStatus::Running(_) | AgentStatus::Queued)
-        });
+        .is_some_and(|a| matches!(a.status, AgentStatus::Running(_) | AgentStatus::Queued));
     match app.agents.agent_action_index {
         0 => {
             app.agents.show_provider_modal = true;
@@ -2801,14 +2772,10 @@ pub fn handle_mouse_event(app: &mut App, mouse: MouseEvent) {
     }
     if app.agents.show_agent_type_selector {
         match mouse.kind {
-            MouseEventKind::ScrollDown
-                if app.agents.agent_type_selector_index < 8 =>
-            {
+            MouseEventKind::ScrollDown if app.agents.agent_type_selector_index < 8 => {
                 app.agents.agent_type_selector_index += 1;
             }
-            MouseEventKind::ScrollUp
-                if app.agents.agent_type_selector_index > 0 =>
-            {
+            MouseEventKind::ScrollUp if app.agents.agent_type_selector_index > 0 => {
                 app.agents.agent_type_selector_index -= 1;
             }
             _ => {}
@@ -2823,9 +2790,7 @@ pub fn handle_mouse_event(app: &mut App, mouse: MouseEvent) {
                     app.agents.selected_model_index += 1;
                 }
             }
-            MouseEventKind::ScrollUp
-                if app.agents.selected_model_index > 0 =>
-            {
+            MouseEventKind::ScrollUp if app.agents.selected_model_index > 0 => {
                 app.agents.selected_model_index -= 1;
             }
             _ => {}
@@ -2840,9 +2805,7 @@ pub fn handle_mouse_event(app: &mut App, mouse: MouseEvent) {
                     app.agents.selected_model_index += 1;
                 }
             }
-            MouseEventKind::ScrollUp
-                if app.agents.selected_model_index > 0 =>
-            {
+            MouseEventKind::ScrollUp if app.agents.selected_model_index > 0 => {
                 app.agents.selected_model_index -= 1;
             }
             _ => {}
