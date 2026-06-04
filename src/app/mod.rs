@@ -26,9 +26,7 @@ pub use states::{
     ContainerState, FirewallState, GeoState, InvestigationState, LibraryState, NetworkDataState,
     StorageState, TrendState, UiState, UpdateState,
 };
-pub use types::{
-    AppConnection, AppState, FirewallPanel, NavView, SidebarFocus,
-};
+pub use types::{AppConnection, AppState, FirewallPanel, NavView, SidebarFocus};
 
 pub struct App {
     pub ui: UiState,

@@ -12,8 +12,9 @@ pub enum NavView {
     Containers,
     Agents,
 }
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 pub enum AgentProvider {
+    #[default]
     Ollama,
     OpenAI,
     Anthropic,
@@ -49,11 +50,6 @@ impl AgentProvider {
     }
 }
 
-impl Default for AgentProvider {
-    fn default() -> Self {
-        Self::Ollama
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum AgentMission {
@@ -69,6 +65,7 @@ pub enum AgentMission {
 }
 #[derive(Debug, Clone)]
 pub enum AgentStatus {
+    #[expect(dead_code)]
     Idle,
     Queued,
     Running(String),

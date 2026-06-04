@@ -1,6 +1,8 @@
 use crate::app::network::NetworkConnection;
 use crate::app::process::ProcessInfo;
-use crate::app::types::{AgentMission, AgentProvider, AgentProviderConfig, AgentStatus};
+use crate::app::types::{
+    AgentInstance, AgentMission, AgentProvider, AgentProviderConfig, AgentStatus,
+};
 use futures_util::StreamExt;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -51,7 +53,9 @@ fn build_prompt(
     dependency_context: Option<&str>,
     locale: &str,
 ) -> Result<String, String> {
-    let proc_text = processes.map(process_json).unwrap_or_else(|| "[]".to_string());
+    let proc_text = processes
+        .map(process_json)
+        .unwrap_or_else(|| "[]".to_string());
     let (net_text, process_name) = networks
         .map(|(connections, name)| (network_json(connections), name.to_string()))
         .unwrap_or_else(|| ("[]".to_string(), "N/A".to_string()));
@@ -163,7 +167,10 @@ async fn send_streaming_request(
             ollama_payload(&model, &prompt, true),
         ),
         AgentProvider::OpenAI | AgentProvider::LlamaCpp => (
-            format!("{}/v1/chat/completions", config.api_url.trim_end_matches('/')),
+            format!(
+                "{}/v1/chat/completions",
+                config.api_url.trim_end_matches('/')
+            ),
             openai_payload(&model, &prompt, true),
         ),
         AgentProvider::Anthropic => (
@@ -236,6 +243,7 @@ async fn send_streaming_request(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn spawn_agent_async(
     mission: AgentMission,
     model: String,
@@ -271,7 +279,10 @@ pub fn spawn_agent_async(
         {
             Ok(client) => client,
             Err(e) => {
-                let _ = status_tx.send((agent_index, AgentStatus::Failed(format!("HTTP client error: {}", e))));
+                let _ = status_tx.send((
+                    agent_index,
+                    AgentStatus::Failed(format!("HTTP client error: {}", e)),
+                ));
                 return;
             }
         };
@@ -328,12 +339,24 @@ pub async fn fetch_ollama_models(api_url: &str) -> Result<Vec<String>, String> {
     Ok(models)
 }
 
-pub fn save_agent_report(target: &str, mission: AgentMission, report: &str) -> Option<String> {
+pub fn save_agent_report(
+    target: &str,
+    mission: AgentMission,
+    report: &str,
+    provider_label: &str,
+    model: &str,
+) -> Option<String> {
     let dir = crate::config::config_dir().join("agent_history");
     std::fs::create_dir_all(&dir).ok()?;
     let clean_target: String = target
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect();
     let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
     let path = dir.join(format!(
@@ -342,6 +365,105 @@ pub fn save_agent_report(target: &str, mission: AgentMission, report: &str) -> O
         mission_title(mission).replace(' ', "_").to_lowercase(),
         clean_target
     ));
-    std::fs::write(&path, report).ok()?;
+    let header = format!("agent:{}|{}\n", provider_label, model);
+    let content = format!("{}{}", header, report);
+    std::fs::write(&path, content).ok()?;
     Some(path.display().to_string())
+}
+
+fn parse_agent_meta_line(content: &str) -> Option<(&str, &str)> {
+    let first_line = content.lines().next()?;
+    let rest = first_line.strip_prefix("agent:")?;
+    let (provider_label, model) = rest.split_once('|')?;
+    Some((provider_label, model))
+}
+
+fn provider_from_label(label: &str) -> AgentProvider {
+    match label {
+        "OpenAI" => AgentProvider::OpenAI,
+        "Anthropic" => AgentProvider::Anthropic,
+        "llama.cpp" => AgentProvider::LlamaCpp,
+        _ => AgentProvider::Ollama,
+    }
+}
+
+pub fn load_agent_history() -> Vec<AgentInstance> {
+    let dir = crate::config::config_dir().join("agent_history");
+    if !dir.exists() {
+        return Vec::new();
+    }
+
+    let lookup: Vec<(&str, AgentMission)> = vec![
+        ("process_analysis", AgentMission::ProcessAnalysis),
+        ("network_analysis", AgentMission::NetworkAnalysis),
+        ("dns_analysis", AgentMission::DnsAnalysis),
+        ("file_analyzer", AgentMission::FileAnalyzer),
+        ("port_scanner", AgentMission::PortScanner),
+        ("log_analyzer", AgentMission::LogAnalyzer),
+        ("memory_analyzer", AgentMission::MemoryAnalyzer),
+        ("vulnerability_check", AgentMission::VulnerabilityCheck),
+        ("threat_intel", AgentMission::ThreatIntel),
+    ];
+
+    let mut entries: Vec<_> = std::fs::read_dir(&dir)
+        .ok()
+        .into_iter()
+        .flatten()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().extension().map(|ext| ext == "md").unwrap_or(false))
+        .collect();
+
+    entries.sort_by_key(|e| e.file_name());
+
+    let mut agents = Vec::new();
+    for entry in entries {
+        let path = entry.path();
+        let file_stem = match path.file_stem().and_then(|s| s.to_str()) {
+            Some(s) => s.to_string(),
+            None => continue,
+        };
+
+        let parts: Vec<&str> = file_stem.split('_').collect();
+        if parts.len() < 4 {
+            continue;
+        }
+
+        let mut matched = false;
+        for (name, mission) in &lookup {
+            let name_parts: Vec<&str> = name.split('_').collect();
+            if parts.len() >= 2 + name_parts.len()
+                && parts[2..2 + name_parts.len()] == name_parts[..]
+            {
+                let target = parts[2 + name_parts.len()..].join("_");
+                if let Ok(raw) = std::fs::read_to_string(&path) {
+                    let (provider, model, content) =
+                        if let Some((pl, m)) = parse_agent_meta_line(&raw) {
+                            let rest: String = raw.lines().skip(1).collect::<Vec<_>>().join("\n");
+                            (provider_from_label(pl), m.to_string(), rest)
+                        } else {
+                            (AgentProvider::Ollama, String::new(), raw)
+                        };
+                    agents.push(AgentInstance {
+                        mission: *mission,
+                        provider,
+                        model,
+                        status: AgentStatus::Completed(content),
+                        started_at_frame: 0,
+                        completed_at_frame: None,
+                        target_name: target,
+                        target_path: None,
+                        launch_data: None,
+                        history_path: Some(path.display().to_string()),
+                    });
+                }
+                matched = true;
+                break;
+            }
+        }
+        if !matched {
+            continue;
+        }
+    }
+
+    agents
 }

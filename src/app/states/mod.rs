@@ -475,6 +475,7 @@ pub struct AgentState {
     pub provider: crate::app::types::AgentProvider,
     pub ollama: crate::app::types::OllamaConfig,
     pub show_provider_modal: bool,
+    pub provider_backup: crate::app::types::AgentProvider,
     pub show_process_selector: bool,
     pub show_network_selector: bool,
     pub selected_mission: Option<crate::app::types::AgentMission>,
@@ -490,8 +491,10 @@ pub struct AgentState {
     pub selected_pids: Vec<u32>,
     pub selected_connection_idxs: Vec<usize>,
     pub agent_type_selector_index: usize,
-    pub agent_status_tx: Option<tokio::sync::mpsc::UnboundedSender<(usize, crate::app::types::AgentStatus)>>,
-    pub agent_status_rx: Option<tokio::sync::mpsc::UnboundedReceiver<(usize, crate::app::types::AgentStatus)>>,
+    pub agent_status_tx:
+        Option<tokio::sync::mpsc::UnboundedSender<(usize, crate::app::types::AgentStatus)>>,
+    pub agent_status_rx:
+        Option<tokio::sync::mpsc::UnboundedReceiver<(usize, crate::app::types::AgentStatus)>>,
     pub ollama_fetch_rx: Option<tokio::sync::oneshot::Receiver<Result<Vec<String>, String>>>,
     pub show_agent_type_selector: bool,
     pub agent_launch_queue: Vec<crate::app::types::AgentLaunchData>,
@@ -502,6 +505,9 @@ pub struct AgentState {
     pub agent_search_query: String,
     pub collapse_sections: bool,
     pub completed_notifications: usize,
+    pub history_loading: bool,
+    pub history_loaded: bool,
+    pub history_rx: Option<std::sync::mpsc::Receiver<Vec<crate::app::types::AgentInstance>>>,
 }
 
 impl AgentState {
@@ -510,8 +516,16 @@ impl AgentState {
         let url = ollama.api_url.clone();
         let api_key = ollama.api_key.clone();
         let models = ollama.models.clone();
+
+        let (history_tx, history_rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let agents = crate::app::agents::load_agent_history();
+            let _ = history_tx.send(agents);
+        });
+
         Self {
             agents: Vec::new(),
+            provider_backup: ollama.provider,
             provider: ollama.provider,
             ollama,
             show_provider_modal: false,
@@ -542,6 +556,9 @@ impl AgentState {
             agent_search_query: String::new(),
             collapse_sections: false,
             completed_notifications: 0,
+            history_loading: true,
+            history_loaded: false,
+            history_rx: Some(history_rx),
         }
     }
 }

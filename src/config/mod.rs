@@ -189,9 +189,17 @@ pub fn load_ollama_config() -> OllamaConfig {
     }
     AgentProviderConfig {
         provider: AgentProvider::Ollama,
-        api_url: if config.ollama_url.is_empty() { "http://localhost:11434".to_string() } else { config.ollama_url },
+        api_url: if config.ollama_url.is_empty() {
+            "http://localhost:11434".to_string()
+        } else {
+            config.ollama_url
+        },
         api_key: String::new(),
-        models: if config.ollama_models.is_empty() { vec!["llama3.2:latest".to_string()] } else { config.ollama_models },
+        models: if config.ollama_models.is_empty() {
+            vec!["llama3.2:latest".to_string()]
+        } else {
+            config.ollama_models
+        },
     }
 }
 

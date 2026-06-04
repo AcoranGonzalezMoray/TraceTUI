@@ -158,64 +158,74 @@ fn handle_provider_modal_keys(app: &mut App, key: KeyEvent) {
         KeyCode::Enter if app.agents.agent_search_mode => {
             app.agents.agent_search_mode = false;
         }
-        KeyCode::Char(c) if app.agents.agent_search_mode => {
-            if !key.modifiers.contains(KeyModifiers::CONTROL) {
-                app.agents.agent_search_query.push(c);
-                app.agents.agent_detail_scroll = 0;
-            }
+        KeyCode::Char(c)
+            if app.agents.agent_search_mode
+                && !key.modifiers.contains(KeyModifiers::CONTROL) =>
+        {
+            app.agents.agent_search_query.push(c);
+            app.agents.agent_detail_scroll = 0;
         }
         KeyCode::Tab => {
-            app.agents.provider_modal_focus =
-                (app.agents.provider_modal_focus + 1) % 8;
+            app.agents.provider_modal_focus = (app.agents.provider_modal_focus + 1) % 8;
         }
         KeyCode::BackTab => {
-            app.agents.provider_modal_focus =
-                if app.agents.provider_modal_focus == 0 {
-                    7
-                } else {
-                    app.agents.provider_modal_focus - 1
-                };
+            app.agents.provider_modal_focus = if app.agents.provider_modal_focus == 0 {
+                7
+            } else {
+                app.agents.provider_modal_focus - 1
+            };
         }
         KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('Q') => {
+            app.agents.ollama.provider = app.agents.provider_backup;
             app.agents.show_provider_modal = false;
         }
-        KeyCode::Enter => {
-            match app.agents.provider_modal_focus {
-                0 => {
-                    app.agents.ollama.provider = app.agents.ollama.provider.next();
-                    if app.agents.ollama_url_input.trim().is_empty()
-                        || app.agents.ollama_url_input.contains("localhost:11434")
-                        || app.agents.ollama_url_input.contains("api.openai.com")
-                        || app.agents.ollama_url_input.contains("api.anthropic.com")
-                    {
-                        app.agents.ollama_url_input = match app.agents.ollama.provider {
-                            crate::app::types::AgentProvider::Ollama => "http://localhost:11434".to_string(),
-                            crate::app::types::AgentProvider::OpenAI => "https://api.openai.com".to_string(),
-                            crate::app::types::AgentProvider::Anthropic => "https://api.anthropic.com".to_string(),
-                            crate::app::types::AgentProvider::LlamaCpp => "http://localhost:8080".to_string(),
-                        };
-                    }
+        KeyCode::Enter => match app.agents.provider_modal_focus {
+            0 => {
+                app.agents.ollama.provider = app.agents.ollama.provider.next();
+                if app.agents.ollama_url_input.trim().is_empty()
+                    || app.agents.ollama_url_input.contains("localhost:11434")
+                    || app.agents.ollama_url_input.contains("api.openai.com")
+                    || app.agents.ollama_url_input.contains("api.anthropic.com")
+                {
+                    app.agents.ollama_url_input = match app.agents.ollama.provider {
+                        crate::app::types::AgentProvider::Ollama => {
+                            "http://localhost:11434".to_string()
+                        }
+                        crate::app::types::AgentProvider::OpenAI => {
+                            "https://api.openai.com".to_string()
+                        }
+                        crate::app::types::AgentProvider::Anthropic => {
+                            "https://api.anthropic.com".to_string()
+                        }
+                        crate::app::types::AgentProvider::LlamaCpp => {
+                            "http://localhost:8080".to_string()
+                        }
+                    };
                 }
-                2 => {
-                    let model = app.agents.ollama_model_input.trim().to_string();
-                    if !model.is_empty() && !app.agents.ollama_models.contains(&model) {
-                        app.agents.ollama_models.push(model);
-                    }
-                    app.agents.ollama_model_input.clear();
-                }
-                5 => execute_fetch_ollama(app),
-                6 => execute_save_ollama(app),
-                7 => app.agents.show_provider_modal = false,
-                _ => execute_save_ollama(app),
             }
-        }
+            2 => {
+                let model = app.agents.ollama_model_input.trim().to_string();
+                if !model.is_empty() && !app.agents.ollama_models.contains(&model) {
+                    app.agents.ollama_models.push(model);
+                }
+                app.agents.ollama_model_input.clear();
+            }
+            5 => execute_fetch_ollama(app),
+            6 => execute_save_ollama(app),
+            7 => {
+                app.agents.ollama.provider = app.agents.provider_backup;
+                app.agents.show_provider_modal = false;
+            }
+            _ => execute_save_ollama(app),
+        },
         KeyCode::Char('f') | KeyCode::Char('F') => {
             execute_fetch_ollama(app);
         }
-        KeyCode::Up if app.agents.provider_modal_focus == 4 => {
-            if app.agents.selected_model_index > 0 {
-                app.agents.selected_model_index -= 1;
-            }
+        KeyCode::Up
+            if app.agents.provider_modal_focus == 4
+                && app.agents.selected_model_index > 0 =>
+        {
+            app.agents.selected_model_index -= 1;
         }
         KeyCode::Down if app.agents.provider_modal_focus == 4 => {
             let max = app.agents.ollama_models.len().saturating_sub(1);
@@ -223,30 +233,38 @@ fn handle_provider_modal_keys(app: &mut App, key: KeyEvent) {
                 app.agents.selected_model_index += 1;
             }
         }
-        KeyCode::Delete if app.agents.provider_modal_focus == 4 => {
-            if app.agents.selected_model_index < app.agents.ollama_models.len() {
-                app.agents.ollama_models.remove(app.agents.selected_model_index);
-                if app.agents.selected_model_index >= app.agents.ollama_models.len() {
-                    app.agents.selected_model_index = app.agents.ollama_models.len().saturating_sub(1);
-                }
+        KeyCode::Delete
+            if app.agents.provider_modal_focus == 4
+                && app.agents.selected_model_index < app.agents.ollama_models.len() =>
+        {
+            app.agents
+                .ollama_models
+                .remove(app.agents.selected_model_index);
+            if app.agents.selected_model_index >= app.agents.ollama_models.len() {
+                app.agents.selected_model_index =
+                    app.agents.ollama_models.len().saturating_sub(1);
             }
         }
-        KeyCode::Backspace => {
+        KeyCode::Backspace => match app.agents.provider_modal_focus {
+            1 => {
+                app.agents.ollama_url_input.pop();
+            }
+            2 => {
+                app.agents.ollama_model_input.pop();
+            }
+            3 => {
+                app.agents.agent_api_key_input.pop();
+            }
+            _ => {}
+        },
+        KeyCode::Char(c)
+            if !key.modifiers.contains(KeyModifiers::CONTROL) =>
+        {
             match app.agents.provider_modal_focus {
-                1 => { app.agents.ollama_url_input.pop(); }
-                2 => { app.agents.ollama_model_input.pop(); }
-                3 => { app.agents.agent_api_key_input.pop(); }
+                1 => app.agents.ollama_url_input.push(c),
+                2 => app.agents.ollama_model_input.push(c),
+                3 => app.agents.agent_api_key_input.push(c),
                 _ => {}
-            }
-        }
-        KeyCode::Char(c) => {
-            if !key.modifiers.contains(KeyModifiers::CONTROL) {
-                match app.agents.provider_modal_focus {
-                    1 => app.agents.ollama_url_input.push(c),
-                    2 => app.agents.ollama_model_input.push(c),
-                    3 => app.agents.agent_api_key_input.push(c),
-                    _ => {}
-                }
             }
         }
         _ => {}
@@ -277,22 +295,38 @@ fn execute_save_ollama(app: &mut App) {
     app.agents.selected_model_index = 0;
     crate::config::save_ollama_config(&app.agents.ollama);
     app.agents.show_provider_modal = false;
-    app.ui.status_message =
-        tr!(app.ui.translator, "agents.saved").to_string();
+    app.ui.status_message = tr!(app.ui.translator, "agents.saved").to_string();
 }
 
 fn handle_agent_keys(app: &mut App, key: KeyEvent) {
+    if app.agents.agent_search_mode {
+        match key.code {
+            KeyCode::Esc | KeyCode::Enter => {
+                app.agents.agent_search_mode = false;
+            }
+            KeyCode::Backspace => {
+                app.agents.agent_search_query.pop();
+                app.agents.agent_detail_scroll = 0;
+            }
+            KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                app.agents.agent_search_query.push(c);
+                app.agents.agent_detail_scroll = 0;
+            }
+            _ => {}
+        }
+        return;
+    }
     if app.agents.show_agent_type_selector {
         match key.code {
-            KeyCode::Up => {
-                if app.agents.agent_type_selector_index > 0 {
-                    app.agents.agent_type_selector_index -= 1;
-                }
+            KeyCode::Up
+                if app.agents.agent_type_selector_index > 0 =>
+            {
+                app.agents.agent_type_selector_index -= 1;
             }
-            KeyCode::Down => {
-                if app.agents.agent_type_selector_index < 8 {
-                    app.agents.agent_type_selector_index += 1;
-                }
+            KeyCode::Down
+                if app.agents.agent_type_selector_index < 8 =>
+            {
+                app.agents.agent_type_selector_index += 1;
             }
             KeyCode::Enter => {
                 let mission = match app.agents.agent_type_selector_index {
@@ -357,26 +391,32 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
     if app.agents.show_process_selector {
         let total_p = app.network.processes.len();
         match key.code {
-            KeyCode::Up => {
-                if app.agents.selected_model_index > 0 {
-                    app.agents.selected_model_index -= 1;
-                }
+            KeyCode::Up
+                if app.agents.selected_model_index > 0 =>
+            {
+                app.agents.selected_model_index -= 1;
             }
-            KeyCode::Down => {
-                if app.agents.selected_model_index + 1 < total_p {
-                    app.agents.selected_model_index += 1;
-                }
+            KeyCode::Down
+                if app.agents.selected_model_index + 1 < total_p =>
+            {
+                app.agents.selected_model_index += 1;
             }
             KeyCode::PageUp => {
-                app.agents.selected_model_index = app.agents.selected_model_index.saturating_sub(10);
+                app.agents.selected_model_index =
+                    app.agents.selected_model_index.saturating_sub(10);
             }
-            KeyCode::PageDown => {
-                if total_p > 0 {
-                    app.agents.selected_model_index = (app.agents.selected_model_index + 10).min(total_p.saturating_sub(1));
-                }
+            KeyCode::PageDown
+                if total_p > 0 =>
+            {
+                app.agents.selected_model_index =
+                    (app.agents.selected_model_index + 10).min(total_p.saturating_sub(1));
             }
-            KeyCode::Home => { app.agents.selected_model_index = 0; }
-            KeyCode::End => { app.agents.selected_model_index = total_p.saturating_sub(1); }
+            KeyCode::Home => {
+                app.agents.selected_model_index = 0;
+            }
+            KeyCode::End => {
+                app.agents.selected_model_index = total_p.saturating_sub(1);
+            }
             KeyCode::Char(' ') => {
                 if let Some(proc) = app.network.processes.get(app.agents.selected_model_index) {
                     if app.agents.selected_pids.contains(&proc.pid) {
@@ -386,64 +426,77 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
                     }
                 }
             }
-            KeyCode::Enter => {
-                if !app.agents.selected_pids.is_empty() && app.agents.selected_mission.is_some() {
-                    let mission_p = app.agents.selected_mission.unwrap();
-                    let model_p = app.agents.ollama.models.first().cloned().unwrap_or_default();
-                    let config_p = app.agents.ollama.clone();
-                    let process_data = app.network.processes.clone();
-                    let mut first_idx = None;
-                    let mut queue_p = Vec::new();
+            KeyCode::Enter
+                if !app.agents.selected_pids.is_empty() && app.agents.selected_mission.is_some() =>
+            {
+                let mission_p = app.agents.selected_mission.unwrap();
+                let model_p = app
+                    .agents
+                    .ollama
+                    .models
+                    .first()
+                    .cloned()
+                    .unwrap_or_default();
+                let config_p = app.agents.ollama.clone();
+                let process_data = app.network.processes.clone();
+                let mut first_idx = None;
+                let mut queue_p = Vec::new();
 
-                    for &pid in &app.agents.selected_pids {
-                        let procs_for_agent: Vec<_> = process_data.iter().filter(|p| p.pid == pid).cloned().collect();
-                        let tn = procs_for_agent.first().map(|p| p.name.clone()).unwrap_or_default();
-                        let tp = procs_for_agent.first().and_then(|p| p.path.clone());
-                        let agent_idx = app.agents.agents.len();
+                for &pid in &app.agents.selected_pids {
+                    let procs_for_agent: Vec<_> = process_data
+                        .iter()
+                        .filter(|p| p.pid == pid)
+                        .cloned()
+                        .collect();
+                    let tn = procs_for_agent
+                        .first()
+                        .map(|p| p.name.clone())
+                        .unwrap_or_default();
+                    let tp = procs_for_agent.first().and_then(|p| p.path.clone());
+                    let agent_idx = app.agents.agents.len();
 
-                        let launch_data = crate::app::types::AgentLaunchData {
-                            mission: mission_p,
-                            model: model_p.clone(),
-                            config: config_p.clone(),
-                            processes: Some(procs_for_agent.clone()),
-                            networks: None,
-                            dependency_context: None,
-                        };
+                    let launch_data = crate::app::types::AgentLaunchData {
+                        mission: mission_p,
+                        model: model_p.clone(),
+                        config: config_p.clone(),
+                        processes: Some(procs_for_agent.clone()),
+                        networks: None,
+                        dependency_context: None,
+                    };
 
-                        app.agents.agents.push(AgentInstance {
-                            mission: mission_p,
-                            provider: config_p.provider,
-                            model: model_p.clone(),
-                            status: AgentStatus::Queued,
-                            started_at_frame: app.ui.frame_count,
-                            completed_at_frame: None,
-                            target_name: tn.clone(),
-                            target_path: tp.clone(),
-                            launch_data: Some(launch_data.clone()),
-                            history_path: None,
-                        });
+                    app.agents.agents.push(AgentInstance {
+                        mission: mission_p,
+                        provider: config_p.provider,
+                        model: model_p.clone(),
+                        status: AgentStatus::Queued,
+                        started_at_frame: app.ui.frame_count,
+                        completed_at_frame: None,
+                        target_name: tn.clone(),
+                        target_path: tp.clone(),
+                        launch_data: Some(launch_data.clone()),
+                        history_path: None,
+                    });
 
-                        queue_p.push(launch_data);
+                    queue_p.push(launch_data);
 
-                        if first_idx.is_none() {
-                            first_idx = Some(agent_idx);
-                        }
+                    if first_idx.is_none() {
+                        first_idx = Some(agent_idx);
                     }
-
-                    app.agents.agent_launch_queue = queue_p;
-                    if first_idx.is_some() {
-                        app.ui.status_message = tr!(
-                            app.ui.translator,
-                            "agents.status_queued_count",
-                            app.agents.selected_pids.len()
-                        );
-                    }
-
-                    app.agents.show_process_selector = false;
-                    app.agents.selected_pids.clear();
-                    app.agents.selected_mission = None;
-                    app.agents.selected_model_index = 0;
                 }
+
+                app.agents.agent_launch_queue = queue_p;
+                if first_idx.is_some() {
+                    app.ui.status_message = tr!(
+                        app.ui.translator,
+                        "agents.status_queued_count",
+                        app.agents.selected_pids.len()
+                    );
+                }
+
+                app.agents.show_process_selector = false;
+                app.agents.selected_pids.clear();
+                app.agents.selected_mission = None;
+                app.agents.selected_model_index = 0;
             }
             KeyCode::Esc => {
                 app.agents.show_process_selector = false;
@@ -459,26 +512,32 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
     if app.agents.show_network_selector {
         let total_n = app.network.app_connections.len();
         match key.code {
-            KeyCode::Up => {
-                if app.agents.selected_model_index > 0 {
-                    app.agents.selected_model_index -= 1;
-                }
+            KeyCode::Up
+                if app.agents.selected_model_index > 0 =>
+            {
+                app.agents.selected_model_index -= 1;
             }
-            KeyCode::Down => {
-                if app.agents.selected_model_index + 1 < total_n {
-                    app.agents.selected_model_index += 1;
-                }
+            KeyCode::Down
+                if app.agents.selected_model_index + 1 < total_n =>
+            {
+                app.agents.selected_model_index += 1;
             }
             KeyCode::PageUp => {
-                app.agents.selected_model_index = app.agents.selected_model_index.saturating_sub(10);
+                app.agents.selected_model_index =
+                    app.agents.selected_model_index.saturating_sub(10);
             }
-            KeyCode::PageDown => {
-                if total_n > 0 {
-                    app.agents.selected_model_index = (app.agents.selected_model_index + 10).min(total_n.saturating_sub(1));
-                }
+            KeyCode::PageDown
+                if total_n > 0 =>
+            {
+                app.agents.selected_model_index =
+                    (app.agents.selected_model_index + 10).min(total_n.saturating_sub(1));
             }
-            KeyCode::Home => { app.agents.selected_model_index = 0; }
-            KeyCode::End => { app.agents.selected_model_index = total_n.saturating_sub(1); }
+            KeyCode::Home => {
+                app.agents.selected_model_index = 0;
+            }
+            KeyCode::End => {
+                app.agents.selected_model_index = total_n.saturating_sub(1);
+            }
             KeyCode::Char(' ') => {
                 let idx = app.agents.selected_model_index;
                 if idx < total_n {
@@ -489,79 +548,88 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
                     }
                 }
             }
-            KeyCode::Enter => {
-                if !app.agents.selected_connection_idxs.is_empty() && app.agents.selected_mission.is_some() {
-                    let mission_n = app.agents.selected_mission.unwrap();
-                    let model_n = app.agents.ollama.models.first().cloned().unwrap_or_default();
-                    let config_n = app.agents.ollama.clone();
-                    let conns_n = app.network.app_connections.clone();
-                    let mut first_idx_n = None;
-                    let mut queue_n = Vec::new();
+            KeyCode::Enter
+                if !app.agents.selected_connection_idxs.is_empty()
+                    && app.agents.selected_mission.is_some() =>
+            {
+                let mission_n = app.agents.selected_mission.unwrap();
+                let model_n = app
+                    .agents
+                    .ollama
+                    .models
+                    .first()
+                    .cloned()
+                    .unwrap_or_default();
+                let config_n = app.agents.ollama.clone();
+                let conns_n = app.network.app_connections.clone();
+                let mut first_idx_n = None;
+                let mut queue_n = Vec::new();
 
-                    for &sel_idx in &app.agents.selected_connection_idxs {
-                        let (net_conns, net_proc_name) = if sel_idx < conns_n.len() {
-                            let ac = &conns_n[sel_idx];
-                            (ac.connections.clone(), ac.process_name.clone())
-                        } else {
-                            (Vec::new(), String::new())
-                        };
-                        let agent_idx = app.agents.agents.len();
+                for &sel_idx in &app.agents.selected_connection_idxs {
+                    let (net_conns, net_proc_name) = if sel_idx < conns_n.len() {
+                        let ac = &conns_n[sel_idx];
+                        (ac.connections.clone(), ac.process_name.clone())
+                    } else {
+                        (Vec::new(), String::new())
+                    };
+                    let agent_idx = app.agents.agents.len();
 
-                        let dependency_context = if matches!(mission_n, AgentMission::VulnerabilityCheck) {
-                            app.agents
-                                .agents
-                                .iter()
-                                .rev()
-                                .find_map(|agent| match (&agent.mission, &agent.status) {
-                                    (AgentMission::PortScanner, AgentStatus::Completed(report)) => Some(report.clone()),
+                    let dependency_context =
+                        if matches!(mission_n, AgentMission::VulnerabilityCheck) {
+                            app.agents.agents.iter().rev().find_map(|agent| {
+                                match (&agent.mission, &agent.status) {
+                                    (
+                                        AgentMission::PortScanner,
+                                        AgentStatus::Completed(report),
+                                    ) => Some(report.clone()),
                                     _ => None,
-                                })
+                                }
+                            })
                         } else {
                             None
                         };
-                        let launch_data = crate::app::types::AgentLaunchData {
-                            mission: mission_n,
-                            model: model_n.clone(),
-                            config: config_n.clone(),
-                            processes: None,
-                            networks: Some((net_conns.clone(), net_proc_name.clone())),
-                            dependency_context,
-                        };
+                    let launch_data = crate::app::types::AgentLaunchData {
+                        mission: mission_n,
+                        model: model_n.clone(),
+                        config: config_n.clone(),
+                        processes: None,
+                        networks: Some((net_conns.clone(), net_proc_name.clone())),
+                        dependency_context,
+                    };
 
-                        app.agents.agents.push(AgentInstance {
-                            mission: mission_n,
-                            provider: config_n.provider,
-                            model: model_n.clone(),
-                            status: AgentStatus::Queued,
-                            started_at_frame: app.ui.frame_count,
-                            completed_at_frame: None,
-                            target_name: net_proc_name.clone(),
-                            target_path: None,
-                            launch_data: Some(launch_data.clone()),
-                            history_path: None,
-                        });
+                    app.agents.agents.push(AgentInstance {
+                        mission: mission_n,
+                        provider: config_n.provider,
+                        model: model_n.clone(),
+                        status: AgentStatus::Queued,
+                        started_at_frame: app.ui.frame_count,
+                        completed_at_frame: None,
+                        target_name: net_proc_name.clone(),
+                        target_path: None,
+                        launch_data: Some(launch_data.clone()),
+                        history_path: None,
+                    });
 
-                        queue_n.push(launch_data);
+                    queue_n.push(launch_data);
 
-                        if first_idx_n.is_none() {
-                            first_idx_n = Some(agent_idx);
-                        }
+                    if first_idx_n.is_none() {
+                        first_idx_n = Some(agent_idx);
                     }
-
-                    app.agents.agent_launch_queue = queue_n;
-                    if first_idx_n.is_some() {
-                        app.ui.status_message = tr!(
-                            app.ui.translator,
-                            "agents.status_queued_count",
-                            app.agents.selected_connection_idxs.len()
-                        );
-                    }
-
-                    app.agents.show_network_selector = false;
-                    app.agents.selected_connection_idxs.clear();
-                    app.agents.selected_mission = None;
-                    app.agents.selected_model_index = 0;
                 }
+
+                app.agents.agent_launch_queue = queue_n;
+                if first_idx_n.is_some() {
+                    app.ui.status_message = tr!(
+                        app.ui.translator,
+                        "agents.status_queued_count",
+                        app.agents.selected_connection_idxs.len()
+                    );
+                }
+
+                app.agents.show_network_selector = false;
+                app.agents.selected_connection_idxs.clear();
+                app.agents.selected_mission = None;
+                app.agents.selected_model_index = 0;
             }
             KeyCode::Esc => {
                 app.agents.show_network_selector = false;
@@ -641,7 +709,7 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
                 }
             }
             SidebarFocus::Right => {
-                let max = 3usize;
+                let max = 4usize;
                 if app.agents.agent_action_index < max {
                     app.agents.agent_action_index += 1;
                 }
@@ -649,9 +717,9 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
             SidebarFocus::Center => {
                 if let Some(agent) = app.agents.agents.get(app.agents.selected_agent_index) {
                     let line_count = match &agent.status {
-                        AgentStatus::Running(m) | AgentStatus::Completed(m) | AgentStatus::Failed(m) => {
-                            m.lines().count()
-                        }
+                        AgentStatus::Running(m)
+                        | AgentStatus::Completed(m)
+                        | AgentStatus::Failed(m) => m.lines().count(),
                         _ => 0,
                     };
                     if app.agents.agent_detail_scroll < line_count.saturating_sub(1) {
@@ -672,11 +740,20 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
             }
             _ => {}
         },
+        KeyCode::Char('a') | KeyCode::Char('A') => {
+            if app.agents.ollama.models.is_empty() {
+                app.ui.status_message = tr!(app.ui.translator, "agents.no_models").to_string();
+            } else {
+                app.agents.show_agent_type_selector = true;
+                app.agents.agent_type_selector_index = 0;
+            }
+        }
         KeyCode::Char('c') | KeyCode::Char('C') => {
             if key.modifiers.contains(KeyModifiers::CONTROL) {
                 app.ui.should_quit = true;
             } else {
                 app.agents.show_provider_modal = true;
+                app.agents.provider_backup = app.agents.ollama.provider;
                 app.agents.ollama_url_input = app.agents.ollama.api_url.clone();
                 app.agents.agent_api_key_input = app.agents.ollama.api_key.clone();
                 app.agents.ollama_models = app.agents.ollama.models.clone();
@@ -685,11 +762,9 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
         }
         KeyCode::Char('p') | KeyCode::Char('P') => {
             if app.agents.ollama.models.is_empty() {
-                app.ui.status_message =
-                    tr!(app.ui.translator, "agents.no_models").to_string();
+                app.ui.status_message = tr!(app.ui.translator, "agents.no_models").to_string();
             } else if app.network.processes.is_empty() {
-                app.ui.status_message =
-                    tr!(app.ui.translator, "agents.no_processes").to_string();
+                app.ui.status_message = tr!(app.ui.translator, "agents.no_processes").to_string();
             } else {
                 app.agents.selected_mission = Some(AgentMission::ProcessAnalysis);
                 app.agents.show_process_selector = true;
@@ -699,11 +774,9 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
         }
         KeyCode::Char('n') | KeyCode::Char('N') => {
             if app.agents.ollama.models.is_empty() {
-                app.ui.status_message =
-                    tr!(app.ui.translator, "agents.no_models").to_string();
+                app.ui.status_message = tr!(app.ui.translator, "agents.no_models").to_string();
             } else if app.network.app_connections.is_empty() {
-                app.ui.status_message =
-                    tr!(app.ui.translator, "agents.no_networks").to_string();
+                app.ui.status_message = tr!(app.ui.translator, "agents.no_networks").to_string();
             } else {
                 app.agents.selected_mission = Some(AgentMission::NetworkAnalysis);
                 app.agents.show_network_selector = true;
@@ -711,19 +784,27 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
                 app.agents.selected_model_index = 0;
             }
         }
-        KeyCode::Char('x') | KeyCode::Char('X') => {
-            if !app.agents.agents.is_empty() {
-                let idx = app.agents.selected_agent_index;
-                if idx < app.agents.agents.len() {
-                    app.agents.agents.remove(idx);
-                    if app.agents.selected_agent_index >= app.agents.agents.len() {
-                        app.agents.selected_agent_index = app.agents.agents.len().saturating_sub(1);
-                    }
-                    app.agents.agent_detail_scroll = 0;
+        KeyCode::Char('x') | KeyCode::Char('X')
+            if !app.agents.agents.is_empty() =>
+        {
+            let idx = app.agents.selected_agent_index;
+            if idx < app.agents.agents.len() {
+                let path_to_delete = app.agents.agents[idx].history_path.clone();
+                if let Some(ref path) = path_to_delete {
+                    let _ = std::fs::remove_file(path);
                 }
+                app.agents.agents.remove(idx);
+                if app.agents.selected_agent_index >= app.agents.agents.len() {
+                    app.agents.selected_agent_index = app.agents.agents.len().saturating_sub(1);
+                }
+                app.agents.agent_detail_scroll = 0;
             }
-        }
+            }
         KeyCode::Char('/') => {
+            app.ui.search_mode = true;
+            app.ui.search_query.clear();
+        }
+        KeyCode::Char('f') | KeyCode::Char('F') => {
             app.agents.agent_search_mode = true;
             app.agents.agent_search_query.clear();
             app.agents.agent_detail_scroll = 0;
@@ -741,14 +822,17 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
             );
         }
         KeyCode::Char('-') => {
-            app.agents.max_parallel_agents = app.agents.max_parallel_agents.saturating_sub(1).max(1);
+            app.agents.max_parallel_agents =
+                app.agents.max_parallel_agents.saturating_sub(1).max(1);
             app.ui.status_message = tr!(
                 app.ui.translator,
                 "agents.status_parallel",
                 app.agents.max_parallel_agents
             );
         }
-        KeyCode::Char('r') | KeyCode::Char('R') => {
+        KeyCode::Char('r') | KeyCode::Char('R')
+            if !app.agents.history_loading =>
+        {
             retry_selected_agent(app);
         }
         KeyCode::Char('e') | KeyCode::Char('E') => {
@@ -757,7 +841,9 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
         KeyCode::Char('j') | KeyCode::Char('J') => {
             export_selected_agent_report(app, "json");
         }
-        KeyCode::Char('s') | KeyCode::Char('S') => {
+        KeyCode::Char('s') | KeyCode::Char('S')
+            if !app.agents.history_loading =>
+        {
             cancel_selected_agent(app);
         }
         KeyCode::Char('l') | KeyCode::Char('L') => {
@@ -776,6 +862,13 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
 }
 
 fn execute_agent_action(app: &mut App) {
+    let has_cancel = app
+        .agents
+        .agents
+        .get(app.agents.selected_agent_index)
+        .is_some_and(|a| {
+            matches!(a.status, AgentStatus::Running(_) | AgentStatus::Queued)
+        });
     match app.agents.agent_action_index {
         0 => {
             app.agents.show_provider_modal = true;
@@ -786,17 +879,32 @@ fn execute_agent_action(app: &mut App) {
         }
         1 => {
             if app.agents.ollama.models.is_empty() {
-                app.ui.status_message =
-                    tr!(app.ui.translator, "agents.no_models").to_string();
+                app.ui.status_message = tr!(app.ui.translator, "agents.no_models").to_string();
             } else {
                 app.agents.show_agent_type_selector = true;
                 app.agents.agent_type_selector_index = 0;
             }
         }
         2 => {
-            retry_selected_agent(app);
+            if has_cancel {
+                cancel_selected_agent(app);
+            } else {
+                retry_selected_agent(app);
+            }
         }
         3 => {
+            app.ui.status_message = tr!(
+                app.ui.translator,
+                "agents.status_parallel",
+                app.agents.max_parallel_agents
+            );
+        }
+        4 => {
+            for agent in &app.agents.agents {
+                if let Some(ref path) = agent.history_path {
+                    let _ = std::fs::remove_file(path);
+                }
+            }
             app.agents.agents.clear();
             app.agents.agent_abort_flags.clear();
             app.agents.running_agent_count = 0;
@@ -841,20 +949,14 @@ fn export_selected_agent_report(app: &mut App, format: &str) {
         return;
     };
     let report = match &agent.status {
-        AgentStatus::Running(text) | AgentStatus::Completed(text) | AgentStatus::Failed(text) => text,
+        AgentStatus::Running(text) | AgentStatus::Completed(text) | AgentStatus::Failed(text) => {
+            text
+        }
         _ => {
             app.ui.status_message = tr!(app.ui.translator, "agents.status_no_report");
             return;
         }
     };
-    let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
-    let target = if agent.target_name.is_empty() { "agent" } else { &agent.target_name };
-    let clean_target: String = target
-        .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
-        .collect();
-    let filename = format!("agent_report_{}_{}.{}", timestamp, clean_target, format);
-    let path = std::path::PathBuf::from(&filename);
     let content = if format == "json" {
         serde_json::json!({
             "mission": format!("{:?}", agent.mission),
@@ -866,6 +968,28 @@ fn export_selected_agent_report(app: &mut App, format: &str) {
         .to_string()
     } else {
         report.clone()
+    };
+    let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
+    let target = if agent.target_name.is_empty() {
+        "agent"
+    } else {
+        &agent.target_name
+    };
+    let clean_target: String = target
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    let default_name = format!("agent_report_{}_{}.{}", timestamp, clean_target, format);
+    let path = pick_save_path(app, &default_name);
+    let Some(path) = path else {
+        app.ui.status_message = tr!(app.ui.translator, "status.action_cancelled");
+        return;
     };
     match std::fs::write(&path, content) {
         Ok(_) => {
@@ -2675,6 +2799,22 @@ pub fn handle_mouse_event(app: &mut App, mouse: MouseEvent) {
     {
         return;
     }
+    if app.agents.show_agent_type_selector {
+        match mouse.kind {
+            MouseEventKind::ScrollDown
+                if app.agents.agent_type_selector_index < 8 =>
+            {
+                app.agents.agent_type_selector_index += 1;
+            }
+            MouseEventKind::ScrollUp
+                if app.agents.agent_type_selector_index > 0 =>
+            {
+                app.agents.agent_type_selector_index -= 1;
+            }
+            _ => {}
+        }
+        return;
+    }
     if app.agents.show_process_selector {
         match mouse.kind {
             MouseEventKind::ScrollDown => {
@@ -2683,10 +2823,10 @@ pub fn handle_mouse_event(app: &mut App, mouse: MouseEvent) {
                     app.agents.selected_model_index += 1;
                 }
             }
-            MouseEventKind::ScrollUp => {
-                if app.agents.selected_model_index > 0 {
-                    app.agents.selected_model_index -= 1;
-                }
+            MouseEventKind::ScrollUp
+                if app.agents.selected_model_index > 0 =>
+            {
+                app.agents.selected_model_index -= 1;
             }
             _ => {}
         }
@@ -2700,10 +2840,10 @@ pub fn handle_mouse_event(app: &mut App, mouse: MouseEvent) {
                     app.agents.selected_model_index += 1;
                 }
             }
-            MouseEventKind::ScrollUp => {
-                if app.agents.selected_model_index > 0 {
-                    app.agents.selected_model_index -= 1;
-                }
+            MouseEventKind::ScrollUp
+                if app.agents.selected_model_index > 0 =>
+            {
+                app.agents.selected_model_index -= 1;
             }
             _ => {}
         }
@@ -2755,14 +2895,77 @@ pub fn handle_mouse_event(app: &mut App, mouse: MouseEvent) {
         _ => {}
     }
 }
-fn handle_dashboard_mouse_click(app: &mut App, x: u16, _y: u16) {
-    let (term_width, _) = crossterm::terminal::size()
+fn handle_dashboard_mouse_click(app: &mut App, x: u16, y: u16) {
+    let (term_width, term_height) = crossterm::terminal::size()
         .unwrap_or((config::DEFAULT_TERM_WIDTH, config::DEFAULT_TERM_HEIGHT));
 
     let nav_width = if app.ui.nav_sidebar_expanded { 20 } else { 7 };
 
     if x < nav_width {
         app.ui.sidebar_focus = SidebarFocus::Nav;
+
+        let hint_h = if term_height < 20 {
+            0
+        } else {
+            config::HINT_BAR_HEIGHT
+        };
+        let footer_h: u16 = if term_height < 15 {
+            1
+        } else {
+            config::FOOTER_HEIGHT
+        };
+        let search_h = if app.ui.search_mode {
+            config::SEARCH_BAR_HEIGHT
+        } else {
+            0
+        };
+        let main_y = config::HEADER_HEIGHT + search_h;
+        let main_h = term_height.saturating_sub(main_y + hint_h + footer_h);
+        let nav_inner_y = main_y + 1;
+        let nav_inner_h = main_h.saturating_sub(2);
+
+        let inner_y = y.saturating_sub(nav_inner_y);
+        let available = nav_inner_h as usize;
+        let num_items: usize = 6;
+
+        let item_height: u16 = if available >= num_items * 4 { 3 } else { 1 };
+        let total = num_items as u16 * item_height;
+
+        let views = [
+            NavView::Main,
+            NavView::TrendGraphs,
+            NavView::Storage,
+            NavView::LibraryInspection,
+            NavView::Containers,
+            NavView::Agents,
+        ];
+
+        if nav_inner_h > total {
+            let extra = nav_inner_h - total;
+            let gap = extra / (num_items + 1) as u16;
+
+            if inner_y < gap {
+                return;
+            }
+            let mut cursor = gap;
+
+            for &view in &views {
+                if inner_y < cursor + item_height {
+                    switch_nav_view(app, view);
+                    return;
+                }
+                cursor += item_height + gap;
+            }
+        } else {
+            let mut cursor: u16 = 0;
+            for &view in &views {
+                if inner_y >= cursor && inner_y < cursor + item_height {
+                    switch_nav_view(app, view);
+                    break;
+                }
+                cursor += item_height;
+            }
+        }
         return;
     }
 
@@ -2871,9 +3074,9 @@ fn handle_mouse_scroll(app: &mut App, delta: i32) {
             if app.ui.current_nav_view == NavView::Agents {
                 if let Some(agent) = app.agents.agents.get(app.agents.selected_agent_index) {
                     let line_count = match &agent.status {
-                        AgentStatus::Running(m) | AgentStatus::Completed(m) | AgentStatus::Failed(m) => {
-                            m.lines().count()
-                        }
+                        AgentStatus::Running(m)
+                        | AgentStatus::Completed(m)
+                        | AgentStatus::Failed(m) => m.lines().count(),
                         _ => 0,
                     };
                     let max = line_count.saturating_sub(1);

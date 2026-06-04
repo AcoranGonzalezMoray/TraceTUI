@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod agents_tests {
     use crate::app::states::AgentState;
-    use crate::app::types::{AgentInstance, AgentMission, AgentProvider, AgentStatus, OllamaConfig};
+    use crate::app::types::{
+        AgentInstance, AgentMission, AgentProvider, AgentStatus, OllamaConfig,
+    };
 
     #[test]
     fn test_agent_state_new() {
@@ -86,10 +88,7 @@ mod agents_tests {
 
     #[test]
     fn test_agent_mission_variants() {
-        let missions = vec![
-            AgentMission::ProcessAnalysis,
-            AgentMission::NetworkAnalysis,
-        ];
+        let missions = vec![AgentMission::ProcessAnalysis, AgentMission::NetworkAnalysis];
         assert_eq!(missions.len(), 2);
     }
 
