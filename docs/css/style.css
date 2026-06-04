@@ -484,7 +484,8 @@ body {
 .tui-body[data-active-nav="trends"] .nav-view-trends,
 .tui-body[data-active-nav="storage"] .nav-view-storage,
 .tui-body[data-active-nav="libraries"] .nav-view-libraries,
-.tui-body[data-active-nav="containers"] .nav-view-containers {
+.tui-body[data-active-nav="containers"] .nav-view-containers,
+.tui-body[data-active-nav="agents"] .nav-view-agents {
     display: flex;
 }
 
@@ -654,7 +655,9 @@ body {
 .tui-app.highlight-libraries .tui-body,
 .tui-app.highlight-libraries .tui-content-area,
 .tui-app.highlight-containers .tui-body,
-.tui-app.highlight-containers .tui-content-area {
+.tui-app.highlight-containers .tui-content-area,
+.tui-app.highlight-agents .tui-body,
+.tui-app.highlight-agents .tui-content-area {
     opacity: 1 !important;
     filter: none !important;
 }
@@ -668,7 +671,8 @@ body {
 .tui-app.highlight-trends .nav-view-trends,
 .tui-app.highlight-storage .nav-view-storage,
 .tui-app.highlight-libraries .nav-view-libraries,
-.tui-app.highlight-containers .nav-view-containers {
+.tui-app.highlight-containers .nav-view-containers,
+.tui-app.highlight-agents .nav-view-agents {
     opacity: 1 !important;
     filter: none !important;
     z-index: 100;
@@ -1349,6 +1353,11 @@ body {
     border-top: none;
 }
 
+.nav-view-agents {
+    flex-direction: row;
+    border-top: none;
+}
+
 .ct-col {
     display: flex;
     flex-direction: column;
@@ -2010,6 +2019,11 @@ body {
 
 /* nf-mdi-docker */
 
+/* nf-fa-robot */
+.nav-icon.nf-fa-robot::before {
+    content: "\ee0d";
+}
+
 /* Base Styles */
 :root {
     --primary: #6366f1;
@@ -2116,8 +2130,8 @@ body {
 /* ============ TOUR SECTION ============ */
 .tour-section {
     position: relative;
-    height: 1500vh;
-    /* Dramatically increased to prevent overlap */
+    height: 2000vh;
+    /* Extra height to fit all 16 tour steps (100vh each) */
     background: var(--background);
     pointer-events: none;
 }
@@ -2539,7 +2553,8 @@ body {
     z-index: 2;
 }
 
-.tui-app.highlight-containers .nav-view-containers {
+.tui-app.highlight-containers .nav-view-containers,
+.tui-app.highlight-agents .nav-view-agents {
     box-shadow: inset 0 0 0 2px var(--primary), 0 0 20px rgba(100, 149, 237, 0.3);
     position: relative;
     z-index: 2;

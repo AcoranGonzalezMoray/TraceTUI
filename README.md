@@ -54,6 +54,19 @@
 <img src="./docs/assets/step_conta.png"  alt="TraceTUI Menu">
 
 
+### 🤖 AI Agent System
+- **Multi-Provider Support**: Ollama (local), OpenAI, Anthropic, llama.cpp — configure API URL, API key, and model per provider.
+- **9 Agent Types**: Process Analysis, Network Analysis, DNS Analysis, File Analyzer, Port Scanner, Log Analyzer, Memory Analyzer and  Vulnerability Check
+- **Provider Config Modal**: Cycle providers with Enter, auto-set default URLs, fetch available models from Ollama, manage model list.
+- **Agent Launch Flow**: Select agent type → choose target (process/network) → agent executes asynchronously with real-time status updates.
+- **Report History**: Persistent markdown reports loaded on startup with scrollable detail view, collapsible sections (Z key), and live search (F key).
+- **Export**: Export agent reports to Markdown (E key) or JSON (J key).
+- **Lifecycle**: Launch (A key), Cancel running/queued agents (S key), Retry failed agents (R key), Clear history (X key).
+- **Parallel Execution**: Configurable parallelism (1-8, +/- keys), auto-queue and batch launch management.
+- **Agent Detail Panel**: Status badges (Idle/Queued/Running/Completed/Failed), mission icon, provider label, model, target info, and execution phase tracking.
+
+<img src="./docs/assets/step_agents.png" alt="TraceTUI Agents">
+
 ### 🔍 Investigation Suite
 - **IP Analysis**: Geographic location, ISP, ASN, timezone, and connection type (mobile/hosting) for remote endpoints.
 - **Network Diagnostics**: DNS resolution, WHOIS lookups, ping latency, and traceroute with geographic mapping.
@@ -173,7 +186,7 @@ TraceTUI uses asynchronous systems to avoid blocking the UI rendering.
 src/
 ├── main.rs                 # Entry point
 ├── app/
-│   ├── mod.rs              # App struct (12 state fields), shared methods
+│   ├── mod.rs              # App struct (13 state fields), shared methods
 │   ├── states/             # 12 state structs for different views
 │   ├── services/           # Background polling, investigation, inputs
 │   ├── ui/                 # UI render dispatch (Ratatui modules)
@@ -181,7 +194,7 @@ src/
 │   │   ├── center_panel.rs # Connection, risk, timeline tabs
 │   │   ├── sidebar_left.rs # Process list sidebar
 │   │   ├── sidebar_right.rs# Actions sidebar
-│   │   ├── nav_sidebar.rs  # Collapsible nav (Main/Trends/Storage/Libraries/Containers)
+│   │   ├── nav_sidebar.rs  # Collapsible nav (Main/Trends/Storage/Libraries/Containers/Agents)
 │   │   ├── header.rs       # Top status bar
 │   │   ├── footer.rs       # Keybinding hint bar
 │   │   ├── dialogs.rs      # Confirmation, search, language modals
@@ -203,6 +216,7 @@ src/
 │   ├── grouping.rs         # Connection grouping
 │   ├── installation.rs     # Install/update scripts
 │   ├── nerdfont.rs         # Nerd Font installer
+│   ├── agents/             # Agent execution, report save/load, async spawning
 │   ├── io.rs               # Terminal setup/restore
 │   └── types.rs            # Shared types
 ├── config/                 # Constants, thresholds, settings
