@@ -1137,11 +1137,13 @@ fn render_agents_right(f: &mut ratatui::Frame, app: &App, area: Rect) {
 }
 
 pub fn render_provider_modal(f: &mut ratatui::Frame, app: &App) {
+    let pw = (f.area().width * 3 / 5).max(56).min(f.area().width);
+    let ph = (f.area().height * 3 / 7).max(20).min(f.area().height);
     let popup_area = Rect {
-        x: (f.area().width.saturating_sub(f.area().width * 3 / 8)) / 2,
-        y: (f.area().height.saturating_sub(f.area().height * 3 / 7)) / 2,
-        width: f.area().width * 3 / 8,
-        height: f.area().height * 3 / 7,
+        x: (f.area().width.saturating_sub(pw)) / 2,
+        y: (f.area().height.saturating_sub(ph)) / 2,
+        width: pw,
+        height: ph,
     };
 
     let has_focus = app.agents.provider_modal_focus;

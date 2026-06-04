@@ -25,7 +25,9 @@ mod agents_tests {
     #[test]
     fn test_ollama_config_default() {
         let config = OllamaConfig {
+            provider: AgentProvider::Ollama,
             api_url: "http://localhost:11434".to_string(),
+            api_key: String::new(),
             models: vec!["llama3.2:latest".to_string()],
         };
         assert_eq!(config.api_url, "http://localhost:11434");
@@ -44,6 +46,8 @@ mod agents_tests {
             completed_at_frame: None,
             target_name: String::new(),
             target_path: None,
+            launch_data: None,
+            history_path: None,
         };
         assert_eq!(agent.mission, AgentMission::ProcessAnalysis);
         assert_eq!(agent.model, "llama3.2:latest");
@@ -79,6 +83,8 @@ mod agents_tests {
             completed_at_frame: None,
             target_name: "test_process".to_string(),
             target_path: None,
+            launch_data: None,
+            history_path: None,
         });
         assert_eq!(state.agents.len(), 1);
 
@@ -95,7 +101,9 @@ mod agents_tests {
     #[test]
     fn test_ollama_config_serde() {
         let config = OllamaConfig {
+            provider: AgentProvider::Ollama,
             api_url: "http://192.168.1.100:11434".to_string(),
+            api_key: String::new(),
             models: vec!["llama3.2:latest".to_string(), "mistral:latest".to_string()],
         };
         let json = serde_json::to_string(&config).unwrap();
