@@ -550,6 +550,7 @@ body {
     width: 100%;
     position: relative;
     z-index: 60;
+    padding-bottom: 100vh;
 }
 
 .tour-step {
