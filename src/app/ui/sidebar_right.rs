@@ -12,7 +12,7 @@ use ratatui::{
 pub fn render_right_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Min(0), Constraint::Length(14)])
+        .constraints([Constraint::Min(0), Constraint::Max(14)])
         .split(area);
     render_actions_panel(f, app, chunks[0]);
     render_app_icon(f, app, chunks[1]);

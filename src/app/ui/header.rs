@@ -15,6 +15,7 @@ pub fn render_header(f: &mut ratatui::Frame, app: &App, area: Rect) {
         NavView::Storage => storage_header_content(app),
         NavView::TrendGraphs => trends_header_content(app),
         NavView::LibraryInspection => libraries_header_content(app),
+        NavView::Agents => agents_header_content(app),
         _ => network_header_content(app),
     };
     let title_block = Block::default()
@@ -274,6 +275,39 @@ fn libraries_header_content(app: &App) -> Line<'_> {
             format!(" \u{26a0} {} ", suspicious),
             Style::default().fg(if suspicious > 0 {
                 THEME.danger
+            } else {
+                THEME.text_dim
+            }),
+        ),
+    ])
+}
+
+fn agents_header_content(app: &App) -> Line<'_> {
+    let total = app.agents.agents.len();
+    let running = app.agents.running_agent_count;
+    Line::from(vec![
+        app_title(app),
+        app_subtitle(app),
+        separator(),
+        Span::styled(
+            format!(" \u{F0210} {} ", app.agents.ollama.provider.label()),
+            Style::default().fg(THEME.primary),
+        ),
+        separator(),
+        Span::styled(
+            format!(
+                " {} ",
+                tr!(app.ui.translator, "agents.header_agents", total)
+            ),
+            Style::default().fg(THEME.secondary),
+        ),
+        Span::styled(
+            format!(
+                " \u{F04C5} {} ",
+                tr!(app.ui.translator, "agents.header_running", running)
+            ),
+            Style::default().fg(if running > 0 {
+                THEME.success
             } else {
                 THEME.text_dim
             }),

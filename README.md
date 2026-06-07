@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./src/icon/tracetuiicon.png" alt="TraceTUI Logo" width="128" height="128">
+<img src="./docs/assets/tracetuiicon.png" alt="TraceTUI Logo" width="352" height="180">
 
 # TraceTUI
 
@@ -53,6 +53,19 @@
 
 <img src="./docs/assets/step_conta.png"  alt="TraceTUI Menu">
 
+
+### 🤖 AI Agent System
+- **Multi-Provider Support**: Ollama (local), OpenAI, Anthropic, llama.cpp — configure API URL, API key, and model per provider.
+- **9 Agent Types**: Process Analysis, Network Analysis, DNS Analysis, File Analyzer, Port Scanner, Log Analyzer, Memory Analyzer and  Vulnerability Check
+- **Provider Config Modal**: Cycle providers with Enter, auto-set default URLs, fetch available models from Ollama, manage model list.
+- **Agent Launch Flow**: Select agent type → choose target (process/network) → agent executes asynchronously with real-time status updates.
+- **Report History**: Persistent markdown reports loaded on startup with scrollable detail view, collapsible sections (Z key), and live search (F key).
+- **Export**: Export agent reports to Markdown (E key) or JSON (J key).
+- **Lifecycle**: Launch (A key), Cancel running/queued agents (S key), Retry failed agents (R key), Clear history (X key).
+- **Parallel Execution**: Configurable parallelism (1-8, +/- keys), auto-queue and batch launch management.
+- **Agent Detail Panel**: Status badges (Idle/Queued/Running/Completed/Failed), mission icon, provider label, model, target info, and execution phase tracking.
+
+<img src="./docs/assets/step_agent.png" alt="TraceTUI Agents">
 
 ### 🔍 Investigation Suite
 - **IP Analysis**: Geographic location, ISP, ASN, timezone, and connection type (mobile/hosting) for remote endpoints.
@@ -172,46 +185,102 @@ TraceTUI uses asynchronous systems to avoid blocking the UI rendering.
 ```text
 src/
 ├── main.rs                 # Entry point
+├── resources.rs            # Compile-time resource loading (external URLs, etc.)
 ├── app/
-│   ├── mod.rs              # App struct (12 state fields), shared methods
-│   ├── states/             # 12 state structs for different views
-│   ├── services/           # Background polling, investigation, inputs
-│   ├── ui/                 # UI render dispatch (Ratatui modules)
-│   │   ├── mod.rs
-│   │   ├── center_panel.rs # Connection, risk, timeline tabs
-│   │   ├── sidebar_left.rs # Process list sidebar
-│   │   ├── sidebar_right.rs# Actions sidebar
-│   │   ├── nav_sidebar.rs  # Collapsible nav (Main/Trends/Storage/Libraries/Containers)
-│   │   ├── header.rs       # Top status bar
-│   │   ├── footer.rs       # Keybinding hint bar
-│   │   ├── dialogs.rs      # Confirmation, search, language modals
-│   │   ├── firewall.rs     # Firewall management view
-│   │   ├── trends.rs       # Analytics dashboard (sparklines, KPIs, risk dist)
-│   │   ├── storage.rs      # Disk and file browser
-│   │   ├── libraries.rs    # Library inspection view
-│   │   ├── containers.rs   # Container management view
-│   │   ├── widgets.rs      # Shared UI components
-│   │   └── theme.rs        # Color theme
-│   ├── network/            # NetworkAnalyzer, connection parsing
-│   ├── process/            # ProcessManager, ProcessInfo
+│   ├── mod.rs              # App struct, shared methods
+│   ├── feature_flags.rs    # Runtime feature toggles
 │   ├── containers.rs       # Docker container manager
-│   ├── storage.rs          # Disk/file system access
-│   ├── libraries/          # Library inspection engine
 │   ├── firewall_service.rs # Windows Firewall integration
-│   ├── risk.rs             # Risk scoring logic
-│   ├── investigation_service.rs
 │   ├── grouping.rs         # Connection grouping
 │   ├── installation.rs     # Install/update scripts
-│   ├── nerdfont.rs         # Nerd Font installer
+│   ├── investigation_service.rs
 │   ├── io.rs               # Terminal setup/restore
-│   └── types.rs            # Shared types
+│   ├── libraries/          # Library inspection engine
+│   │   └── mod.rs
+│   ├── nerdfont.rs         # Nerd Font installer
+│   ├── network/            # NetworkAnalyzer, connection parsing
+│   │   └── mod.rs
+│   ├── process/            # ProcessManager, ProcessInfo
+│   │   └── mod.rs
+│   ├── risk.rs             # Risk scoring logic
+│   ├── services/           # Background polling, analysis, inputs
+│   │   ├── analysis_service.rs
+│   │   ├── input_service.rs
+│   │   └── mod.rs
+│   ├── states/             # State structs for different views
+│   │   └── mod.rs
+│   ├── storage.rs          # Disk/file system access
+│   ├── types.rs            # Shared types
+│   └── ui/                 # UI render dispatch (Ratatui modules)
+│       ├── mod.rs
+│       ├── center_panel.rs # Connection, risk, timeline tabs
+│       ├── containers.rs   # Container management view
+│       ├── dialogs.rs      # Confirmation, search, language modals
+│       ├── firewall.rs     # Firewall management view
+│       ├── footer.rs       # Keybinding hint bar
+│       ├── header.rs       # Top status bar
+│       ├── libraries.rs    # Library inspection view
+│       ├── nav_sidebar.rs  # Collapsible nav (Main/Trends/Storage/Libraries/Containers/Agents)
+│       ├── sidebar_left.rs # Process list sidebar
+│       ├── sidebar_right.rs# Actions sidebar
+│       ├── storage.rs      # Disk and file browser
+│       ├── theme.rs        # Color theme
+│       ├── trends.rs       # Analytics dashboard (sparklines, KPIs, risk dist)
+│       ├── widgets.rs      # Shared UI components
+│       └── agents/         # AI Agent UI components
+│           ├── constants.rs
+│           ├── icons.rs
+│           ├── markdown.rs
+│           ├── mod.rs
+│           ├── view.rs
+│           └── widgets.rs
+├── agents/                 # Agent execution, report save/load, async spawning
+│   ├── constants.rs
+│   ├── history.rs
+│   ├── mission.rs
+│   ├── mod.rs
+│   ├── prompt.rs
+│   ├── provider.rs
+│   └── runner.rs
 ├── config/                 # Constants, thresholds, settings
-├── i18n/                   # Translation engine (11 locales)
+│   └── mod.rs
+├── i18n/                   # Translation engine (9 locales)
+│   ├── de.json
+│   ├── en.json
+│   ├── es.json
+│   ├── fr.json
+│   ├── it.json
+│   ├── ja.json
+│   ├── mod.rs
+│   ├── pt.json
+│   ├── ru.json
+│   ├── translator.rs
+│   └── zh.json
+├── icon/                   # Windows icon resources
+│   ├── tracetui.rc
+│   ├── tracetuiicon.ico
+│   └── tracetuiicon.png
 ├── services/               # HTTP client, GeoIP service
+│   ├── api_client.rs
+│   ├── geoip_service.rs
+│   └── mod.rs
 └── utils/                  # DB, cache, formatting, WHOIS, rate limiter, icon extractor
+    ├── api_builder.rs
+    ├── db.rs
+    ├── formatting.rs
+    ├── icon_extractor.rs
+    ├── mod.rs
+    ├── rate_limiter.rs
+    ├── signatures.rs
+    └── whois.rs
 test/
 ├── app/                    # Unit tests
-└── E2E/                    # End-to-end integration tests
+├── config/
+├── E2E/                    # End-to-end integration tests
+├── i18n/
+├── resources/
+├── services/
+└── utils/
 ```
 
 ### 🧠 Key Design Decisions

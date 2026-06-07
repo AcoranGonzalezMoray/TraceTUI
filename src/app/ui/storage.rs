@@ -64,10 +64,10 @@ fn render_disk_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
         })
         .border_style(border_style)
         .title(Line::from(vec![
-            Span::raw(" "),
+            Span::raw(" 󰋊 "),
             Span::styled(
                 tr!(app.ui.translator, "storage.disks"),
-                Style::default().fg(THEME.primary).bold(),
+                Style::default().fg(border_color).bold(),
             ),
             Span::raw(" "),
         ]));
@@ -90,67 +90,86 @@ fn render_disk_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
         return;
     }
 
-    let items: Vec<ListItem> = app
-        .storage
-        .disks
-        .iter()
-        .enumerate()
-        .map(|(i, disk)| {
-            let is_selected = i == app.storage.selected_disk_index;
-            let pct = disk.usage_pct();
+    let total_items = app.storage.disks.len();
+    let selected = app.storage.selected_disk_index;
 
-            let bar_len = 8;
+    let item_height = 4;
+    let max_visible = (inner.height / item_height).max(1) as usize;
+
+    if max_visible > 0 && total_items > 0 {
+        let half_visible = max_visible / 2;
+        let mut start_idx = selected.saturating_sub(half_visible);
+        if start_idx + max_visible > total_items {
+            start_idx = total_items.saturating_sub(max_visible);
+        }
+        let end_idx = (start_idx + max_visible).min(total_items);
+
+        let mut constraints = Vec::new();
+        let num_rendered = end_idx - start_idx;
+        for _ in 0..num_rendered {
+            constraints.push(Constraint::Length(item_height));
+        }
+        constraints.push(Constraint::Min(0));
+
+        let item_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(constraints)
+            .split(inner);
+
+        for (i, idx) in (start_idx..end_idx).enumerate() {
+            let disk = &app.storage.disks[idx];
+            let is_selected = idx == selected;
+            let area = item_chunks[i];
+
+            let block = if is_selected {
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .border_style(Style::default().fg(THEME.primary))
+            } else {
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .border_style(Style::default().fg(THEME.background))
+            };
+
+            let name_style = if is_selected {
+                Style::default()
+                    .fg(THEME.primary)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(THEME.text_main)
+            };
+
+            let pct = disk.usage_pct();
+            let bar_len = 10;
             let filled = ((pct / 100.0) * bar_len as f64).round() as usize;
             let bar: String = std::iter::repeat_n('■', filled.min(bar_len))
                 .chain(std::iter::repeat_n('▱', bar_len.saturating_sub(filled)))
                 .collect();
-
-            let label_line = vec![
-                Span::styled(
-                    format!(" {}: ", disk.device),
-                    Style::default()
-                        .fg(if is_selected {
-                            THEME.background
-                        } else {
-                            THEME.text_main
-                        })
-                        .bold(),
-                ),
-                Span::styled(
-                    format!("{} ", bar),
-                    Style::default().fg(if is_selected {
-                        THEME.background
-                    } else {
-                        if pct > 85.0 {
-                            THEME.danger
-                        } else {
-                            THEME.success
-                        }
-                    }),
-                ),
-                Span::styled(
-                    format!("{:.0}%", pct),
-                    Style::default().fg(if is_selected {
-                        THEME.background
-                    } else {
-                        THEME.text_dim
-                    }),
-                ),
-            ];
-
-            let style = if is_selected {
-                Style::default().bg(THEME.primary)
+            let bar_color = if pct > 85.0 {
+                THEME.danger
             } else {
-                Style::default()
+                THEME.success
             };
 
-            ListItem::new(Line::from(label_line)).style(style)
-        })
-        .collect();
+            let content = vec![
+                Line::from(vec![
+                    Span::styled(" 󰋊 ", name_style),
+                    Span::styled(format!("{:<15}", disk.device), name_style),
+                ]),
+                Line::from(vec![
+                    Span::raw(" "),
+                    Span::styled("  ", Style::default()),
+                    Span::styled(bar, Style::default().fg(bar_color)),
+                    Span::styled(format!(" {:.0}%", pct), Style::default().fg(THEME.text_dim)),
+                ]),
+            ];
 
-    let mut state = ListState::default();
-    state.select(Some(app.storage.selected_disk_index));
-    f.render_stateful_widget(List::new(items), inner, &mut state);
+            let row = Paragraph::new(content).block(block);
+            f.render_widget(row, area);
+        }
+    }
 }
 
 fn render_disk_properties(f: &mut ratatui::Frame, app: &App, area: Rect) {
@@ -159,7 +178,7 @@ fn render_disk_properties(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(THEME.secondary))
         .title(Line::from(vec![
-            Span::raw(" "),
+            Span::raw(" 󰈙 "),
             Span::styled(
                 tr!(app.ui.translator, "storage.properties"),
                 Style::default().fg(THEME.accent).bold(),
@@ -312,10 +331,10 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
         })
         .border_style(border_style)
         .title(Line::from(vec![
-            Span::raw(" "),
+            Span::raw(" 󰉋 "),
             Span::styled(
                 tr!(app.ui.translator, "storage.file_browser"),
-                Style::default().fg(THEME.primary).bold(),
+                Style::default().fg(border_color).bold(),
             ),
             Span::raw(" "),
         ]));
@@ -328,14 +347,22 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
         " {}",
         tr!(app.ui.translator, "storage.sort_label", sort_label)
     );
-    let path_str = format!(
-        " 📁 {} {}",
-        app.storage.current_directory.to_string_lossy(),
-        sort_str
-    );
-    let header_path = Paragraph::new(path_str)
-        .style(Style::default().fg(THEME.background).bg(THEME.primary))
-        .alignment(Alignment::Left);
+    let path_str = format!(" {} ", app.storage.current_directory.to_string_lossy());
+    let header_path = Paragraph::new(Line::from(vec![
+        Span::styled(
+            " 󰉋 ",
+            Style::default().fg(THEME.background).bg(THEME.primary),
+        ),
+        Span::styled(
+            path_str,
+            Style::default().fg(THEME.background).bg(THEME.primary),
+        ),
+        Span::styled(
+            sort_str,
+            Style::default().fg(THEME.background).bg(THEME.primary),
+        ),
+    ]))
+    .alignment(Alignment::Left);
 
     if inner.height > 2 {
         f.render_widget(header_path, Rect::new(inner.x, inner.y, inner.width, 1));
@@ -403,10 +430,15 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let scroll_start = current_scroll;
     let scroll_end = (scroll_start + visible_rows).min(total_items);
 
+    let table_area = rest.inner(ratatui::layout::Margin {
+        vertical: 0,
+        horizontal: 1,
+    });
+
     let widths = [
-        Constraint::Fill(1),
-        Constraint::Length(11),
-        Constraint::Length(18),
+        Constraint::Min(20),
+        Constraint::Length(12),
+        Constraint::Length(19),
     ];
 
     let header_row = Row::new(vec![
@@ -477,7 +509,7 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
         )
         .highlight_symbol(" ");
 
-    f.render_stateful_widget(table, rest, &mut table_state);
+    f.render_stateful_widget(table, table_area, &mut table_state);
 
     let scrollbar = Scrollbar::default()
         .orientation(ScrollbarOrientation::VerticalRight)
@@ -491,7 +523,7 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     f.render_stateful_widget(
         scrollbar,
-        rest.inner(ratatui::layout::Margin {
+        table_area.inner(ratatui::layout::Margin {
             vertical: 2,
             horizontal: 0,
         }),
@@ -504,7 +536,7 @@ fn render_storage_actions(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let border_color = focus_color_storage(focused);
 
     let block = styled_block_storage(
-        format!(" {} ", tr!(app.ui.translator, "storage.actions")),
+        format!(" 󰬒 {} ", tr!(app.ui.translator, "storage.actions")),
         border_color,
         focused,
     );

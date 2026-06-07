@@ -1,4 +1,6 @@
+pub mod agents;
 pub mod containers;
+pub mod feature_flags;
 pub mod firewall_service;
 pub mod grouping;
 pub mod installation;
@@ -11,7 +13,7 @@ pub mod process;
 pub mod risk;
 pub mod services;
 pub mod states;
-use self::states::{InstallState, NerdFontState};
+use self::states::{AgentState, InstallState, NerdFontState};
 pub mod storage;
 pub mod types;
 pub mod ui;
@@ -40,6 +42,7 @@ pub struct App {
     pub trend: TrendState,
     pub install: InstallState,
     pub nerdfont: NerdFontState,
+    pub agents: AgentState,
     pub database: Database,
 }
 
@@ -62,6 +65,7 @@ impl App {
             trend: TrendState::new(),
             install: InstallState::new(),
             nerdfont: NerdFontState::new(),
+            agents: AgentState::new(),
             database: Database::new().expect("Failed to init database"),
         };
 

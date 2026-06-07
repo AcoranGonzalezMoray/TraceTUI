@@ -1,6 +1,7 @@
 use crate::app::grouping::ConnectionGrouper;
 use crate::app::nerdfont;
 use crate::app::risk::RiskAnalyzer;
+use crate::app::types::AgentStatus;
 use crate::app::App;
 use crate::config;
 use crate::resources;
@@ -18,24 +19,38 @@ pub fn is_newer(local: &str, remote: &str) -> bool {
 }
 pub fn on_tick(app: &mut App) {
     app.ui.frame_count = app.ui.frame_count.wrapping_add(1);
-    if app.ui.current_nav_view == crate::app::NavView::Main {
-        if let Some(a) = app.get_selected_app() {
-            app.trend.cpu_history.push(a.cpu_usage as f64);
-            if app.trend.cpu_history.len() > config::CPU_HISTORY_MAX {
-                app.trend.cpu_history.remove(0);
-            }
-        }
-        let total = app
-            .network
-            .app_connections
-            .iter()
-            .map(|a| a.connections.len() as u64)
-            .sum();
-        app.trend.conn_count_history.push(total);
-        if app.trend.conn_count_history.len() > config::CONN_HISTORY_MAX {
-            app.trend.conn_count_history.remove(0);
-        }
+    // Record histories
+    let total_cpu: f32 = app
+        .network
+        .app_connections
+        .iter()
+        .map(|a| a.cpu_usage)
+        .sum();
+    app.trend.total_cpu_history.push(total_cpu as f64);
+    if app.trend.total_cpu_history.len() > config::CPU_HISTORY_MAX {
+        app.trend.total_cpu_history.remove(0);
     }
+
+    if let Some(a) = app.get_selected_app() {
+        app.trend.cpu_history.push(a.cpu_usage as f64);
+    } else if !app.trend.cpu_history.is_empty() {
+        app.trend.cpu_history.push(0.0);
+    }
+    if app.trend.cpu_history.len() > config::CPU_HISTORY_MAX {
+        app.trend.cpu_history.remove(0);
+    }
+
+    let total_conns: u64 = app
+        .network
+        .app_connections
+        .iter()
+        .map(|a| a.connections.len() as u64)
+        .sum();
+    app.trend.conn_count_history.push(total_conns);
+    if app.trend.conn_count_history.len() > config::CONN_HISTORY_MAX {
+        app.trend.conn_count_history.remove(0);
+    }
+
     check_analysis_complete(app);
     process_deferred_icon_extraction(app);
     if app.install.installing {
@@ -54,7 +69,11 @@ pub fn on_tick(app: &mut App) {
     app.process_container_results();
     app.process_container_action_results();
     app.process_libraries_results();
-    if app.ui.current_nav_view == crate::app::NavView::Containers
+    process_ollama_fetch(app);
+    process_agent_status(app);
+    process_agent_history(app);
+    if (app.ui.current_nav_view == crate::app::NavView::Containers
+        || app.ui.current_nav_view == crate::app::NavView::TrendGraphs)
         && !app.containers.containers_loaded_once
         && !app.containers.containers_loading
     {
@@ -642,6 +661,134 @@ fn check_nerdfont_install_complete(app: &mut App) {
                 let first_line = msg.lines().next().unwrap_or("failed").to_string();
                 tr!(app.ui.translator, "status.nerdfont_fail", first_line)
             };
+        }
+    }
+}
+
+fn process_ollama_fetch(app: &mut App) {
+    if let Some(rx) = &mut app.agents.ollama_fetch_rx {
+        if let Ok(result) = rx.try_recv() {
+            match result {
+                Ok(models) => {
+                    app.agents.ollama_models = models;
+                    app.agents.ollama.models = app.agents.ollama_models.clone();
+                    app.agents.selected_model_index = 0;
+                    crate::config::save_ollama_config(&app.agents.ollama);
+                    app.ui.status_message = format!(
+                        "[+] {} {}",
+                        app.agents.ollama_models.len(),
+                        tr!(app.ui.translator, "agents.models_fetched")
+                    );
+                }
+                Err(e) => {
+                    app.ui.status_message = format!("[-] {}", e);
+                }
+            }
+        }
+    }
+}
+
+fn process_agent_status(app: &mut App) {
+    if let Some(rx) = &mut app.agents.agent_status_rx {
+        while let Ok((idx, new_status)) = rx.try_recv() {
+            if idx < app.agents.agents.len() {
+                let status_text = match &new_status {
+                    AgentStatus::Running(m) => format!("[*] Agent {}: {}", idx, m),
+                    AgentStatus::Completed(_) => format!("[+] Agent {} completed", idx),
+                    AgentStatus::Failed(m) => format!("[-] Agent {}: {}", idx, m),
+                    _ => String::new(),
+                };
+                if !status_text.is_empty() {
+                    app.ui.status_message = status_text;
+                }
+                match &new_status {
+                    AgentStatus::Completed(_) | AgentStatus::Failed(_) => {
+                        app.agents.agents[idx].completed_at_frame = Some(app.ui.frame_count);
+                        app.agents.running_agent_count =
+                            app.agents.running_agent_count.saturating_sub(1);
+                        if let AgentStatus::Completed(report) = &new_status {
+                            let provider_label = app.agents.agents[idx].provider.label();
+                            let model = &app.agents.agents[idx].model;
+                            if let Some(path) = crate::app::agents::save_agent_report(
+                                &app.agents.agents[idx].target_name,
+                                app.agents.agents[idx].mission,
+                                report,
+                                provider_label,
+                                model,
+                            ) {
+                                app.agents.agents[idx].history_path = Some(path);
+                            }
+                            if app.ui.current_nav_view != crate::app::NavView::Agents {
+                                app.agents.completed_notifications =
+                                    app.agents.completed_notifications.saturating_add(1);
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+                app.agents.agents[idx].status = new_status;
+            }
+        }
+    }
+    while app.agents.running_agent_count < app.agents.max_parallel_agents {
+        let Some(queued_idx) = app
+            .agents
+            .agents
+            .iter()
+            .position(|a| matches!(a.status, AgentStatus::Queued))
+        else {
+            break;
+        };
+        let Some(launch) = app.agents.agents[queued_idx].launch_data.clone() else {
+            app.agents.agents[queued_idx].status =
+                AgentStatus::Failed("Missing launch data".to_string());
+            break;
+        };
+        app.agents.agents[queued_idx].status = AgentStatus::Running("Starting...".to_string());
+        app.agents.agents[queued_idx].started_at_frame = app.ui.frame_count;
+        let tx = if let Some(tx) = app.agents.agent_status_tx.clone() {
+            tx
+        } else {
+            let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+            app.agents.agent_status_tx = Some(tx.clone());
+            app.agents.agent_status_rx = Some(rx);
+            tx
+        };
+        let locale = app.ui.translator.locale.clone();
+        let abort = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        if app.agents.agent_abort_flags.len() <= queued_idx {
+            app.agents
+                .agent_abort_flags
+                .resize_with(queued_idx + 1, || {
+                    std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false))
+                });
+        }
+        app.agents.agent_abort_flags[queued_idx] = abort.clone();
+        crate::app::agents::spawn_agent_async(
+            launch.mission,
+            launch.model,
+            launch.config,
+            queued_idx,
+            tx,
+            launch.processes,
+            launch.networks,
+            locale,
+            launch.dependency_context,
+            abort,
+        );
+        app.agents.running_agent_count += 1;
+    }
+}
+
+fn process_agent_history(app: &mut App) {
+    if let Some(rx) = &mut app.agents.history_rx {
+        if let Ok(agents) = rx.try_recv() {
+            let count = agents.len();
+            app.agents.agents = agents;
+            app.agents.history_loading = false;
+            app.agents.history_loaded = true;
+            app.agents.history_rx = None;
+            app.ui.status_message = tr!(app.ui.translator, "agents.history_loaded", count);
         }
     }
 }

@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use crate::app::containers::{ContainerAction, ContainerInfo, DockerAction, DockerHubSearchState};
 use crate::app::libraries::LibraryInfo;
 use crate::app::network::NetworkConnection;
@@ -458,6 +456,7 @@ impl LibraryState {
 
 pub struct TrendState {
     pub cpu_history: Vec<f64>,
+    pub total_cpu_history: Vec<f64>,
     pub conn_count_history: Vec<u64>,
 }
 
@@ -465,7 +464,102 @@ impl TrendState {
     pub fn new() -> Self {
         Self {
             cpu_history: Vec::new(),
+            total_cpu_history: Vec::new(),
             conn_count_history: Vec::new(),
+        }
+    }
+}
+
+pub struct AgentState {
+    pub agents: Vec<crate::app::types::AgentInstance>,
+    pub provider: crate::app::types::AgentProvider,
+    pub ollama: crate::app::types::OllamaConfig,
+    pub show_provider_modal: bool,
+    pub provider_backup: crate::app::types::AgentProvider,
+    pub show_process_selector: bool,
+    pub show_network_selector: bool,
+    pub selected_mission: Option<crate::app::types::AgentMission>,
+    pub ollama_url_input: String,
+    pub agent_api_key_input: String,
+    pub ollama_model_input: String,
+    pub ollama_models: Vec<String>,
+    pub provider_modal_focus: usize,
+    pub selected_model_index: usize,
+    pub selected_agent_index: usize,
+    pub agent_detail_scroll: usize,
+    pub agent_action_index: usize,
+    pub selected_pids: Vec<u32>,
+    pub selected_connection_idxs: Vec<usize>,
+    pub agent_type_selector_index: usize,
+    pub agent_status_tx:
+        Option<tokio::sync::mpsc::UnboundedSender<(usize, crate::app::types::AgentStatus)>>,
+    pub agent_status_rx:
+        Option<tokio::sync::mpsc::UnboundedReceiver<(usize, crate::app::types::AgentStatus)>>,
+    pub ollama_fetch_rx: Option<tokio::sync::oneshot::Receiver<Result<Vec<String>, String>>>,
+    pub show_agent_type_selector: bool,
+    pub agent_launch_queue: Vec<crate::app::types::AgentLaunchData>,
+    pub max_parallel_agents: usize,
+    pub running_agent_count: usize,
+    pub agent_abort_flags: Vec<std::sync::Arc<std::sync::atomic::AtomicBool>>,
+    pub agent_search_mode: bool,
+    pub agent_search_query: String,
+    pub collapse_sections: bool,
+    pub completed_notifications: usize,
+    pub history_loading: bool,
+    pub history_loaded: bool,
+    pub history_rx: Option<std::sync::mpsc::Receiver<Vec<crate::app::types::AgentInstance>>>,
+}
+
+impl AgentState {
+    pub fn new() -> Self {
+        let mut ollama = crate::config::load_ollama_config();
+        ollama.provider = ollama.provider.enabled_or_default();
+        let url = ollama.api_url.clone();
+        let api_key = ollama.api_key.clone();
+        let models = ollama.models.clone();
+
+        let (history_tx, history_rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let agents = crate::app::agents::load_agent_history();
+            let _ = history_tx.send(agents);
+        });
+
+        Self {
+            agents: Vec::new(),
+            provider_backup: ollama.provider,
+            provider: ollama.provider,
+            ollama,
+            show_provider_modal: false,
+            show_process_selector: false,
+            show_network_selector: false,
+            selected_mission: None,
+            ollama_url_input: url,
+            agent_api_key_input: api_key,
+            ollama_model_input: String::new(),
+            ollama_models: models,
+            provider_modal_focus: 0,
+            selected_model_index: 0,
+            selected_agent_index: 0,
+            agent_detail_scroll: 0,
+            agent_action_index: 0,
+            selected_pids: Vec::new(),
+            selected_connection_idxs: Vec::new(),
+            agent_type_selector_index: 0,
+            agent_status_tx: None,
+            agent_status_rx: None,
+            ollama_fetch_rx: None,
+            show_agent_type_selector: false,
+            agent_launch_queue: Vec::new(),
+            max_parallel_agents: 1,
+            running_agent_count: 0,
+            agent_abort_flags: Vec::new(),
+            agent_search_mode: false,
+            agent_search_query: String::new(),
+            collapse_sections: false,
+            completed_notifications: 0,
+            history_loading: true,
+            history_loaded: false,
+            history_rx: Some(history_rx),
         }
     }
 }

@@ -62,6 +62,7 @@ pub fn render_footer(f: &mut ratatui::Frame, app: &App, area: Rect) {
     }
 
     let mut right_spans = match app.ui.current_nav_view {
+        NavView::Agents => agents_footer_spans(app),
         NavView::Containers => container_footer_spans(app),
         NavView::Storage => storage_footer_spans(app),
         NavView::TrendGraphs => trends_footer_spans(app),
@@ -237,6 +238,34 @@ fn libraries_footer_spans(app: &App) -> Vec<Span<'_>> {
             } else {
                 THEME.success
             }),
+        ),
+    ]
+}
+
+fn agents_footer_spans(app: &App) -> Vec<Span<'_>> {
+    vec![
+        Span::styled(
+            format!(
+                " {} ",
+                tr!(
+                    app.ui.translator,
+                    "agents.footer_reports",
+                    app.agents.agents.len()
+                )
+            ),
+            Style::default().fg(THEME.secondary),
+        ),
+        separator(),
+        Span::styled(
+            format!(
+                " {} ",
+                tr!(
+                    app.ui.translator,
+                    "agents.footer_models",
+                    app.agents.ollama.models.len()
+                )
+            ),
+            Style::default().fg(THEME.text_dim),
         ),
     ]
 }

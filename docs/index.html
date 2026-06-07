@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <!-- Navigation -->
+    
     <nav class="navbar" id="navbar">
         <div class="nav-container">
             <div class="logo">
@@ -33,7 +33,7 @@
         </div>
     </nav>
 
-    <!-- Hero Section -->
+    
     <section class="hero" id="hero">
         <div class="container">
             <div class="hero-text">
@@ -67,11 +67,11 @@
                         <div class="step-indicator" id="stepIndicator">
                             <span class="step-num" id="stepNum">01</span>
                             <span class="step-sep">/</span>
-                            <span class="step-total">15</span>
+                            <span class="step-total">16</span>
                             <span class="step-label" id="stepLabel">Dashboard Overview</span>
                             <div class="step-dots" id="stepDots"></div>
                         </div>
-                        <!-- HEADER -->
+                        
                         <div class="tui-header" id="tuiHeader" data-paused="false" data-hunter="false">
                             <span class="header-chip header-trace">TRACE</span>
                             <span class="header-chip header-tui">TUI</span>
@@ -83,7 +83,7 @@
                             <span class="header-sep">│</span>
                             <span class="header-counts">&#xf0c0; 42 Apps  &#xf0c1; 156 Conns</span>
                         </div>
-                        <!-- SEARCH BAR - between header and body (matches Rust TUI) -->
+                        
                         <div class="search-overlay" id="searchOverlay">
                             <div class="search-bar">
                                 <span class="search-chip">◎ SEARCH</span>
@@ -92,33 +92,37 @@
                                 <span class="search-count">(3 matches)</span>
                             </div>
                         </div>
-                        <!-- MAIN 3-COLUMN LAYOUT -->
+                        
                         <div class="tui-body" id="tuiBody" data-active-nav="main">
-                            <!-- NAV SIDEBAR (collapsible with M key) -->
+                            
                             <div class="tui-nav-sidebar" id="tuiNavSidebar">
                                 <div class="nav-item nav-selected" data-nav="main">
-                                    <span class="nav-icon nf nf-oct-hub"></span>
+                                    <span class="nav-icon">󰞶</span>
                                     <span class="nav-label">Main</span>
                                 </div>
                                 <div class="nav-item" data-nav="trends">
-                                    <span class="nav-icon nf nf-md-chart_areaspline"></span>
+                                    <span class="nav-icon">󰄪</span>
                                     <span class="nav-label">Trends</span>
                                 </div>
                                 <div class="nav-item" data-nav="storage">
-                                    <span class="nav-icon nf nf-fa-hdd_o"></span>
+                                    <span class="nav-icon">󰋊</span>
                                     <span class="nav-label">Storage</span>
                                 </div>
                                 <div class="nav-item" data-nav="libraries">
-                                    <span class="nav-icon nf nf-cod-library"></span>
+                                    <span class="nav-icon">󰅩</span>
                                     <span class="nav-label">Libraries</span>
                                 </div>
                                 <div class="nav-item" data-nav="containers">
-                                    <span class="nav-icon nf nf-md-docker"></span>
+                                    <span class="nav-icon">󰡨</span>
                                     <span class="nav-label">Containers</span>
+                                </div>
+                                <div class="nav-item" data-nav="agents">
+                                    <span class="nav-icon">󰚩</span>
+                                    <span class="nav-label">Agents</span>
                                 </div>
                             </div>
                             <div class="tui-content-area">
-                                <!-- ===== MAIN VIEW (3-panel IDE layout) ===== -->
+                                
                                 <div class="nav-view nav-view-main">
                                     <div class="tui-panel tui-left" id="tuiLeft">
                                         <div class="panel-titlebar">󰲚 PROCESSES (5)</div>
@@ -389,7 +393,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                <!-- ===== TRENDS VIEW ===== -->
+                                
                                 <div class="nav-view nav-view-trends" id="navViewTrends">
                                     <div class="panel-titlebar">󰄪 TRENDS &amp; ANALYTICS</div>
                                     <div class="trends-kpi-row">
@@ -413,7 +417,7 @@
                                         <div class="trends-country-col"><div class="panel-titlebar">DESTINATIONS (Top 5)</div><div class="dist-list"><div class="dist-row"><span class="dist-lbl">US</span><div class="dist-bar-track"><div class="dist-bar dist-warning" style="width:100%"></div></div><span class="dist-pct">64</span></div><div class="dist-row"><span class="dist-lbl">DE</span><div class="dist-bar-track"><div class="dist-bar dist-warning" style="width:35%"></div></div><span class="dist-pct">22</span></div><div class="dist-row"><span class="dist-lbl">Unknown</span><div class="dist-bar-track"><div class="dist-bar dist-dim" style="width:25%"></div></div><span class="dist-pct">16</span></div><div class="dist-row"><span class="dist-lbl">JP</span><div class="dist-bar-track"><div class="dist-bar dist-warning" style="width:20%"></div></div><span class="dist-pct">13</span></div><div class="dist-row"><span class="dist-lbl">GB</span><div class="dist-bar-track"><div class="dist-bar dist-warning" style="width:18%"></div></div><span class="dist-pct">11</span></div></div></div>
                                     </div>
                                 </div>
-                                <!-- ===== STORAGE VIEW ===== -->
+                                
                                 <div class="nav-view nav-view-storage" id="navViewStorage">
                                     <div class="storage-col storage-disks-col">
                                         <div class="panel-titlebar">DISKS</div>
@@ -456,7 +460,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                <!-- ===== LIBRARIES VIEW ===== -->
+                                
                                 <div class="nav-view nav-view-libraries" id="navViewLibraries">
                                     <div class="lib-col lib-proc-col">
                                         <div class="panel-titlebar">PROCESSES</div>
@@ -491,7 +495,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                <!-- ===== CONTAINERS VIEW ===== -->
+                                
                                 <div class="nav-view nav-view-containers" id="navViewContainers">
                                     <div class="lib-col lib-proc-col" style="width:34%">
                                         <div class="panel-titlebar">CONTAINERS (4)</div>
@@ -563,9 +567,91 @@
                                         </div>
                                     </div>
                                 </div>
+                                <div class="nav-view nav-view-agents">
+                                    <div class="lib-col" style="width:34%">
+                                        <div class="panel-titlebar">AGENTS</div>
+                                        <div style="padding:4px 8px;font-size:0.65rem;border-left:2px solid var(--primary);background:rgba(99,102,241,0.08)">
+                                            <div><span style="color:var(--success);font-weight:700">✔</span> <span style="font-weight:700">firefox.exe</span></div>
+                                            <div><span style="color:var(--text-dim)">  󰆧 Process | Ollama / llama3.2:3b</span></div>
+                                            <div><span style="color:var(--success);font-size:0.6rem">● COMPLETED</span></div>
+                                        </div>
+                                        <div style="padding:4px 8px;font-size:0.65rem;border-bottom:1px solid var(--border)">
+                                            <div><span style="color:var(--text-dim)">✔</span> <span>192.168.1.0/24</span></div>
+                                            <div><span style="color:var(--text-dim)">  󰛳 Network | Ollama / llama3.2:3b</span></div>
+                                            <div><span style="color:var(--success);font-size:0.6rem">● COMPLETED</span></div>
+                                        </div>
+                                        <div style="padding:4px 8px;font-size:0.65rem;border-bottom:1px solid var(--border)">
+                                            <div><span style="color:var(--warning)">⏳</span> <span>suspicious.domain</span></div>
+                                            <div><span style="color:var(--text-dim)">  󰖟 DNS | Ollama / llama3.2:3b</span></div>
+                                            <div><span style="color:var(--warning);font-size:0.6rem">● QUEUED</span></div>
+                                        </div>
+                                        <div style="padding:4px 8px;font-size:0.65rem;border-bottom:1px solid var(--border)">
+                                            <div><span style="color:var(--danger)">✘</span> <span>system</span></div>
+                                            <div><span style="color:var(--text-dim)">  󰒃 CVE | Anthropic / claude-3-haiku</span></div>
+                                            <div><span style="color:var(--danger);font-size:0.6rem">● FAILED</span></div>
+                                        </div>
+                                        <div style="padding:4px 8px;font-size:0.65rem">
+                                            <div><span style="color:var(--primary)">●</span> <span>svchost.exe</span></div>
+                                            <div><span style="color:var(--text-dim)">  󰍛 Memory | Ollama / llama3.2:3b</span></div>
+                                            <div><span style="color:var(--primary);font-size:0.6rem">⏳ RUNNING</span></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="lib-col" style="width:44%">
+                                        <div class="panel-titlebar">DETAIL <span style="color:var(--text-dim);font-weight:400"> · </span>P=3 <span style="color:var(--text-dim);font-weight:400"> · </span>+/-</div>
+                                        <div style="padding:4px 8px;font-size:0.65rem;border-bottom:1px solid var(--border)">
+                                            <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px">
+                                                <span style="color:var(--warning)">󰆧</span>
+                                                <span style="font-weight:700">Process Analysis</span>
+                                            </div>
+                                            <div style="display:flex;gap:4px;margin-bottom:4px">
+                                                <span style="background:var(--success);color:var(--background);font-weight:700;padding:0 4px;font-size:0.6rem">COMPLETED</span>
+                                            </div>
+                                            <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center;padding:4px 0">
+                                                <span style="background:var(--warning);color:var(--background);font-weight:700;padding:0 4px;font-size:0.6rem"> 󰑐 Retry [R]</span>
+                                                <span style="background:var(--secondary);color:var(--background);font-weight:700;padding:0 4px;font-size:0.6rem"> 󰒈 Export MD [E]</span>
+                                                <span style="background:var(--secondary);color:var(--background);font-weight:700;padding:0 4px;font-size:0.6rem"> 󰘦 Export JSON [J]</span>
+                                                <span style="background:var(--primary);color:var(--background);font-weight:700;padding:0 4px;font-size:0.6rem"> 󰍉 Filter [F]</span>
+                                                <span style="background:var(--warning);color:var(--background);font-weight:700;padding:0 4px;font-size:0.6rem"> 󰅂 Expand [Z]</span>
+                                            </div>
+                                            <div style="margin-top:4px">
+                                                <div><span style="color:var(--text-dim)">Target:</span> <span style="font-weight:700">firefox.exe (PID 8402)</span></div>
+                                                <div><span style="color:var(--text-dim)">Path:</span> <span style="color:var(--secondary)">C:\Program Files\Mozilla Firefox\firefox.exe</span></div>
+                                                <div><span style="color:var(--text-dim)">Provider / Model:</span> <span style="color:var(--primary)">Ollama / llama3.2:3b</span></div>
+                                                <div><span style="color:var(--text-dim)">History:</span> <span style="color:var(--text-dim)">./agents/2026-06-04_120030_firefox_analysis.md</span></div>
+                                                <div><span style="color:var(--text-dim)">Time:</span> 2.34s</div>
+                                            </div>
+                                        </div>
+                                        <div style="padding:4px 8px;font-size:0.65rem;max-height:100%;overflow-y:auto">
+                                            <div style="color:var(--text-dim);margin-bottom:2px"># Analysis Results</div>
+                                            <div style="color:var(--success);margin-bottom:2px">- 3 active TCP connections detected</div>
+                                            <div style="color:var(--warning);margin-bottom:2px">- 1 connection to high-risk IP (203.0.113.50)</div>
+                                            <div style="color:var(--text-dim);margin-bottom:2px">- Memory usage within normal range (142MB)</div>
+                                            <div style="color:var(--text-dim);margin-top:4px;border-top:1px solid var(--border);padding-top:4px">## Connections</div>
+                                            <div style="color:var(--text-dim);margin-bottom:2px">| Proto | Local | Remote | State |</div>
+                                            <div style="color:var(--text-dim);margin-bottom:2px">|-------|-------|--------|-------|</div>
+                                            <div style="margin-bottom:2px"> TCP │ 127.0.0.1:53420 │ 203.0.113.50:443 │ <span style="color:var(--danger)">SUSPICIOUS</span></div>
+                                            <div style="margin-bottom:2px"> TCP │ 127.0.0.1:53421 │ 142.250.80.46:443 │ ESTABLISHED</div>
+                                            <div style="margin-bottom:2px"> UDP │ 0.0.0.0:5353 │ 224.0.0.251:5353 │ IDLE</div>
+                                            <div style="color:var(--primary);margin-top:2px">▼ (+12 more lines)</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="lib-col lib-actions-col" style="width:22%">
+                                        <div class="panel-titlebar">ACTIONS</div>
+                                        <div class="action-list">
+                                            <div class="action-item action-selected"><span class="act-icon">󰈐</span><span class="act-label">Provider (Ollama)</span><span class="act-key">[C]</span></div>
+                                            <div class="action-item"><span class="act-icon">󰚩</span><span class="act-label">Launch Agent</span><span class="act-key">[A]</span></div>
+                                            <div class="action-item"><span class="act-icon act-danger">⏹</span><span class="act-label">Cancel</span><span class="act-key">[S]</span></div>
+                                            <div class="action-item"><span class="act-icon act-success">󰑐</span><span class="act-label">Retry</span><span class="act-key">[R]</span></div>
+                                            <div class="action-item"><span class="act-icon act-warn">󰓅</span><span class="act-label">Parallel: 4</span><span class="act-key">[+/-]</span></div>
+                                            <div class="action-item"><span class="act-icon act-dim">󰩈</span><span class="act-label">Clear History</span><span class="act-key">[X]</span></div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <!-- FIREWALL MODE LAYOUT (replaces tui-body) -->
+                        
                         <div class="firewall-layout" id="firewallLayout">
                             <div class="fw-col fw-col-left">
                                 <div class="panel-titlebar">◈ myapp.exe CONNS (12)</div>
@@ -594,7 +680,7 @@
                                 </div>
                             </div>
                         </div>
-                        <!-- LANGUAGE DIALOG -->
+                        
                         <div class="lang-overlay" id="langOverlay">
                             <div class="lang-dialog">
                                 <div class="lang-title">ℹ SELECT LANGUAGE</div>
@@ -608,7 +694,7 @@
                                 <div class="lang-hint"><span class="hint-key">↑</span><span class="hint-key">↓</span><span> Navigate  </span><span class="hint-key">Enter</span><span> Select  </span><span class="hint-key">Esc</span><span> Close</span></div>
                             </div>
                         </div>
-                        <!-- INVESTIGATION VIEW - full-body connection analysis (press Enter on a connection) -->
+                        
                         <div class="investigation-view" id="investigationView">
                             <div class="inv-grid">
                                 <div class="inv-left">
@@ -692,7 +778,7 @@ Status: clientDeleteProhibited</div>
                                 <span class="hint-key">Tab</span><span class="hint-label"> Switch Section</span>
                             </div>
                         </div>
-                        <!-- MAP VIEW - network route map overlay -->
+                        
                         <div class="map-view" id="mapView">
                             <div class="panel-titlebar">◈ NETWORK ROUTE MAP</div>
                             <div class="map-body">
@@ -707,9 +793,9 @@ Status: clientDeleteProhibited</div>
                                     <path d="M100,-20 Q110,-30 125,-35 Q140,-38 150,-30 Q155,-20 145,-10 Q130,-5 115,-8 Z" fill="rgba(100,149,237,0.15)" stroke="rgba(100,149,237,0.4)" stroke-width="0.3"/>
                                     <path d="M130,10 Q140,8 155,12 Q165,18 160,25 Q150,30 140,28 Q130,22 130,15 Z" fill="rgba(100,149,237,0.15)" stroke="rgba(100,149,237,0.4)" stroke-width="0.3"/>
                                     <path d="M-80,-25 Q-70,-30 -55,-32 Q-40,-30 -35,-22 Q-38,-15 -50,-12 Q-65,-14 -75,-18 Z" fill="rgba(100,149,237,0.15)" stroke="rgba(100,149,237,0.4)" stroke-width="0.3"/>
-                                    <!-- Route: from user (~ -80,40) through hop (~ -50,25) to destination (~ 20,45) -->
+                                    
                                     <polyline points="-80,40 -50,25 20,45" fill="none" stroke="#ffa500" stroke-width="1.2" stroke-dasharray="3,2" vector-effect="non-scaling-stroke"/>
-                                    <!-- Lat/Lon labels -->
+                                    
                                     <text x="-175" y="-82" fill="rgba(255,255,255,0.15)" font-size="4" font-family="JetBrains Mono, monospace">90°N</text>
                                     <text x="-175" y="85" fill="rgba(255,255,255,0.15)" font-size="4" font-family="JetBrains Mono, monospace">90°S</text>
                                     <text x="-175" y="3" fill="rgba(255,255,255,0.15)" font-size="4" font-family="JetBrains Mono, monospace">0°</text>
@@ -727,20 +813,20 @@ Status: clientDeleteProhibited</div>
                                 <span class="hint-key">←</span><span class="hint-key">→</span><span class="hint-label"> Pan</span>
                             </div>
                         </div>
-                        <!-- HINT BAR -->
+                        
                         <div class="tui-hintbar" id="tuiHintbar">
                             <span class="hint-key">Q</span><span class="hint-label"> Quit</span>
                             <span class="hint-key">Tab</span><span class="hint-label"> Switch Panel</span>
                             <span class="hint-key">/</span><span class="hint-label"> Search</span>
                             <span class="hint-key">L</span><span class="hint-label"> Language</span>
                         </div>
-                        <!-- HINT BAR (firewall mode) -->
+                        
                         <div class="tui-hintbar fw-hintbar" id="fwHintbar">
                             <span class="hint-key">Esc/Q</span><span class="hint-label"> Exit  </span>
                             <span class="hint-key">Tab</span><span class="hint-label"> Switch  </span>
                             <span class="hint-key">Enter</span><span class="hint-label"> Execute</span>
                         </div>
-                        <!-- STATUS BAR -->
+                        
                         <div class="tui-statusbar" id="tuiStatusbar">
                             <span class="status-chip">STATUS</span>
                             <span class="status-arrow">⟫</span>
@@ -753,22 +839,22 @@ Status: clientDeleteProhibited</div>
                     </div>
                 </div>
                 <div class="terminal-note" style="font-size: 0.85rem; color: var(--text-dim); text-align: center; margin-top: -20px; margin-bottom: 30px; font-style: italic;">
-                    Note: The terminal layout shown here is for illustrative purposes. The actual application structure and visuals may slightly differ.
+                    Terminal tour styled from the current Rust TUI layout, colors, panels, and navigation geometry.
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Scrollytelling Tour Section -->
+    
     <section class="tour-section" id="tourSection">
         <div class="tour-container">
-            <!-- Sticky Terminal Container -->
+            
             <div class="sticky-wrapper" id="stickyWrapper">
                 <!-- The terminal will be moved here by JS during scroll, or we can clone it. 
                      For a smoother experience, we'll keep the terminal in the hero and let JS handle its movement. -->
             </div>
 
-            <!-- Tour Steps -->
+            
             <div class="tour-steps" id="tourSteps">
                 <div class="tour-step" data-step="0">
                     <div class="step-card">
@@ -868,10 +954,24 @@ Status: clientDeleteProhibited</div>
                         <p>9 built-in locales (EN, ES, FR, DE, IT, PT, JA, ZH, RU) with language selection dialog.</p>
                     </div>
                 </div>
+                <div class="tour-step" data-step="14">
+                    <div class="step-card">
+                        <span class="step-num">Step 15</span>
+                        <h3>Agent Analysis</h3>
+                        <p>AI-powered agent history (left), detail panel with action buttons and markdown reports (center), and actions panel with provider config, launch, parallelism and clear (right). Supports 9 agent types and Ollama/OpenAI/Anthropic/llama.cpp providers.</p>
+                    </div>
+                </div>
+                <div class="tour-step" data-step="15">
+                    <div class="step-card">
+                        <span class="step-num">Step 16</span>
+                        <h3>Investigation Suite</h3>
+                        <p>Run nslookup, ping, traceroute, and WHOIS queries. View results with risk score and world map visualization.</p>
+                    </div>
+                </div>
         </div>
     </section>
 
-    <!-- Features Section -->
+    
     <section class="features" id="features">
         <div class="container">
             <div class="section-header">
@@ -932,6 +1032,11 @@ Status: clientDeleteProhibited</div>
                         <h3>Container Monitoring</h3>
                         <p>Docker support: lifecycle management, logs, console, resource stats, and Docker Hub image search.</p>
                     </div>
+                    <div class="feature-card" data-aos="fade-up" data-aos-delay="400">
+                        <div class="feature-icon">🤖</div>
+                        <h3>Agent Analysis</h3>
+                        <p>AI-powered agent system with 9 agent types (Process, Network, DNS, File, Ports, Logs, Memory, Vulnerability, Threat Intel). Supports Ollama, OpenAI, Anthropic, and llama.cpp providers with full report history and export.</p>
+                    </div>
                 </div>
             </div>
             <button class="features-toggle" id="featuresToggle" aria-label="Show more features">
@@ -941,7 +1046,7 @@ Status: clientDeleteProhibited</div>
         </div>
     </section>
 
-    <!-- Documentation Section -->
+    
     <section class="docs" id="docs">
         <div class="container">
             <div class="section-header">
@@ -977,7 +1082,7 @@ Status: clientDeleteProhibited</div>
         </div>
     </section>
 
-    <!-- Installation Section -->
+    
     <section class="install" id="install">
         <div class="container">
             <div class="section-header">
@@ -1005,7 +1110,7 @@ Status: clientDeleteProhibited</div>
         </div>
     </section>
 
-    <!-- CTA Section -->
+    
     <section class="cta">
         <div class="container">
             <div class="cta-content">
@@ -1023,7 +1128,7 @@ Status: clientDeleteProhibited</div>
         </div>
     </section>
 
-    <!-- Footer -->
+    
     <footer class="footer">
         <div class="container">
             <div class="footer-grid">

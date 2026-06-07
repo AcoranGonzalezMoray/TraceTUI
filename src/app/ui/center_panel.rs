@@ -9,8 +9,8 @@ use ratatui::{
     symbols::Marker,
     text::{Line, Span},
     widgets::{
-        Bar, BarChart, BarGroup, Block, BorderType, Borders, Cell, Chart, LineGauge, Paragraph,
-        Row, Sparkline, Table, TableState,
+        Bar, BarChart, BarGroup, Block, BorderType, Borders, Cell, Chart, Paragraph, Row, Table,
+        TableState,
     },
 };
 pub fn render_center_panel(f: &mut ratatui::Frame, app: &App, area: Rect) {
@@ -739,8 +739,12 @@ fn render_process_info_section(
     let t = &app.ui.translator;
     let main_layout = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(8), Constraint::Length(3)])
+        .constraints([Constraint::Length(9), Constraint::Length(3)])
         .split(area);
+    let top_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(55), Constraint::Percentage(45)])
+        .split(main_layout[0]);
     let info_block = Block::default()
         .borders(Borders::ALL)
         .title(format!(" 󰰍 {} ", tr!(t, "center.process_info")))
@@ -751,11 +755,22 @@ fn render_process_info_section(
         )
         .border_style(Style::default().fg(border_color))
         .border_type(border_type);
-    let top_chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(55), Constraint::Percentage(45)])
-        .margin(1)
-        .split(main_layout[0]);
+    let info_inner = info_block.inner(top_chunks[0]);
+    f.render_widget(info_block, top_chunks[0]);
+
+    let metrics_block = Block::default()
+        .borders(Borders::ALL)
+        .title(" 󰓅 Metrics ")
+        .title_style(
+            Style::default()
+                .fg(border_color)
+                .add_modifier(Modifier::BOLD),
+        )
+        .border_style(Style::default().fg(border_color))
+        .border_type(border_type);
+    let metrics_inner = metrics_block.inner(top_chunks[1]);
+    f.render_widget(metrics_block, top_chunks[1]);
+
     let sig_info = match &selected_app.signature_status {
         crate::utils::signatures::SignatureStatus::Valid => {
             (format!("󰄬 {}", tr!(t, "center.signed")), THEME.success)
@@ -771,10 +786,13 @@ fn render_process_info_section(
             THEME.text_dim,
         ),
     };
+
     let info_lines = vec![
+        Line::from(""),
         Line::from(vec![
+            Span::raw("  "),
             Span::styled(
-                format!("  󰙅  {} ", tr!(t, "center.process_label")),
+                format!("󰙅 {} ", tr!(t, "center.process_label")),
                 Style::default()
                     .fg(THEME.primary)
                     .add_modifier(Modifier::BOLD),
@@ -784,9 +802,11 @@ fn render_process_info_section(
                 Style::default().fg(THEME.text_main),
             ),
         ]),
+        Line::from(""),
         Line::from(vec![
+            Span::raw("  "),
             Span::styled(
-                format!("  󱔗  {} ", tr!(t, "center.pid_label")),
+                format!("󱔗 {} ", tr!(t, "center.pid_label")),
                 Style::default().fg(THEME.primary),
             ),
             Span::styled(
@@ -794,9 +814,11 @@ fn render_process_info_section(
                 Style::default().fg(THEME.text_main),
             ),
         ]),
+        Line::from(""),
         Line::from(vec![
+            Span::raw("  "),
             Span::styled(
-                format!("    {} ", tr!(t, "center.risk_label")),
+                format!(" {} ", tr!(t, "center.risk_label")),
                 Style::default().fg(THEME.primary),
             ),
             Span::styled(
@@ -817,9 +839,11 @@ fn render_process_info_section(
                     .add_modifier(Modifier::BOLD),
             ),
         ]),
+        Line::from(""),
         Line::from(vec![
+            Span::raw("  "),
             Span::styled(
-                format!("  󰄬  {}  ", tr!(t, "center.sig_label")),
+                format!("󰄬 {}  ", tr!(t, "center.sig_label")),
                 Style::default().fg(THEME.primary),
             ),
             Span::styled(
@@ -829,76 +853,87 @@ fn render_process_info_section(
         ]),
     ];
     let info = Paragraph::new(info_lines);
-    f.render_widget(info_block, main_layout[0]);
-    f.render_widget(info, top_chunks[0]);
+    f.render_widget(info, info_inner);
+
     let gauge_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(2),
-            Constraint::Length(2),
-            Constraint::Length(2),
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Min(2),
         ])
-        .split(top_chunks[1]);
+        .margin(1)
+        .split(metrics_inner);
+
     let cpu_ratio = (selected_app.cpu_usage as f64 / 100.0).clamp(0.0, 1.0);
     let cpu_color = if selected_app.cpu_usage > 50.0 {
         THEME.danger
     } else {
         THEME.success
     };
-    let cpu_gauge = LineGauge::default()
-        .block(
-            Block::default()
-                .title(format!(
-                    " {} ",
-                    tr!(t, "center.cpu", format!("{:.1}", selected_app.cpu_usage))
-                ))
-                .title_style(Style::default().fg(THEME.text_dim)),
-        )
-        .ratio(cpu_ratio);
-    let cpu_gauge = if cpu_ratio > 0.0 {
-        cpu_gauge.filled_style(Style::default().fg(cpu_color))
-    } else {
-        cpu_gauge
-    };
-    f.render_widget(cpu_gauge, gauge_layout[0]);
+    f.render_widget(
+        Paragraph::new(Line::from(vec![
+            Span::styled(" CPU Usage  ", Style::default().fg(THEME.primary)),
+            Span::styled(
+                format!("{:.1}%", selected_app.cpu_usage),
+                Style::default().fg(THEME.text_main),
+            ),
+        ])),
+        gauge_layout[0],
+    );
+    let cpu_gauge = ratatui::widgets::Gauge::default()
+        .gauge_style(Style::default().fg(cpu_color).bg(THEME.secondary))
+        .ratio(cpu_ratio)
+        .use_unicode(true);
+    f.render_widget(cpu_gauge, gauge_layout[1]);
+
     let mem_ratio = (selected_app.memory_usage as f64 / config::MAX_MEMORY_BYTES).clamp(0.0, 1.0);
-    let mem_gauge = LineGauge::default()
-        .block(
-            Block::default()
-                .title(format!(
-                    " {} ",
-                    tr!(
-                        t,
-                        "center.mem",
-                        formatting::format_bytes(selected_app.memory_usage)
-                    )
-                ))
-                .title_style(Style::default().fg(THEME.text_dim)),
-        )
-        .ratio(mem_ratio);
-    let mem_gauge = if mem_ratio > 0.0 {
-        mem_gauge.filled_style(Style::default().fg(THEME.primary))
-    } else {
-        mem_gauge
-    };
-    f.render_widget(mem_gauge, gauge_layout[1]);
+    f.render_widget(
+        Paragraph::new(Line::from(vec![
+            Span::styled(" RAM Usage  ", Style::default().fg(THEME.primary)),
+            Span::styled(
+                formatting::format_bytes(selected_app.memory_usage),
+                Style::default().fg(THEME.text_main),
+            ),
+        ])),
+        gauge_layout[2],
+    );
+    let mem_gauge = ratatui::widgets::Gauge::default()
+        .gauge_style(Style::default().fg(THEME.accent).bg(THEME.secondary))
+        .ratio(mem_ratio)
+        .use_unicode(true);
+    f.render_widget(mem_gauge, gauge_layout[3]);
+
     if !app.trend.cpu_history.is_empty() {
         let spark_vals: Vec<u64> = app.trend.cpu_history.iter().map(|&v| v as u64).collect();
-        let spark = Sparkline::default()
-            .block(Block::default().title(format!(" {} ", tr!(t, "center.cpu_history"))))
+        let spark = ratatui::widgets::Sparkline::default()
+            .block(
+                Block::default()
+                    .title(format!(" {} ", tr!(t, "center.cpu_history")))
+                    .title_style(Style::default().fg(THEME.text_dim)),
+            )
             .style(Style::default().fg(cpu_color))
             .data(&spark_vals)
             .max(100);
-        f.render_widget(spark, gauge_layout[2]);
+        f.render_widget(spark, gauge_layout[4]);
     }
+
     let path_block = Block::default()
-        .borders(Borders::LEFT | Borders::RIGHT | Borders::BOTTOM)
+        .borders(Borders::ALL)
         .border_style(Style::default().fg(border_color))
         .border_type(border_type);
+    let path_inner = path_block.inner(main_layout[1]);
+    f.render_widget(path_block, main_layout[1]);
+
     let path_str = &selected_app.process_path;
-    let max_width = (main_layout[1].width as usize).saturating_sub(10);
+    let max_width = (path_inner.width as usize).saturating_sub(10);
     let display_path = if path_str.len() > max_width {
-        format!("...{}", &path_str[path_str.len() - max_width..])
+        format!(
+            "...{}",
+            &path_str[path_str.len().saturating_sub(max_width)..]
+        )
     } else {
         path_str.to_string()
     };
@@ -908,9 +943,8 @@ fn render_process_info_section(
             Style::default().fg(THEME.primary),
         ),
         Span::styled(display_path, Style::default().fg(THEME.text_dim)),
-    ]))
-    .block(path_block);
-    f.render_widget(path_para, main_layout[1]);
+    ]));
+    f.render_widget(path_para, path_inner);
 }
 fn render_center_tabs(f: &mut ratatui::Frame, app: &App, area: Rect, border_color: Color) {
     let t = &app.ui.translator;
@@ -920,22 +954,17 @@ fn render_center_tabs(f: &mut ratatui::Frame, app: &App, area: Rect, border_colo
         (3, tr!(t, "center.tab_timeline")),
     ];
     let mut spans = vec![Span::raw(" ")];
-    for (i, (key, title)) in titles.iter().enumerate() {
+    for (i, (_key, title)) in titles.iter().enumerate() {
         let active = i == app.ui.center_tab;
         if i > 0 {
-            spans.push(Span::raw("  "));
+            spans.push(Span::raw("   "));
         }
         spans.push(Span::styled(
-            if active {
-                format!("▎[{}] {} ", key, title)
-            } else {
-                format!(" [{}] {} ", key, title)
-            },
+            format!(" 󰓩 {} ", title),
             if active {
                 Style::default()
-                    .fg(THEME.background)
-                    .bg(border_color)
-                    .add_modifier(Modifier::BOLD)
+                    .fg(border_color)
+                    .add_modifier(Modifier::BOLD | Modifier::UNDERLINED)
             } else {
                 Style::default().fg(THEME.text_dim)
             },
@@ -1130,13 +1159,6 @@ fn render_connections_section(
         f.render_widget(empty, area);
         return;
     }
-    let is_focused = app.ui.sidebar_focus == SidebarFocus::Center;
-    let sel_bg = if is_focused {
-        THEME.primary
-    } else {
-        THEME.secondary
-    };
-    let sel_fg = THEME.background;
 
     let block = Block::default()
         .borders(Borders::ALL)
@@ -1154,24 +1176,51 @@ fn render_connections_section(
     f.render_widget(block.clone(), area);
     let inner_area = block.inner(area);
 
+    let is_focused = app.ui.sidebar_focus == SidebarFocus::Center;
+    let sel_bg = if is_focused {
+        THEME.primary
+    } else {
+        THEME.secondary
+    };
+    let sel_fg = THEME.background;
+
     let widths = [
-        Constraint::Length(8),
+        Constraint::Length(6),
         Constraint::Length(5),
         Constraint::Fill(1),
         Constraint::Fill(1),
-        Constraint::Length(10),
+        Constraint::Length(12),
         Constraint::Fill(2),
     ];
 
     let header = Row::new(vec![
         Cell::from(""),
-        Cell::from(tr!(t, "center.conn_proto")),
-        Cell::from(tr!(t, "center.conn_local")),
-        Cell::from(tr!(t, "center.conn_foreign")),
-        Cell::from(tr!(t, "center.conn_state")),
-        Cell::from(tr!(t, "center.conn_location")),
+        Cell::from(tr!(t, "center.conn_proto")).style(
+            Style::default()
+                .fg(THEME.text_dim)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Cell::from(tr!(t, "center.conn_local")).style(
+            Style::default()
+                .fg(THEME.text_dim)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Cell::from(tr!(t, "center.conn_foreign")).style(
+            Style::default()
+                .fg(THEME.text_dim)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Cell::from(tr!(t, "center.conn_state")).style(
+            Style::default()
+                .fg(THEME.text_dim)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Cell::from(tr!(t, "center.conn_location")).style(
+            Style::default()
+                .fg(THEME.text_dim)
+                .add_modifier(Modifier::BOLD),
+        ),
     ])
-    .style(Style::default().fg(THEME.text_dim))
     .height(1);
 
     let rows: Vec<Row> = selected_app
@@ -1192,15 +1241,17 @@ fn render_connections_section(
                 _ => THEME.secondary,
             };
 
-            let indicator = Cell::from({
-                if is_selected {
-                    Span::styled(" ENTER ↵", Style::default().fg(sel_fg))
-                } else {
-                    Span::raw("        ")
-                }
+            let indicator = Cell::from(if is_selected {
+                Span::styled(
+                    " ↵ ",
+                    Style::default().fg(sel_fg).add_modifier(Modifier::BOLD),
+                )
+            } else {
+                Span::raw("   ")
             });
 
-            let proto = Cell::from(format!(" {} ", conn.protocol)).style(
+            let proto = Cell::from(Line::from(vec![Span::styled(
+                format!(" {} ", conn.protocol),
                 Style::default()
                     .fg(if is_selected {
                         sel_fg
@@ -1209,7 +1260,7 @@ fn render_connections_section(
                     })
                     .bg(protocol_color)
                     .add_modifier(Modifier::BOLD),
-            );
+            )]));
 
             let local_fg = if is_selected { sel_fg } else { THEME.primary };
             let local = Cell::from(format!("{}:{}", conn.local_address, conn.local_port))
@@ -1219,12 +1270,7 @@ fn render_connections_section(
             let foreign = Cell::from(format!("{}:{}", conn.foreign_address, conn.foreign_port))
                 .style(Style::default().fg(foreign_fg));
 
-            let state_txt = if is_selected {
-                format!("{}  ↵", conn.state)
-            } else {
-                conn.state.clone()
-            };
-            let state = Cell::from(state_txt).style(Style::default().fg(if is_selected {
+            let state = Cell::from(&*conn.state).style(Style::default().fg(if is_selected {
                 sel_fg
             } else {
                 THEME.text_dim

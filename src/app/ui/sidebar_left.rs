@@ -7,7 +7,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph, Wrap},
+    widgets::{Block, BorderType, Borders, Paragraph, Wrap},
 };
 pub fn render_left_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
     if let Some(repo) = &app.investigation.investigation_report {
@@ -54,38 +54,76 @@ pub fn render_left_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .split(inner_area);
     let list_area = chunks[0];
     let scrollbar_area = chunks[1];
-    let items: Vec<ListItem> = filtered_apps
-        .iter()
-        .enumerate()
-        .map(|(i, app_conn)| {
-            let is_selected = i == app.network.selected_app_index;
+    let total_items = filtered_apps.len();
+    let selected = app.network.selected_app_index;
+
+    let item_height = 4;
+    let max_visible = (list_area.height / item_height) as usize;
+
+    if max_visible > 0 && total_items > 0 {
+        let half_visible = max_visible / 2;
+        let mut start_idx = selected.saturating_sub(half_visible);
+        if start_idx + max_visible > total_items {
+            start_idx = total_items.saturating_sub(max_visible);
+        }
+        let end_idx = (start_idx + max_visible).min(total_items);
+
+        let mut constraints = Vec::new();
+        let num_rendered = end_idx - start_idx;
+        for _ in 0..num_rendered {
+            constraints.push(Constraint::Length(item_height));
+        }
+        constraints.push(Constraint::Min(0));
+
+        let item_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(constraints)
+            .split(list_area);
+
+        for (i, idx) in (start_idx..end_idx).enumerate() {
+            let app_conn = &filtered_apps[idx];
+            let is_selected = idx == selected;
+            let area = item_chunks[i];
+
             let (risk_icon, risk_color) = match app_conn.risk_level.as_str() {
                 "CRITICAL" => ("󰈸", THEME.danger),
                 "HIGH" => ("󰀪", THEME.danger),
                 "MEDIUM" => ("󰒓", THEME.warning),
                 _ => ("󰄬", THEME.success),
             };
-            let prefix = if is_selected { " ▎" } else { "  " };
-            let prefix_style = if is_selected {
-                Style::default().fg(THEME.primary)
+
+            let block = if is_selected {
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .border_style(Style::default().fg(THEME.primary))
             } else {
-                Style::default()
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .border_style(Style::default().fg(THEME.background))
             };
+
             let name_style = if is_selected {
                 Style::default()
-                    .fg(THEME.background)
-                    .bg(THEME.primary)
+                    .fg(THEME.primary)
                     .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(THEME.text_main)
             };
+
+            let pid = app_conn.connections.first().map(|c| c.pid).unwrap_or(0);
+
             let content = vec![
                 Line::from(vec![
-                    Span::styled(prefix, prefix_style),
+                    Span::styled(" 󰘚 ", name_style),
                     Span::styled(&app_conn.process_name, name_style),
                 ]),
                 Line::from(vec![
-                    Span::raw("    "),
+                    Span::raw(" "),
+                    Span::styled("󰛂 ", Style::default().fg(THEME.primary)),
+                    Span::styled(format!("{:<6}", pid), Style::default().fg(THEME.text_dim)),
+                    Span::styled("󰱒 ", Style::default().fg(THEME.primary)),
                     Span::styled(
                         tr!(
                             app.ui.translator,
@@ -105,13 +143,11 @@ pub fn render_left_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
                     ),
                 ]),
             ];
-            ListItem::new(content)
-        })
-        .collect();
-    let mut list_state = ListState::default();
-    list_state.select(Some(app.network.selected_app_index));
-    let list = List::new(items).block(Block::default());
-    f.render_stateful_widget(list, list_area, &mut list_state);
+
+            let row = Paragraph::new(content).block(block);
+            f.render_widget(row, area);
+        }
+    }
     widgets::render_scrollbar(
         f,
         scrollbar_area,

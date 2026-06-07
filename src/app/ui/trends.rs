@@ -5,7 +5,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Sparkline, Table},
+    widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Table},
 };
 
 pub fn render_trends_view(f: &mut ratatui::Frame, app: &App, area: Rect) {
@@ -85,7 +85,7 @@ fn render_summary_cards(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .copied()
         .unwrap_or(0);
 
-    let current_cpu = app.trend.cpu_history.last().copied().unwrap_or(0.0);
+    let current_cpu = app.trend.total_cpu_history.last().copied().unwrap_or(0.0);
 
     let total_mem_mb: u64 = app
         .network
@@ -212,55 +212,18 @@ fn render_sparkline_row(f: &mut ratatui::Frame, app: &App, area: Rect) {
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(area);
 
-    let cpu_history_label = tr!(app.ui.translator, "trends.cpu_history");
-    let conn_history_label = tr!(app.ui.translator, "trends.conn_history");
-    render_sparkline_panel(
-        f,
-        app,
-        cols[0],
-        &cpu_history_label,
-        &cpu_to_u64(&app.trend.cpu_history),
-        THEME.warning,
-        app.trend
-            .cpu_history
-            .last()
-            .copied()
-            .map(|v| format!("{:.1}%", v)),
-    );
-    render_sparkline_panel(
-        f,
-        app,
-        cols[1],
-        &conn_history_label,
-        &app.trend.conn_count_history,
-        THEME.primary,
-        app.trend
-            .conn_count_history
-            .last()
-            .copied()
-            .map(|v| format!("{} active", v)),
-    );
+    render_process_activity(f, app, cols[0]);
+    render_conn_summary(f, app, cols[1]);
 }
 
-fn render_sparkline_panel(
-    f: &mut ratatui::Frame,
-    app: &App,
-    area: Rect,
-    title: &str,
-    data: &[u64],
-    color: ratatui::style::Color,
-    current_label: Option<String>,
-) {
-    let title_str = if let Some(ref lbl) = current_label {
-        format!("{} ─ {}", title, lbl)
-    } else {
-        title.to_string()
-    };
-
+fn render_process_activity(f: &mut ratatui::Frame, app: &App, area: Rect) {
+    let title = tr!(app.ui.translator, "trends.active_processes");
     let block = Block::default()
         .title(Span::styled(
-            title_str,
-            Style::default().fg(color).add_modifier(Modifier::BOLD),
+            &title,
+            Style::default()
+                .fg(THEME.warning)
+                .add_modifier(Modifier::BOLD),
         ))
         .borders(Borders::ALL)
         .border_style(Style::default().fg(THEME.secondary))
@@ -268,59 +231,232 @@ fn render_sparkline_panel(
     f.render_widget(block.clone(), area);
 
     let inner = block.inner(area);
-    if inner.height < 1 || data.is_empty() {
+    if inner.height < 2 {
         return;
     }
 
-    let stats_area = Rect {
-        x: inner.x,
-        y: inner.y,
-        width: inner.width,
-        height: 1,
-    };
-    let spark_area = Rect {
-        x: inner.x,
-        y: inner.y + 1,
-        width: inner.width,
-        height: inner.height.saturating_sub(1),
-    };
+    let procs: Vec<(&str, usize, f32, u64)> = app
+        .network
+        .app_connections
+        .iter()
+        .map(|a| {
+            (
+                a.process_name.as_str(),
+                a.connections.len(),
+                a.cpu_usage,
+                a.memory_usage / 1024 / 1024,
+            )
+        })
+        .collect();
 
-    if !data.is_empty() {
-        let min = data.iter().min().copied().unwrap_or(0);
-        let max = data.iter().max().copied().unwrap_or(0);
-        let sum: u64 = data.iter().sum();
-        let avg = sum / data.len().max(1) as u64;
-
+    if procs.is_empty() {
         f.render_widget(
-            Paragraph::new(Line::from(vec![
-                Span::styled(
-                    tr!(app.ui.translator, "trends.min"),
-                    Style::default().fg(THEME.text_dim),
-                ),
-                Span::styled(format!("{} ", min), Style::default().fg(THEME.success)),
-                Span::styled(
-                    tr!(app.ui.translator, "trends.avg"),
-                    Style::default().fg(THEME.text_dim),
-                ),
-                Span::styled(format!("{} ", avg), Style::default().fg(THEME.warning)),
-                Span::styled(
-                    tr!(app.ui.translator, "trends.max"),
-                    Style::default().fg(THEME.text_dim),
-                ),
-                Span::styled(format!("{}", max), Style::default().fg(THEME.danger)),
-            ])),
-            stats_area,
+            Paragraph::new(tr!(app.ui.translator, "trends.no_data"))
+                .alignment(Alignment::Center)
+                .style(Style::default().fg(THEME.text_dim)),
+            inner,
         );
+        return;
     }
 
-    if spark_area.height > 0 {
-        f.render_widget(
-            Sparkline::default()
-                .data(data)
-                .style(Style::default().fg(color)),
-            spark_area,
-        );
+    let name_w = (inner.width.saturating_sub(28) as usize).clamp(6, 20);
+
+    let header = Row::new(vec![
+        Cell::from(Span::styled(
+            format!(
+                "{:<width$}",
+                tr!(app.ui.translator, "trends.process_header"),
+                width = name_w
+            ),
+            Style::default()
+                .fg(THEME.secondary)
+                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
+        )),
+        Cell::from(Span::styled(
+            format!("{:>5}", tr!(app.ui.translator, "trends.conns")),
+            Style::default()
+                .fg(THEME.secondary)
+                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
+        )),
+        Cell::from(Span::styled(
+            format!("{:>6}", tr!(app.ui.translator, "trends.cpu_pct")),
+            Style::default()
+                .fg(THEME.secondary)
+                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
+        )),
+        Cell::from(Span::styled(
+            format!("{:>6}", tr!(app.ui.translator, "trends.mem_mb")),
+            Style::default()
+                .fg(THEME.secondary)
+                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
+        )),
+    ]);
+
+    let mut rows: Vec<Row> = vec![header];
+    let max_rows = inner.height.saturating_sub(1) as usize;
+    for (name, conns, cpu, mem_mb) in procs.iter().take(max_rows) {
+        let short = truncate_str(name, name_w);
+        rows.push(Row::new(vec![
+            Cell::from(Span::styled(
+                format!("{:<width$}", short, width = name_w),
+                Style::default().fg(THEME.text_main),
+            )),
+            Cell::from(Span::styled(
+                format!("{:>5}", conns),
+                Style::default().fg(THEME.text_main),
+            )),
+            Cell::from(Span::styled(
+                format!("{:>5.1}%", cpu),
+                Style::default().fg(cpu_color(*cpu as f64)),
+            )),
+            Cell::from(Span::styled(
+                format!("{:>4} MB", mem_mb),
+                Style::default().fg(mem_color(*mem_mb)),
+            )),
+        ]));
     }
+
+    f.render_widget(
+        Table::new(
+            rows,
+            [
+                Constraint::Length(name_w as u16),
+                Constraint::Length(6),
+                Constraint::Length(7),
+                Constraint::Length(7),
+            ],
+        ),
+        inner,
+    );
+}
+
+fn render_conn_summary(f: &mut ratatui::Frame, app: &App, area: Rect) {
+    let title = tr!(app.ui.translator, "trends.connections");
+    let block = Block::default()
+        .title(Span::styled(
+            &title,
+            Style::default()
+                .fg(THEME.primary)
+                .add_modifier(Modifier::BOLD),
+        ))
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(THEME.secondary))
+        .border_type(BorderType::Rounded);
+    f.render_widget(block.clone(), area);
+
+    let inner = block.inner(area);
+    if inner.height < 2 {
+        return;
+    }
+
+    let total: u64 = app
+        .network
+        .app_connections
+        .iter()
+        .map(|a| a.connections.len() as u64)
+        .sum();
+
+    if total == 0 {
+        f.render_widget(
+            Paragraph::new(tr!(app.ui.translator, "trends.no_data"))
+                .alignment(Alignment::Center)
+                .style(Style::default().fg(THEME.text_dim)),
+            inner,
+        );
+        return;
+    }
+
+    let foreign: u64 = app
+        .network
+        .app_connections
+        .iter()
+        .flat_map(|a| &a.connections)
+        .filter(|c| !c.is_private())
+        .count() as u64;
+    let local = total.saturating_sub(foreign);
+
+    let mut protos: std::collections::HashMap<String, u64> = std::collections::HashMap::new();
+    for app_conn in &app.network.app_connections {
+        for conn in &app_conn.connections {
+            *protos.entry(conn.protocol.clone()).or_insert(0) += 1;
+        }
+    }
+    let mut proto_items: Vec<(&str, u64)> = protos.iter().map(|(k, v)| (k.as_str(), *v)).collect();
+    proto_items.sort_by_key(|b| std::cmp::Reverse(b.1));
+
+    let high_risk = app
+        .network
+        .app_connections
+        .iter()
+        .filter(|a| a.risk_level.contains("HIGH") || a.risk_level.contains("CRITICAL"))
+        .count();
+
+    let mut lines: Vec<Line> = Vec::new();
+    lines.push(Line::from(vec![
+        Span::styled(
+            tr!(app.ui.translator, "trends.connections"),
+            Style::default().fg(THEME.text_dim),
+        ),
+        Span::styled(
+            format!(" {}", fmt_num(total)),
+            Style::default()
+                .fg(THEME.primary)
+                .add_modifier(Modifier::BOLD),
+        ),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled(
+            format!("  {} ", tr!(app.ui.translator, "center.conn_foreign")),
+            Style::default().fg(THEME.text_dim),
+        ),
+        Span::styled(format!("{}", foreign), Style::default().fg(THEME.warning)),
+        Span::raw("  "),
+        Span::styled(
+            tr!(app.ui.translator, "center.conn_local"),
+            Style::default().fg(THEME.text_dim),
+        ),
+        Span::styled(format!(" {}", local), Style::default().fg(THEME.success)),
+    ]));
+    lines.push(Line::from(""));
+
+    let proto_title = tr!(app.ui.translator, "trends.protocols");
+    let mut proto_spans = vec![Span::styled(
+        format!("{} ", proto_title),
+        Style::default().fg(THEME.text_dim),
+    )];
+    for (i, (proto, count)) in proto_items.iter().take(3).enumerate() {
+        if i > 0 {
+            proto_spans.push(Span::raw("  "));
+        }
+        proto_spans.push(Span::styled(
+            proto.to_string(),
+            Style::default()
+                .fg(THEME.secondary)
+                .add_modifier(Modifier::BOLD),
+        ));
+        proto_spans.push(Span::styled(
+            format!(" {}", count),
+            Style::default().fg(THEME.text_main),
+        ));
+    }
+    lines.push(Line::from(proto_spans));
+
+    if high_risk > 0 {
+        lines.push(Line::from(vec![
+            Span::styled(
+                format!("{} ", tr!(app.ui.translator, "trends.high_risk")),
+                Style::default().fg(THEME.text_dim),
+            ),
+            Span::styled(
+                format!("{}", high_risk),
+                Style::default()
+                    .fg(THEME.danger)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        ]));
+    }
+
+    f.render_widget(Paragraph::new(lines), inner);
 }
 
 fn render_middle_row(f: &mut ratatui::Frame, app: &App, area: Rect) {
@@ -615,18 +751,11 @@ fn render_bottom_row(f: &mut ratatui::Frame, app: &App, area: Rect) {
         return;
     }
 
-    let show_containers =
-        !app.containers.containers.is_empty() || app.containers.containers_loaded_once;
-
-    let constraints = if show_containers {
-        vec![
-            Constraint::Percentage(33),
-            Constraint::Percentage(34),
-            Constraint::Percentage(33),
-        ]
-    } else {
-        vec![Constraint::Percentage(50), Constraint::Percentage(50)]
-    };
+    let constraints = vec![
+        Constraint::Percentage(33),
+        Constraint::Percentage(34),
+        Constraint::Percentage(33),
+    ];
 
     let cols = Layout::default()
         .direction(Direction::Horizontal)
@@ -635,9 +764,7 @@ fn render_bottom_row(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     render_protocol_dist(f, app, cols[0]);
     render_country_dist(f, app, cols[1]);
-    if show_containers && cols.len() > 2 {
-        render_containers_panel(f, app, cols[2]);
-    }
+    render_containers_panel(f, app, cols[2]);
 }
 
 fn render_protocol_dist(f: &mut ratatui::Frame, app: &App, area: Rect) {
@@ -937,10 +1064,6 @@ fn fmt_num(n: u64) -> String {
         r.insert(0, c);
     }
     r
-}
-
-fn cpu_to_u64(data: &[f64]) -> Vec<u64> {
-    data.iter().map(|&x| x as u64).collect()
 }
 
 fn bar_char(ratio: f32) -> char {

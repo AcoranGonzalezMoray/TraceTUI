@@ -155,17 +155,17 @@ function initScrollGuide() {
     if (!terminal || !steps.length || !tuiApp) return;
 
     const termStates = [
-        'main', 'main', 'main', 'main', 'risk', 'timeline', 'main', 'trends', 'storage', 'libraries', 'containers', 'firewall', 'search', 'language', 'investigation',
+        'main', 'main', 'main', 'main', 'risk', 'timeline', 'main', 'trends', 'storage', 'libraries', 'containers', 'firewall', 'search', 'language', 'agents', 'investigation',
         'trends', 'storage', 'containers'
     ];
 
     const navMap = [
-        'main', 'main', 'main', 'main', 'main', 'main', 'main', 'trends', 'storage', 'libraries', 'containers', 'main', 'main', 'main', 'main',
+        'main', 'main', 'main', 'main', 'main', 'main', 'main', 'trends', 'storage', 'libraries', 'containers', 'main', 'main', 'main', 'agents', 'main',
         'trends', 'storage', 'containers'
     ];
 
     const highlightClasses = [
-        'highlight-nav-sidebar', 'highlight-header', 'highlight-processes', 'highlight-center', 'highlight-risk', 'highlight-timeline', 'highlight-actions', 'highlight-trends', 'highlight-storage', 'highlight-libraries', 'highlight-containers', 'highlight-firewall', 'highlight-search', 'highlight-language', 'highlight-investigation',
+        'highlight-nav-sidebar', 'highlight-header', 'highlight-processes', 'highlight-center', 'highlight-risk', 'highlight-timeline', 'highlight-actions', 'highlight-trends', 'highlight-storage', 'highlight-libraries', 'highlight-containers', 'highlight-firewall', 'highlight-search', 'highlight-language', 'highlight-agents', 'highlight-investigation',
         'highlight-trends', 'highlight-storage', 'highlight-containers'
     ];
 
@@ -233,7 +233,7 @@ function initScrollGuide() {
         const stepLabelEl = document.getElementById('stepLabel');
         if (stepNumEl) stepNumEl.textContent = (index + 1).toString().padStart(2, '0');
         if (stepLabelEl) {
-            const labels = ["Navigation", "Dashboard", "Processes", "Connections", "Risk", "Timeline", "Actions", "Trends", "Storage", "Libraries", "Containers", "Firewall", "Search", "Language", "Investigation"];
+            const labels = ["Navigation", "Dashboard", "Processes", "Connections", "Risk", "Timeline", "Actions", "Trends", "Storage", "Libraries", "Containers", "Firewall", "Search", "Language", "Agents", "Investigation"];
             stepLabelEl.textContent = labels[index] || "";
         }
     }

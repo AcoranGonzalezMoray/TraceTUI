@@ -8,7 +8,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{
         Block, BorderType, Borders, Cell, Clear, Gauge, List, ListItem, ListState, Paragraph, Row,
-        Table, TableState, Wrap,
+        Table, Wrap,
     },
 };
 
@@ -33,7 +33,7 @@ fn render_container_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     let block = styled_block(
         format!(
-            " {} ",
+            " 󰡨 {} ",
             tr!(
                 app.ui.translator,
                 "containers.list_title",
@@ -107,29 +107,58 @@ fn render_container_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
         summary_area,
     );
 
-    let rows: Vec<Row> = app
-        .containers
-        .containers
-        .iter()
-        .enumerate()
-        .map(|(i, container)| {
-            let selected = i == app.containers.selected_container_index;
-            let (badge, badge_color) = state_badge_styled(app, container);
-            let name_style = if selected {
+    let total_items = app.containers.containers.len();
+    let selected = app.containers.selected_container_index;
+
+    let item_height = 4;
+    let max_visible = (table_area.height / item_height).max(1) as usize;
+
+    if max_visible > 0 && total_items > 0 {
+        let half_visible = max_visible / 2;
+        let mut start_idx = selected.saturating_sub(half_visible);
+        if start_idx + max_visible > total_items {
+            start_idx = total_items.saturating_sub(max_visible);
+        }
+        let end_idx = (start_idx + max_visible).min(total_items);
+
+        let mut constraints = Vec::new();
+        let num_rendered = end_idx - start_idx;
+        for _ in 0..num_rendered {
+            constraints.push(Constraint::Length(item_height));
+        }
+        constraints.push(Constraint::Min(0));
+
+        let item_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(constraints)
+            .split(table_area);
+
+        for (i, idx) in (start_idx..end_idx).enumerate() {
+            let container = &app.containers.containers[idx];
+            let is_selected = idx == selected;
+            let area = item_chunks[i];
+
+            let block = if is_selected {
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .border_style(Style::default().fg(THEME.primary))
+            } else {
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .border_style(Style::default().fg(THEME.background))
+            };
+
+            let name_style = if is_selected {
                 Style::default()
-                    .fg(THEME.background)
-                    .bg(THEME.primary)
+                    .fg(THEME.primary)
                     .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(THEME.text_main)
             };
-            let badge_style = if selected {
-                Style::default().fg(THEME.background).bg(THEME.primary)
-            } else {
-                Style::default()
-                    .fg(badge_color)
-                    .add_modifier(Modifier::BOLD)
-            };
+
+            let (badge, badge_color) = state_badge_styled(app, container);
 
             let cpu_dot = match container.cpu_percent {
                 Some(c) if c >= 75.0 => {
@@ -142,63 +171,33 @@ fn render_container_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
                 None => Span::styled("\u{25cb} ", Style::default().fg(THEME.text_dim)),
             };
 
-            Row::new(vec![
-                Cell::from(Span::styled(badge, badge_style)),
-                Cell::from(Line::from(vec![
+            let content = vec![
+                Line::from(vec![
+                    Span::raw(" "),
                     cpu_dot,
-                    Span::styled(container.name.clone(), name_style),
-                ])),
-                Cell::from(Span::styled(
-                    truncate_str(&container.image, 18),
-                    if selected {
-                        Style::default().fg(THEME.background).bg(THEME.primary)
-                    } else {
-                        Style::default().fg(THEME.text_dim)
-                    },
-                )),
-            ])
-            .height(1)
-        })
-        .collect();
+                    Span::styled(truncate_str(&container.name, 24), name_style),
+                ]),
+                Line::from(vec![
+                    Span::styled("   ", Style::default()),
+                    Span::styled(
+                        format!("󰡨 {:<18}", truncate_str(&container.image, 18)),
+                        Style::default().fg(THEME.text_dim),
+                    ),
+                    Span::styled(" │ ", Style::default().fg(THEME.secondary)),
+                    Span::styled(
+                        format!(" {} ", badge),
+                        Style::default()
+                            .fg(THEME.background)
+                            .bg(badge_color)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                ]),
+            ];
 
-    let header = Row::new(vec![
-        Cell::from(Span::styled(
-            tr!(app.ui.translator, "containers.col_state"),
-            Style::default()
-                .fg(THEME.secondary)
-                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
-        )),
-        Cell::from(Span::styled(
-            tr!(app.ui.translator, "containers.col_name"),
-            Style::default()
-                .fg(THEME.secondary)
-                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
-        )),
-        Cell::from(Span::styled(
-            tr!(app.ui.translator, "containers.col_image"),
-            Style::default()
-                .fg(THEME.secondary)
-                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
-        )),
-    ]);
-
-    let mut state = TableState::default();
-    state.select(Some(app.containers.selected_container_index));
-
-    f.render_stateful_widget(
-        Table::new(
-            rows,
-            [
-                Constraint::Length(9),
-                Constraint::Percentage(42),
-                Constraint::Percentage(48),
-            ],
-        )
-        .header(header)
-        .highlight_symbol(""),
-        table_area,
-        &mut state,
-    );
+            let row = Paragraph::new(content).block(block);
+            f.render_widget(row, area);
+        }
+    }
 }
 
 fn render_container_details(f: &mut ratatui::Frame, app: &App, area: Rect) {
@@ -206,7 +205,7 @@ fn render_container_details(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let border_color = focus_color(focused);
 
     let block = styled_block(
-        format!(" {} ", tr!(app.ui.translator, "containers.details_title")),
+        format!(" 󰰍 {} ", tr!(app.ui.translator, "containers.details_title")),
         border_color,
         focused,
     );
@@ -501,10 +500,36 @@ fn render_log_hint(f: &mut ratatui::Frame, app: &App, area: Rect) {
         tr!(app.ui.translator, "containers.logs_modal_hint")
     };
 
+    let lines = vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  \u{f022} ", Style::default().fg(THEME.secondary)),
+            Span::styled(
+                tr!(app.ui.translator, "containers.action_logs"),
+                Style::default()
+                    .fg(THEME.text_main)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("  [ V ]", Style::default().fg(THEME.text_dim)),
+        ]),
+        Line::from(vec![
+            Span::styled("  \u{e795} ", Style::default().fg(THEME.success)),
+            Span::styled(
+                tr!(app.ui.translator, "containers.action_console"),
+                Style::default()
+                    .fg(THEME.text_main)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("  [ C ]", Style::default().fg(THEME.text_dim)),
+        ]),
+        Line::from(""),
+        Line::from(Span::styled(text, Style::default().fg(THEME.text_dim))),
+    ];
+
     f.render_widget(
-        Paragraph::new(text)
+        Paragraph::new(lines)
             .alignment(Alignment::Center)
-            .style(Style::default().fg(THEME.text_dim))
+            .wrap(Wrap { trim: true })
             .block(block),
         area,
     );
@@ -525,7 +550,7 @@ fn render_container_actions(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let border_color = focus_color(focused);
 
     let block = styled_block(
-        format!(" {} ", tr!(app.ui.translator, "containers.actions_title")),
+        format!(" 󰬒 {} ", tr!(app.ui.translator, "containers.actions_title")),
         border_color,
         focused,
     );
@@ -1374,7 +1399,7 @@ fn action_item<'a>(
     selected: bool,
 ) -> ListItem<'a> {
     let prefix = if selected { " \u{258e}" } else { "  " };
-    let name_style = if selected {
+    let card_style = if selected {
         Style::default()
             .fg(THEME.background)
             .bg(THEME.primary)
@@ -1382,16 +1407,22 @@ fn action_item<'a>(
     } else {
         Style::default().fg(THEME.text_main)
     };
+    let key_style = if selected {
+        Style::default()
+            .fg(THEME.background)
+            .bg(THEME.primary)
+            .add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(THEME.text_dim)
+    };
     ListItem::new(vec![
         Line::from(vec![
             Span::styled(prefix, Style::default().fg(THEME.primary)),
             Span::styled(format!(" {} ", icon), Style::default().fg(icon_color)),
-            Span::styled(lbl, name_style),
+            Span::styled(format!("{:<18}", lbl), card_style),
+            Span::styled(format!(" [ {} ] ", key), key_style),
         ]),
-        Line::from(vec![
-            Span::raw("    "),
-            Span::styled(format!("[ {} ]", key), Style::default().fg(THEME.text_dim)),
-        ]),
+        Line::from(""),
     ])
 }
 

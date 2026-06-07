@@ -1,4 +1,4 @@
-﻿use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::process::Command;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkConnection {
@@ -12,6 +12,22 @@ pub struct NetworkConnection {
     pub location: Option<String>,
     pub isp: Option<String>,
 }
+impl NetworkConnection {
+    pub fn is_private(&self) -> bool {
+        let ip = &self.foreign_address;
+        ip.is_empty()
+            || ip == "127.0.0.1"
+            || ip == "0.0.0.0"
+            || ip == "::1"
+            || ip.starts_with("192.168.")
+            || ip.starts_with("10.")
+            || ip.starts_with("172.16.")
+            || ip.starts_with("169.254.")
+            || ip.starts_with("fc00:")
+            || ip.starts_with("fe80:")
+    }
+}
+
 #[derive(Debug)]
 pub struct NetworkAnalyzer {
     connections: Vec<NetworkConnection>,
@@ -42,7 +58,9 @@ impl NetworkAnalyzer {
         }
         let output_str = String::from_utf8_lossy(&output.stdout);
         for line in output_str.lines() {
-            if line.contains("ESTABLISHED") {
+            let is_tcp_estab = line.contains("TCP") && line.contains("ESTABLISHED");
+            let is_udp = line.contains("UDP");
+            if is_tcp_estab || is_udp {
                 if let Some(conn) = self.parse_netstat_line_windows(line) {
                     self.connections.push(conn);
                 }
@@ -87,6 +105,7 @@ impl NetworkAnalyzer {
             "CLOSING",
             "SYN-SENT",
             "SYN_RCVD",
+            "UNCONN",
         ];
         for line in output_str.lines() {
             if valid_states.iter().any(|s| line.contains(s)) {
@@ -187,26 +206,41 @@ impl NetworkAnalyzer {
     #[cfg(windows)]
     pub fn parse_netstat_line_windows(&self, line: &str) -> Option<NetworkConnection> {
         let parts: Vec<&str> = line.split_whitespace().collect();
-        if parts.len() < 5 {
+        if parts.len() < 4 {
             return None;
         }
         let protocol = parts[0].to_string();
         let local_addr = parts[1];
         let foreign_addr = parts[2];
-        let state = parts[3];
-        let pid_str = parts[4];
+
+        let (state, pid_str) = if parts.len() >= 5 {
+            (parts[3].to_string(), parts[4])
+        } else {
+            ("".to_string(), parts[3])
+        };
+
         let (local_ip, local_port_str) = local_addr.rsplit_once(':')?;
-        let (foreign_ip, foreign_port_str) = foreign_addr.rsplit_once(':')?;
+        let (foreign_ip, foreign_port_str) = if foreign_addr.contains(':') {
+            foreign_addr.rsplit_once(':')?
+        } else {
+            (foreign_addr, "0")
+        };
+
         let local_port = local_port_str.parse().ok()?;
-        let foreign_port = foreign_port_str.parse().ok()?;
+        let foreign_port = if foreign_port_str == "*" {
+            0
+        } else {
+            foreign_port_str.parse().ok()?
+        };
         let pid = pid_str.parse().ok()?;
+
         Some(NetworkConnection {
             protocol,
             local_address: local_ip.to_string(),
             local_port,
             foreign_address: foreign_ip.to_string(),
             foreign_port,
-            state: state.to_string(),
+            state,
             pid,
             location: None,
             isp: None,

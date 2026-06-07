@@ -3,6 +3,9 @@
 mod main_should;
 
 #[cfg(test)]
+#[path = "app/agentsShould.rs"]
+mod app_agents_should;
+#[cfg(test)]
 #[path = "app/analysis_serviceShould.rs"]
 mod app_analysis_service_should;
 #[cfg(test)]

@@ -7,6 +7,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Paragraph},
 };
+pub mod agents;
 pub mod center_panel;
 pub mod containers;
 pub mod dialogs;
@@ -21,6 +22,10 @@ pub mod storage;
 pub mod theme;
 pub mod trends;
 pub mod widgets;
+pub use agents::{
+    render_agent_type_selector, render_agents_view, render_network_selector,
+    render_process_selector, render_provider_modal,
+};
 pub use center_panel::render_center_panel;
 pub use containers::{
     render_container_action_loading_modal, render_container_console_modal,
@@ -48,6 +53,13 @@ pub use storage::render_storage_view;
 pub use theme::THEME;
 pub use trends::render_trends_view;
 pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
+    let (hint_bar_height, footer_height) = if f.area().height < 15 {
+        (0u16, 1u16)
+    } else if f.area().height < 20 {
+        (0u16, config::FOOTER_HEIGHT)
+    } else {
+        (config::HINT_BAR_HEIGHT, config::FOOTER_HEIGHT)
+    };
     let search_bar_height = if app.ui.search_mode {
         config::SEARCH_BAR_HEIGHT
     } else {
@@ -59,8 +71,8 @@ pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
             Constraint::Length(config::HEADER_HEIGHT),
             Constraint::Length(search_bar_height),
             Constraint::Min(0),
-            Constraint::Length(config::HINT_BAR_HEIGHT),
-            Constraint::Length(config::FOOTER_HEIGHT),
+            Constraint::Length(hint_bar_height),
+            Constraint::Length(footer_height),
         ])
         .split(f.area());
     render_header(f, app, main_chunks[0]);
@@ -356,6 +368,18 @@ pub fn render_ui(f: &mut ratatui::Frame, app: &App) {
     if app.libraries.show_library_binary_viewer {
         render_library_binary_viewer(f, app);
     }
+    if app.ui.current_nav_view == NavView::Agents && app.agents.show_provider_modal {
+        render_provider_modal(f, app);
+    }
+    if app.ui.current_nav_view == NavView::Agents && app.agents.show_agent_type_selector {
+        render_agent_type_selector(f, app);
+    }
+    if app.ui.current_nav_view == NavView::Agents && app.agents.show_process_selector {
+        render_process_selector(f, app);
+    }
+    if app.ui.current_nav_view == NavView::Agents && app.agents.show_network_selector {
+        render_network_selector(f, app);
+    }
     if app.ui.action_in_progress.is_some() {
         render_action_loader(f, app);
     }
@@ -371,7 +395,13 @@ fn render_search_bar(f: &mut ratatui::Frame, app: &App, area: Rect) {
         ])
         .split(area);
     let search_area = h_chunks[1];
-    let count = app.get_filtered_apps().len();
+    let count = match app.ui.current_nav_view {
+        NavView::Agents => {
+            let indices = crate::app::ui::agents::view::matching_agent_indices(app);
+            indices.len()
+        }
+        _ => app.get_filtered_apps().len(),
+    };
     let cursor = if app.ui.frame_count.is_multiple_of(2) {
         "█"
     } else {
@@ -411,27 +441,44 @@ fn render_search_bar(f: &mut ratatui::Frame, app: &App, area: Rect) {
     f.render_widget(search_widget, search_area);
 }
 fn render_main_layout_with_nav(f: &mut ratatui::Frame, app: &App, area: Rect) {
-    let nav_width = if app.ui.nav_sidebar_expanded {
+    let min_content = config::NAV_SIDEBAR_COLLAPSED_WIDTH + 6;
+    let nav_width = if area.width < min_content {
+        0
+    } else if app.ui.nav_sidebar_expanded && area.width >= config::NAV_SIDEBAR_EXPANDED_WIDTH + 6 {
         config::NAV_SIDEBAR_EXPANDED_WIDTH
     } else {
         config::NAV_SIDEBAR_COLLAPSED_WIDTH
     };
 
+    let constraints = if nav_width > 0 {
+        vec![Constraint::Length(nav_width), Constraint::Min(0)]
+    } else {
+        vec![Constraint::Min(0)]
+    };
+
     let main_layout = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Length(nav_width), Constraint::Min(0)])
+        .constraints(constraints)
         .split(area);
 
-    render_nav_sidebar(f, app, main_layout[0]);
+    let content_area = if nav_width > 0 {
+        main_layout[1]
+    } else {
+        main_layout[0]
+    };
+    if nav_width > 0 {
+        render_nav_sidebar(f, app, main_layout[0]);
+    }
 
     match app.ui.current_nav_view {
         NavView::Main => match app.ui.current_state {
-            AppState::Dashboard => render_ide_layout(f, app, main_layout[1]),
+            AppState::Dashboard => render_ide_layout(f, app, content_area),
         },
-        NavView::TrendGraphs => render_trends_view(f, app, main_layout[1]),
-        NavView::Storage => render_storage_view(f, app, main_layout[1]),
-        NavView::LibraryInspection => render_libraries_view(f, app, main_layout[1]),
-        NavView::Containers => render_containers_view(f, app, main_layout[1]),
+        NavView::TrendGraphs => render_trends_view(f, app, content_area),
+        NavView::Storage => render_storage_view(f, app, content_area),
+        NavView::LibraryInspection => render_libraries_view(f, app, content_area),
+        NavView::Containers => render_containers_view(f, app, content_area),
+        NavView::Agents => render_agents_view(f, app, content_area),
     }
 }
 

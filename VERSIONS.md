@@ -1,5 +1,32 @@
 # UNRELEASED
 
+## 2026-06-07  V2.1.0
+✨: **AI Agent System** — New Agents view (6th nav section) with AI-powered analysis via Ollama
+
+✨: **Provider Configuration Modal** — Configure API URL, model, and API key for each provider with live model fetching from Ollama
+
+✨: **Agent Launch Modal** — Choose from 9 agent types: Process, Network, DNS, File, Ports, Logs, Memory, Vulnerability, Threat Intel
+
+✨: **Agent Type Selectors** — Process and Network connection selectors with multi-select support for agent targeting
+
+✨: **Agent History** — Persistent agent reports with markdown export (E/J keys), history loading on startup, and full scrollable detail view
+
+✨: **Agent Retry & Cancel** — Retry failed agents (R key) and cancel running/queued agents (S key) with abort flag support
+
+✨: **Agent Detail Panel** — Collapsible sections (Z key), status indicators, parallel execution control (+/- keys), and target info
+
+✨: **Agent Search & Filter** — Live agent search (F key), collapse/expand report sections, export to MD/JSON
+
+✨: **Agent Parallelism** — Configurable parallel agent execution (1-8), auto-queue and launch management
+
+✨: **i18n for Agents** — Full translation support across all 9 languages for agent UI, missions, status messages, and modals
+
+✨: **Dynamic Footer** — Footer now shows view-specific info: agent reports/models in Agents view, container/app counts elsewhere
+
+✨: **Mouse Support** — Click on nav sidebar items to switch views, scroll support in agent type selector
+
+🎨: **UI Polish** — Improved nav sidebar with space-evenly distribution, consistent selected-item styling (rounded borders), faster provider modal sizing
+
 
 # RELEASED
 
