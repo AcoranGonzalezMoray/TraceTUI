@@ -8,6 +8,60 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Paragraph},
 };
 
+pub const NAV_ITEMS: [NavView; 6] = [
+    NavView::Main,
+    NavView::TrendGraphs,
+    NavView::Storage,
+    NavView::LibraryInspection,
+    NavView::Containers,
+    NavView::Agents,
+];
+
+pub fn nav_item_area(inner_area: Rect, index: usize, item_count: usize) -> Rect {
+    if item_count == 0 || index >= item_count {
+        return Rect {
+            x: inner_area.x,
+            y: inner_area.y,
+            width: inner_area.width,
+            height: 0,
+        };
+    }
+
+    let item_count = item_count as u16;
+    let item_height: u16 = if inner_area.height >= item_count.saturating_mul(3) {
+        3
+    } else {
+        1
+    };
+    let used_height = item_height.saturating_mul(item_count);
+    let gap_count = item_count.saturating_sub(1);
+    let available_gap = inner_area.height.saturating_sub(used_height);
+    let gap_height = available_gap.checked_div(gap_count).unwrap_or(0);
+    let remainder = if gap_count > 0 {
+        available_gap % gap_count
+    } else {
+        0
+    };
+    let top_padding = remainder / 2;
+    let index = index as u16;
+    let y = inner_area.y
+        + top_padding
+        + index.saturating_mul(item_height.saturating_add(gap_height))
+        + index.min(remainder % gap_count.max(1));
+
+    Rect {
+        x: inner_area.x,
+        y,
+        width: inner_area.width,
+        height: item_height.min(
+            inner_area
+                .y
+                .saturating_add(inner_area.height)
+                .saturating_sub(y),
+        ),
+    }
+}
+
 pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let is_focused = app.ui.sidebar_focus == SidebarFocus::Nav;
     let border_color = if is_focused {
@@ -89,40 +143,10 @@ pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
             tr!(app.ui.translator, "nav.agents"),
         ),
     ];
-    let num_items = nav_items.len() as u16;
-    let item_height: u16 = if inner_area.height >= num_items.saturating_mul(3) {
-        3
-    } else {
-        1
-    };
-    let used_height = item_height.saturating_mul(num_items);
-    let gap_count = num_items.saturating_sub(1);
-    let available_gap = inner_area.height.saturating_sub(used_height);
-    let gap_height = available_gap.checked_div(gap_count).unwrap_or(0);
-    let remainder = if gap_count > 0 {
-        available_gap % gap_count
-    } else {
-        0
-    };
-    let top_padding = remainder / 2;
-
+    let nav_item_count = nav_items.len();
     for (i, (view, icon, name)) in nav_items.into_iter().enumerate() {
         let is_selected = app.ui.current_nav_view == view;
-        let y = inner_area.y
-            + top_padding
-            + (i as u16).saturating_mul(item_height.saturating_add(gap_height))
-            + (i as u16).min(remainder % gap_count.max(1));
-        let area = Rect {
-            x: inner_area.x,
-            y,
-            width: inner_area.width,
-            height: item_height.min(
-                inner_area
-                    .y
-                    .saturating_add(inner_area.height)
-                    .saturating_sub(y),
-            ),
-        };
+        let area = nav_item_area(inner_area, i, nav_item_count);
 
         if area.height == 0 {
             continue;

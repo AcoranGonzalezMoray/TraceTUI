@@ -4,6 +4,7 @@ use crate::app::types::{
     AgentInstance, AgentMission, AgentProvider, AgentStatus, ConfirmationAction, FirewallPanel,
     NavView, SidebarFocus,
 };
+use crate::app::ui::nav_sidebar::{nav_item_area, NAV_ITEMS};
 use crate::app::App;
 use crate::config;
 use crate::resources;
@@ -11,6 +12,7 @@ use crate::tr;
 use crossterm::event::{
     KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
 };
+use ratatui::layout::Rect;
 
 fn switch_nav_view(app: &mut App, view: NavView) {
     if app.ui.current_nav_view == view {
@@ -2890,9 +2892,15 @@ fn handle_dashboard_mouse_click(app: &mut App, x: u16, y: u16) {
     let (term_width, term_height) = crossterm::terminal::size()
         .unwrap_or((config::DEFAULT_TERM_WIDTH, config::DEFAULT_TERM_HEIGHT));
 
-    let nav_width = if app.ui.nav_sidebar_expanded { 20 } else { 7 };
+    let nav_width = if term_width < config::NAV_SIDEBAR_COLLAPSED_WIDTH + 6 {
+        0
+    } else if app.ui.nav_sidebar_expanded && term_width >= config::NAV_SIDEBAR_EXPANDED_WIDTH + 6 {
+        config::NAV_SIDEBAR_EXPANDED_WIDTH
+    } else {
+        config::NAV_SIDEBAR_COLLAPSED_WIDTH
+    };
 
-    if x < nav_width {
+    if nav_width > 0 && x < nav_width {
         app.ui.sidebar_focus = SidebarFocus::Nav;
 
         let hint_h = if term_height < 20 {
@@ -2912,49 +2920,24 @@ fn handle_dashboard_mouse_click(app: &mut App, x: u16, y: u16) {
         };
         let main_y = config::HEADER_HEIGHT + search_h;
         let main_h = term_height.saturating_sub(main_y + hint_h + footer_h);
-        let nav_inner_y = main_y + 1;
-        let nav_inner_h = main_h.saturating_sub(2);
 
-        let inner_y = y.saturating_sub(nav_inner_y);
-        let available = nav_inner_h as usize;
-        let num_items: usize = 6;
+        let nav_inner = Rect {
+            x: 1,
+            y: main_y + 1,
+            width: nav_width.saturating_sub(2),
+            height: main_h.saturating_sub(2),
+        };
 
-        let item_height: u16 = if available >= num_items * 4 { 3 } else { 1 };
-        let total = num_items as u16 * item_height;
-
-        let views = [
-            NavView::Main,
-            NavView::TrendGraphs,
-            NavView::Storage,
-            NavView::LibraryInspection,
-            NavView::Containers,
-            NavView::Agents,
-        ];
-
-        if nav_inner_h > total {
-            let extra = nav_inner_h - total;
-            let gap = extra / (num_items + 1) as u16;
-
-            if inner_y < gap {
-                return;
-            }
-            let mut cursor = gap;
-
-            for &view in &views {
-                if inner_y < cursor + item_height {
+        for (index, view) in NAV_ITEMS.into_iter().enumerate() {
+            let item_area = nav_item_area(nav_inner, index, NAV_ITEMS.len());
+            if y >= item_area.y && y < item_area.y.saturating_add(item_area.height) {
+                if x >= item_area.x && x < item_area.x.saturating_add(item_area.width) {
                     switch_nav_view(app, view);
                     return;
                 }
-                cursor += item_height + gap;
-            }
-        } else {
-            let mut cursor: u16 = 0;
-            for &view in &views {
-                if inner_y >= cursor && inner_y < cursor + item_height {
-                    switch_nav_view(app, view);
-                    break;
+                if x == 0 || x == nav_width.saturating_sub(1) {
+                    return;
                 }
-                cursor += item_height;
             }
         }
         return;
