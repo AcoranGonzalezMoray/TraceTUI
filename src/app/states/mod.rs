@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use crate::app::containers::{ContainerAction, ContainerInfo, DockerAction, DockerHubSearchState};
 use crate::app::libraries::LibraryInfo;
 use crate::app::network::NetworkConnection;
@@ -458,6 +456,7 @@ impl LibraryState {
 
 pub struct TrendState {
     pub cpu_history: Vec<f64>,
+    pub total_cpu_history: Vec<f64>,
     pub conn_count_history: Vec<u64>,
 }
 
@@ -465,10 +464,12 @@ impl TrendState {
     pub fn new() -> Self {
         Self {
             cpu_history: Vec::new(),
+            total_cpu_history: Vec::new(),
             conn_count_history: Vec::new(),
         }
     }
 }
+
 
 pub struct AgentState {
     pub agents: Vec<crate::app::types::AgentInstance>,

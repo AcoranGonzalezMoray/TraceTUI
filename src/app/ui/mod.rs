@@ -395,7 +395,13 @@ fn render_search_bar(f: &mut ratatui::Frame, app: &App, area: Rect) {
         ])
         .split(area);
     let search_area = h_chunks[1];
-    let count = app.get_filtered_apps().len();
+    let count = match app.ui.current_nav_view {
+        NavView::Agents => {
+            let indices = crate::app::ui::agents::view::matching_agent_indices(app);
+            indices.len()
+        }
+        _ => app.get_filtered_apps().len(),
+    };
     let cursor = if app.ui.frame_count.is_multiple_of(2) {
         "█"
     } else {

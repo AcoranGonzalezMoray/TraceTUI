@@ -64,7 +64,6 @@ pub enum AgentMission {
 }
 #[derive(Debug, Clone)]
 pub enum AgentStatus {
-    #[expect(dead_code)]
     Idle,
     Queued,
     Running(String),

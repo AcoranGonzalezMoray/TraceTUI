@@ -1,8 +1,8 @@
 use crate::app::firewall_service::FirewallManager;
 use crate::app::storage::fmt_size;
 use crate::app::types::{
-    AgentInstance, AgentMission, AgentStatus, ConfirmationAction, FirewallPanel, NavView,
-    SidebarFocus,
+    AgentInstance, AgentMission, AgentProvider, AgentStatus, ConfirmationAction, FirewallPanel,
+    NavView, SidebarFocus,
 };
 use crate::app::App;
 use crate::config;
@@ -737,6 +737,9 @@ fn handle_agent_keys(app: &mut App, key: KeyEvent) {
                 app.agents.agent_api_key_input = app.agents.ollama.api_key.clone();
                 app.agents.ollama_models = app.agents.ollama.models.clone();
                 app.agents.provider_modal_focus = 0;
+                if app.agents.ollama.provider == AgentProvider::Ollama {
+                    execute_fetch_ollama(app);
+                }
             }
         }
         KeyCode::Char('p') | KeyCode::Char('P') => {
@@ -841,12 +844,15 @@ fn execute_agent_action(app: &mut App) {
         .get(app.agents.selected_agent_index)
         .is_some_and(|a| matches!(a.status, AgentStatus::Running(_) | AgentStatus::Queued));
     match app.agents.agent_action_index {
-        0 => {
+         0 => {
             app.agents.show_provider_modal = true;
             app.agents.ollama_url_input = app.agents.ollama.api_url.clone();
             app.agents.agent_api_key_input = app.agents.ollama.api_key.clone();
             app.agents.ollama_models = app.agents.ollama.models.clone();
             app.agents.provider_modal_focus = 0;
+            if app.agents.ollama.provider == AgentProvider::Ollama {
+                execute_fetch_ollama(app);
+            }
         }
         1 => {
             if app.agents.ollama.models.is_empty() {
@@ -2430,27 +2436,49 @@ fn handle_search_keys(app: &mut App, key: KeyEvent) {
         KeyCode::Esc => {
             app.ui.search_mode = false;
             app.ui.search_query.clear();
-            app.network.selected_app_index = 0;
+            if app.ui.current_nav_view == NavView::Agents {
+                app.agents.selected_agent_index = 0;
+            } else {
+                app.network.selected_app_index = 0;
+            }
             app.ui.status_message = tr!(app.ui.translator, "status.search_closed").to_string();
         }
         KeyCode::Enter => {
             app.ui.search_mode = false;
-            app.network.selected_app_index = 0;
-            let count = app.get_filtered_apps().len();
-            app.ui.status_message = tr!(
-                app.ui.translator,
-                "status.search_results",
-                count,
-                &app.ui.search_query
-            );
+            if app.ui.current_nav_view == NavView::Agents {
+                let indices = crate::app::ui::agents::matching_agent_indices(app);
+                if !indices.is_empty() {
+                    app.agents.selected_agent_index = indices[0];
+                }
+                let count = indices.len();
+                app.ui.status_message = tr!(
+                    app.ui.translator,
+                    "status.search_results",
+                    count,
+                    &app.ui.search_query
+                );
+            } else {
+                app.network.selected_app_index = 0;
+                let count = app.get_filtered_apps().len();
+                app.ui.status_message = tr!(
+                    app.ui.translator,
+                    "status.search_results",
+                    count,
+                    &app.ui.search_query
+                );
+            }
         }
         KeyCode::Backspace => {
             app.ui.search_query.pop();
-            app.network.selected_app_index = 0;
+            if app.ui.current_nav_view != NavView::Agents {
+                app.network.selected_app_index = 0;
+            }
         }
         KeyCode::Char(c) => {
             app.ui.search_query.push(c);
-            app.network.selected_app_index = 0;
+            if app.ui.current_nav_view != NavView::Agents {
+                app.network.selected_app_index = 0;
+            }
         }
         _ => {}
     }
@@ -2932,6 +2960,23 @@ fn handle_dashboard_mouse_click(app: &mut App, x: u16, y: u16) {
         return;
     }
 
+    if app.ui.current_nav_view == NavView::Storage {
+        let left_end = nav_width + 30;
+        let right_start = term_width.saturating_sub(32);
+
+        if x < left_end {
+            app.storage.storage_focus = 0;
+            app.ui.sidebar_focus = SidebarFocus::Left;
+        } else if x < right_start {
+            app.storage.storage_focus = 1;
+            app.ui.sidebar_focus = SidebarFocus::Center;
+        } else {
+            app.storage.storage_focus = 2;
+            app.ui.sidebar_focus = SidebarFocus::Right;
+        }
+        return;
+    }
+
     let remaining_width = term_width.saturating_sub(nav_width);
     let left =
         nav_width + (remaining_width as f32 * config::SIDEBAR_LEFT_PCT as f32 / 100.0) as u16;
@@ -3011,8 +3056,11 @@ fn handle_mouse_scroll(app: &mut App, delta: i32) {
                 }
             } else if app.ui.current_nav_view == NavView::Storage {
                 let max = app.storage.disks.len().saturating_sub(1);
-                app.storage.selected_disk_index =
-                    apply_scroll(app.storage.selected_disk_index, delta, max);
+                if apply_scroll_bool(app.storage.selected_disk_index, delta, max) {
+                    app.storage.selected_disk_index =
+                        apply_scroll(app.storage.selected_disk_index, delta, max);
+                    load_selected_disk(app);
+                }
             } else if app.ui.current_nav_view == NavView::LibraryInspection {
                 let groups = app.group_libs_by_process();
                 let max = groups.len().saturating_sub(1);
@@ -3076,7 +3124,7 @@ fn handle_mouse_scroll(app: &mut App, delta: i32) {
         }
         SidebarFocus::Right => {
             if app.ui.current_nav_view == NavView::Agents {
-                let max = 3usize;
+                let max = 4usize;
                 app.agents.agent_action_index =
                     apply_scroll(app.agents.agent_action_index, delta, max);
             } else if app.ui.current_nav_view == NavView::Containers {
@@ -3088,6 +3136,9 @@ fn handle_mouse_scroll(app: &mut App, delta: i32) {
                 app.ui.selected_action_index =
                     apply_scroll(app.ui.selected_action_index, delta, max);
             } else if app.ui.current_nav_view == NavView::Storage {
+                let max = config::STORAGE_ACTION_COUNT;
+                app.storage.selected_storage_action_index =
+                    apply_scroll(app.storage.selected_storage_action_index, delta, max);
             } else {
                 let max = config::ACTION_COUNT;
                 app.ui.selected_action_index =
@@ -3502,7 +3553,6 @@ fn pick_save_path(_app: &App, default_name: &str) -> Option<std::path::PathBuf> 
         None
     }
 }
-#[allow(dead_code)]
 pub fn pick_save_path_for_test(app: &App, default_name: &str) -> Option<std::path::PathBuf> {
     pick_save_path(app, default_name)
 }

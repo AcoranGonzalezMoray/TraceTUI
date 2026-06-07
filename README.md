@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./src/icon/tracetuiicon.png" alt="TraceTUI Logo" width="128" height="128">
+<img src="./docs/assets/tracetuiicon.png" alt="TraceTUI Logo" width="352" height="180">
 
 # TraceTUI
 

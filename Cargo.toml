@@ -1,8 +1,8 @@
 [package]
 name = "tracetui"
 version = "2.1.0"
-edition = "2026"
-authors = ["Acoran Gonzalez Moray]
+edition = "2021"
+authors = ["Acoran Gonzalez Moray"]
 description = "Modern TUI network investigation tool"
 
 [dependencies]

@@ -180,7 +180,7 @@ fn render_process_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let block = Block::default()
         .title(Span::styled(
             format!(
-                " {}{} ",
+                " 󰲚 {}{} ",
                 tr!(app.ui.translator, "libraries.processes"),
                 loading_suffix
             ),
@@ -220,82 +220,87 @@ fn render_process_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
         return;
     }
 
-    let header_style = Style::default()
-        .fg(THEME.secondary)
-        .add_modifier(Modifier::BOLD | Modifier::UNDERLINED);
-
     let risk_map = build_risk_map(app);
 
-    let mut rows: Vec<Row> = vec![Row::new(vec![
-        Cell::from(Span::styled(
-            tr!(app.ui.translator, "libraries.column_process"),
-            header_style,
-        )),
-        Cell::from(Span::styled(
-            tr!(app.ui.translator, "libraries.column_libs"),
-            header_style,
-        )),
-        Cell::from(Span::styled(
-            tr!(app.ui.translator, "libraries.column_risk"),
-            header_style,
-        )),
-    ])];
+    let total_items = groups.len();
+    let selected = app.libraries.selected_library_process_index;
+    
+    let item_height = 4;
+    let max_visible = (inner.height / item_height).max(1) as usize;
+    
+    if max_visible > 0 && total_items > 0 {
+        let half_visible = max_visible / 2;
+        let mut start_idx = selected.saturating_sub(half_visible);
+        if start_idx + max_visible > total_items {
+            start_idx = total_items.saturating_sub(max_visible);
+        }
+        let end_idx = (start_idx + max_visible).min(total_items);
 
-    for (i, (pname, pcount)) in groups.iter().enumerate() {
-        let selected = app.libraries.selected_library_process_index == i;
-        let base_style = if selected {
-            Style::default()
-                .fg(THEME.primary)
-                .add_modifier(Modifier::BOLD | Modifier::REVERSED)
-        } else {
-            Style::default().fg(THEME.text_main)
-        };
+        let mut constraints = Vec::new();
+        let num_rendered = end_idx - start_idx;
+        for _ in 0..num_rendered {
+            constraints.push(Constraint::Length(item_height));
+        }
+        constraints.push(Constraint::Min(0));
 
-        let threat_count = risk_map.get(pname.as_str()).copied().unwrap_or(0);
-        let threat_style = if threat_count > 0 {
-            Style::default()
-                .fg(THEME.danger)
-                .add_modifier(Modifier::BOLD)
-        } else {
-            Style::default().fg(THEME.text_dim)
-        };
-        let threat_str = if threat_count > 0 {
-            format!("{}", threat_count)
-        } else {
-            "-".to_string()
-        };
+        let item_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(constraints)
+            .split(inner);
 
-        rows.push(Row::new(vec![
-            Cell::from(Span::styled(
-                truncate_str(
-                    &format!(" {}", pname),
-                    inner.width.saturating_sub(10) as usize,
-                ),
-                base_style,
-            )),
-            Cell::from(Span::styled(
-                format!("{}", pcount),
-                Style::default().fg(THEME.text_dim),
-            )),
-            Cell::from(Span::styled(threat_str, threat_style)),
-        ]));
+        for (i, idx) in (start_idx..end_idx).enumerate() {
+            let (pname, pcount) = &groups[idx];
+            let is_selected = idx == selected;
+            let area = item_chunks[i];
+
+            let block = if is_selected {
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .border_style(Style::default().fg(THEME.primary))
+            } else {
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .border_style(Style::default().fg(THEME.background))
+            };
+
+            let name_style = if is_selected {
+                Style::default().fg(THEME.primary).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(THEME.text_main)
+            };
+
+            let threat_count = risk_map.get(pname.as_str()).copied().unwrap_or(0);
+            let threat_style = if threat_count > 0 {
+                Style::default().fg(THEME.danger).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(THEME.text_dim)
+            };
+
+            let mut process_name = pname.clone();
+            if process_name.len() > 16 {
+                process_name.truncate(15);
+                process_name.push('…');
+            }
+
+            let content = vec![
+                Line::from(vec![
+                    Span::styled(" 󰘚 ", name_style),
+                    Span::styled(format!("{:<16}", process_name), name_style),
+                ]),
+                Line::from(vec![
+                    Span::raw(" "),
+                    Span::styled(format!(" 󰉋 {} libs ", pcount), Style::default().fg(THEME.text_dim)),
+                    Span::styled("│", Style::default().fg(THEME.secondary)),
+                    Span::styled(format!(" 󰈸 {}", threat_count), threat_style),
+                ]),
+            ];
+
+            let row = Paragraph::new(content).block(block);
+            f.render_widget(row, area);
+        }
     }
-
-    let max_rows = inner.height.saturating_sub(1) as usize;
-    let scroll = app.libraries.library_process_scroll;
-    let visible: Vec<Row> = rows.iter().skip(scroll).take(max_rows).cloned().collect();
-
-    f.render_widget(
-        Table::new(
-            visible,
-            [
-                Constraint::Min(10),
-                Constraint::Length(5),
-                Constraint::Length(5),
-            ],
-        ),
-        inner,
-    );
 }
 
 fn render_library_table(f: &mut ratatui::Frame, app: &App, area: Rect) {
@@ -314,9 +319,9 @@ fn render_library_table(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     let block = Block::default()
         .title(Span::styled(
-            format!(" {} ", tr!(app.ui.translator, "libraries.libs")),
+            format!(" 󰉋 {} ", tr!(app.ui.translator, "libraries.libs")),
             Style::default()
-                .fg(THEME.accent)
+                .fg(border_color)
                 .add_modifier(Modifier::BOLD),
         ))
         .borders(Borders::ALL)

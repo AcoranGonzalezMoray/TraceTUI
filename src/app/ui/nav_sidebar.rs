@@ -89,30 +89,15 @@ pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
             tr!(app.ui.translator, "nav.agents"),
         ),
     ];
-    let available = inner_area.height as usize;
     let num_items = nav_items.len();
-    let is_compact = available < num_items * 4;
-
-    let item_height: u16 = if !is_compact { 3 } else { 1 };
-
-    let total_item_space = num_items as u16 * item_height;
+    let available = inner_area.height as usize;
+    let item_height: u16 = if available >= num_items * 3 { 3 } else { 1 };
     let mut constraints = Vec::new();
 
-    if available as u16 > total_item_space {
-        let extra = available as u16 - total_item_space;
-        let gap = extra / (num_items + 1) as u16;
-
-        constraints.push(Constraint::Length(gap));
-        for _ in 0..num_items {
-            constraints.push(Constraint::Length(item_height));
-            constraints.push(Constraint::Length(gap));
-        }
-    } else {
-        constraints.push(Constraint::Length(0));
-        for _ in 0..num_items {
-            constraints.push(Constraint::Min(item_height));
-            constraints.push(Constraint::Length(0));
-        }
+    constraints.push(Constraint::Fill(1));
+    for _ in 0..num_items {
+        constraints.push(Constraint::Length(item_height));
+        constraints.push(Constraint::Fill(1));
     }
 
     let item_chunks = Layout::default()
@@ -136,24 +121,18 @@ pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
             Style::default().fg(THEME.text_dim)
         };
 
-        let block = if is_compact {
-            if is_selected {
-                Block::default()
-                    .borders(Borders::LEFT)
-                    .border_style(Style::default().fg(THEME.primary))
-            } else {
-                Block::default()
-            }
+        let block = if is_selected {
+            Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
+                .border_style(Style::default().fg(THEME.primary))
         } else {
-            if is_selected {
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                    .border_style(Style::default().fg(THEME.primary))
-            } else {
-                Block::default().padding(ratatui::widgets::Padding::new(1, 1, 1, 1))
-            }
+            Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
+                .border_style(Style::default().fg(THEME.background)) // Mantener estructura
         };
+
 
         let content = if app.ui.nav_sidebar_expanded {
             Paragraph::new(Line::from(vec![

@@ -19,24 +19,33 @@ pub fn is_newer(local: &str, remote: &str) -> bool {
 }
 pub fn on_tick(app: &mut App) {
     app.ui.frame_count = app.ui.frame_count.wrapping_add(1);
-    if app.ui.current_nav_view == crate::app::NavView::Main {
-        if let Some(a) = app.get_selected_app() {
-            app.trend.cpu_history.push(a.cpu_usage as f64);
-            if app.trend.cpu_history.len() > config::CPU_HISTORY_MAX {
-                app.trend.cpu_history.remove(0);
-            }
-        }
-        let total = app
-            .network
-            .app_connections
-            .iter()
-            .map(|a| a.connections.len() as u64)
-            .sum();
-        app.trend.conn_count_history.push(total);
-        if app.trend.conn_count_history.len() > config::CONN_HISTORY_MAX {
-            app.trend.conn_count_history.remove(0);
-        }
+    // Record histories
+    let total_cpu: f32 = app.network.app_connections.iter().map(|a| a.cpu_usage).sum();
+    app.trend.total_cpu_history.push(total_cpu as f64);
+    if app.trend.total_cpu_history.len() > config::CPU_HISTORY_MAX {
+        app.trend.total_cpu_history.remove(0);
     }
+
+    if let Some(a) = app.get_selected_app() {
+        app.trend.cpu_history.push(a.cpu_usage as f64);
+    } else if !app.trend.cpu_history.is_empty() {
+        app.trend.cpu_history.push(0.0);
+    }
+    if app.trend.cpu_history.len() > config::CPU_HISTORY_MAX {
+        app.trend.cpu_history.remove(0);
+    }
+
+    let total_conns: u64 = app
+        .network
+        .app_connections
+        .iter()
+        .map(|a| a.connections.len() as u64)
+        .sum();
+    app.trend.conn_count_history.push(total_conns);
+    if app.trend.conn_count_history.len() > config::CONN_HISTORY_MAX {
+        app.trend.conn_count_history.remove(0);
+    }
+
     check_analysis_complete(app);
     process_deferred_icon_extraction(app);
     if app.install.installing {
@@ -58,7 +67,7 @@ pub fn on_tick(app: &mut App) {
     process_ollama_fetch(app);
     process_agent_status(app);
     process_agent_history(app);
-    if app.ui.current_nav_view == crate::app::NavView::Containers
+    if (app.ui.current_nav_view == crate::app::NavView::Containers || app.ui.current_nav_view == crate::app::NavView::TrendGraphs)
         && !app.containers.containers_loaded_once
         && !app.containers.containers_loading
     {

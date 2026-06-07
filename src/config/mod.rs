@@ -69,7 +69,7 @@ pub const DOMAIN_ALLOWLIST: &[&str] = &["microsoft", "akamai", "cloudfront", "go
 pub const DB_FILENAME: &str = "tracetui.db";
 
 pub const STORAGE_REFRESH_INTERVAL_SECS: u64 = 6;
-pub const STORAGE_ACTION_COUNT: usize = 4;
+pub const STORAGE_ACTION_COUNT: usize = 5;
 pub const SEARCH_MODAL_FIELD_COUNT: usize = 5;
 pub const HEADER_HEIGHT: u16 = 3;
 pub const FOOTER_HEIGHT: u16 = 3;
