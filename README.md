@@ -65,7 +65,7 @@
 - **Parallel Execution**: Configurable parallelism (1-8, +/- keys), auto-queue and batch launch management.
 - **Agent Detail Panel**: Status badges (Idle/Queued/Running/Completed/Failed), mission icon, provider label, model, target info, and execution phase tracking.
 
-<img src="./docs/assets/step_agents.png" alt="TraceTUI Agents">
+<img src="./docs/assets/step_agent.png" alt="TraceTUI Agents">
 
 ### 🔍 Investigation Suite
 - **IP Analysis**: Geographic location, ISP, ASN, timezone, and connection type (mobile/hosting) for remote endpoints.
