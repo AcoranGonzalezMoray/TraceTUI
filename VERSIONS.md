@@ -1,6 +1,7 @@
 # UNRELEASED
 
-✨: **AI Agent System** — New Agents view (6th nav section) with AI-powered analysis via Ollama/OpenAI/Anthropic/llama.cpp
+## 2026-06-07  V2.1.0
+✨: **AI Agent System** — New Agents view (6th nav section) with AI-powered analysis via Ollama
 
 ✨: **Provider Configuration Modal** — Configure API URL, model, and API key for each provider with live model fetching from Ollama
 
