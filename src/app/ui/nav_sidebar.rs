@@ -18,7 +18,7 @@ pub const NAV_ITEMS: [NavView; 6] = [
 ];
 
 pub fn nav_item_area(inner_area: Rect, index: usize, item_count: usize) -> Rect {
-    if item_count == 0 || index >= item_count {
+    if item_count == 0 || index >= item_count || inner_area.height == 0 {
         return Rect {
             x: inner_area.x,
             y: inner_area.y,
@@ -27,38 +27,55 @@ pub fn nav_item_area(inner_area: Rect, index: usize, item_count: usize) -> Rect 
         };
     }
 
-    let item_count = item_count as u16;
-    let item_height: u16 = if inner_area.height >= item_count.saturating_mul(3) {
+    let count = item_count as u16;
+    let index = index as u16;
+    let preferred_height: u16 = if inner_area.height >= count.saturating_mul(3) {
         3
     } else {
         1
     };
-    let used_height = item_height.saturating_mul(item_count);
-    let gap_count = item_count.saturating_sub(1);
-    let available_gap = inner_area.height.saturating_sub(used_height);
-    let gap_height = available_gap.checked_div(gap_count).unwrap_or(0);
-    let remainder = if gap_count > 0 {
-        available_gap % gap_count
-    } else {
-        0
+
+    if inner_area.height < count.saturating_mul(preferred_height) {
+        let base = inner_area.height / count;
+        let extra = inner_area.height % count;
+        let mut y = inner_area.y;
+        for i in 0..index {
+            y += base + u16::from(i < extra);
+        }
+        let height = base + u16::from(index < extra);
+        return Rect {
+            x: inner_area.x,
+            y,
+            width: inner_area.width,
+            height,
+        };
+    }
+
+    let total_items_height = preferred_height.saturating_mul(count);
+    let extra = inner_area.height.saturating_sub(total_items_height);
+    let gap_count = count.saturating_sub(1);
+    let (base_gap, extra_gaps) = match extra.checked_div(gap_count) {
+        Some(base_gap) => (base_gap, extra % gap_count),
+        None => (0, 0),
     };
-    let top_padding = remainder / 2;
-    let index = index as u16;
-    let y = inner_area.y
-        + top_padding
-        + index.saturating_mul(item_height.saturating_add(gap_height))
-        + index.min(remainder % gap_count.max(1));
+    let mut y = inner_area.y;
+    for i in 0..index {
+        y += preferred_height;
+        y += base_gap + u16::from(i < extra_gaps);
+    }
+
+    let height = preferred_height.min(
+        inner_area
+            .y
+            .saturating_add(inner_area.height)
+            .saturating_sub(y),
+    );
 
     Rect {
         x: inner_area.x,
         y,
         width: inner_area.width,
-        height: item_height.min(
-            inner_area
-                .y
-                .saturating_add(inner_area.height)
-                .saturating_sub(y),
-        ),
+        height,
     }
 }
 
@@ -144,6 +161,7 @@ pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
         ),
     ];
     let nav_item_count = nav_items.len();
+    let compact = inner_area.height < nav_item_count as u16 * 3;
     for (i, (view, icon, name)) in nav_items.into_iter().enumerate() {
         let is_selected = app.ui.current_nav_view == view;
         let area = nav_item_area(inner_area, i, nav_item_count);
@@ -153,26 +171,21 @@ pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
         }
 
         let style = if is_selected {
-            Style::default()
-                .fg(THEME.primary)
-                .add_modifier(Modifier::BOLD)
+            if compact {
+                Style::default()
+                    .fg(THEME.background)
+                    .bg(THEME.primary)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+                    .fg(THEME.primary)
+                    .add_modifier(Modifier::BOLD)
+            }
         } else {
             Style::default().fg(THEME.text_dim)
         };
 
-        let block = if is_selected {
-            Block::default()
-                .borders(Borders::ALL)
-                .border_type(BorderType::Rounded)
-                .border_style(Style::default().fg(THEME.primary))
-        } else {
-            Block::default()
-                .borders(Borders::ALL)
-                .border_type(BorderType::Rounded)
-                .border_style(Style::default().fg(THEME.background)) // Mantener estructura
-        };
-
-        let content = if app.ui.nav_sidebar_expanded {
+        let content = if app.ui.nav_sidebar_expanded && area.height >= 2 {
             Paragraph::new(Line::from(vec![
                 Span::styled(format!(" {} ", icon), style),
                 Span::styled(name, style),
@@ -182,6 +195,21 @@ pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
                 .alignment(ratatui::layout::Alignment::Center)
         };
 
-        f.render_widget(content.block(block), area);
+        if compact || area.height < 3 {
+            f.render_widget(content, area);
+        } else {
+            let block = if is_selected {
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .border_style(Style::default().fg(THEME.primary))
+            } else {
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .border_style(Style::default().fg(THEME.background))
+            };
+            f.render_widget(content.block(block), area);
+        }
     }
 }
