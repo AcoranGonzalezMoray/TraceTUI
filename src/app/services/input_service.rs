@@ -180,7 +180,7 @@ fn handle_provider_modal_keys(app: &mut App, key: KeyEvent) {
         }
         KeyCode::Enter => match app.agents.provider_modal_focus {
             0 => {
-                app.agents.ollama.provider = app.agents.ollama.provider.next();
+                app.agents.ollama.provider = app.agents.ollama.provider.next_enabled();
                 if app.agents.ollama_url_input.trim().is_empty()
                     || app.agents.ollama_url_input.contains("localhost:11434")
                     || app.agents.ollama_url_input.contains("api.openai.com")
@@ -844,7 +844,7 @@ fn execute_agent_action(app: &mut App) {
         .get(app.agents.selected_agent_index)
         .is_some_and(|a| matches!(a.status, AgentStatus::Running(_) | AgentStatus::Queued));
     match app.agents.agent_action_index {
-         0 => {
+        0 => {
             app.agents.show_provider_modal = true;
             app.agents.ollama_url_input = app.agents.ollama.api_url.clone();
             app.agents.agent_api_key_input = app.agents.ollama.api_key.clone();
@@ -3553,6 +3553,7 @@ fn pick_save_path(_app: &App, default_name: &str) -> Option<std::path::PathBuf> 
         None
     }
 }
+#[cfg(test)]
 pub fn pick_save_path_for_test(app: &App, default_name: &str) -> Option<std::path::PathBuf> {
     pick_save_path(app, default_name)
 }

@@ -68,11 +68,7 @@ impl ProviderSpec {
         }
     }
 
-    pub fn apply_auth(
-        &self,
-        request: RequestBuilder,
-        api_key: &str,
-    ) -> RequestBuilder {
+    pub fn apply_auth(&self, request: RequestBuilder, api_key: &str) -> RequestBuilder {
         if api_key.is_empty() {
             return request;
         }

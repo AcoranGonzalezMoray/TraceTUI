@@ -1,10 +1,10 @@
 use crate::app::agents::constants::{
-    CANCELLED_ERROR, NO_RESPONSE_ERROR, OLLAMA_FETCH_TIMEOUT, OLLAMA_TAGS_PATH,
-    OLLAMA_FETCH_ERROR_PREFIX, PARSE_RESPONSE_ERROR_PREFIX, PROVIDER_HTTP_ERROR_PREFIX,
+    CANCELLED_ERROR, NO_RESPONSE_ERROR, OLLAMA_FETCH_ERROR_PREFIX, OLLAMA_FETCH_TIMEOUT,
+    OLLAMA_TAGS_PATH, PARSE_RESPONSE_ERROR_PREFIX, PROVIDER_HTTP_ERROR_PREFIX,
     PROVIDER_REQUEST_ERROR_PREFIX, SSE_DATA_PREFIX, SSE_DONE_SENTINEL, STREAM_NEWLINE,
 };
-use crate::app::agents::provider::{build_http_client, ProviderSpec};
 use crate::app::agents::prompt::{self, PromptInput};
+use crate::app::agents::provider::{build_http_client, ProviderSpec};
 use crate::app::network::NetworkConnection;
 use crate::app::process::ProcessInfo;
 use crate::app::types::{AgentMission, AgentProviderConfig, AgentStatus};
@@ -13,6 +13,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
+#[allow(clippy::too_many_arguments)]
 pub fn spawn(
     mission: AgentMission,
     model: String,
@@ -118,7 +119,11 @@ async fn run_streaming(
         .map_err(|e| format!("{}: {}", PROVIDER_REQUEST_ERROR_PREFIX, e))?;
 
     if !response.status().is_success() {
-        return Err(format!("{} {}", PROVIDER_HTTP_ERROR_PREFIX, response.status()));
+        return Err(format!(
+            "{} {}",
+            PROVIDER_HTTP_ERROR_PREFIX,
+            response.status()
+        ));
     }
 
     collect_stream(response, &spec, agent_index, status_tx, abort).await

@@ -1,8 +1,5 @@
 use std::time::Duration;
 
-pub const DEFAULT_OLLAMA_URL: &str = "http://localhost:11434";
-pub const DEFAULT_OLLAMA_MODEL: &str = "llama3.2:latest";
-pub const DEFAULT_API_KEY: &str = "";
 pub const DEFAULT_TEMPERATURE: f32 = 0.3;
 pub const DEFAULT_NUM_PREDICT: u32 = 4096;
 pub const DEFAULT_MAX_TOKENS: u32 = 4096;

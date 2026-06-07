@@ -20,7 +20,12 @@ pub fn is_newer(local: &str, remote: &str) -> bool {
 pub fn on_tick(app: &mut App) {
     app.ui.frame_count = app.ui.frame_count.wrapping_add(1);
     // Record histories
-    let total_cpu: f32 = app.network.app_connections.iter().map(|a| a.cpu_usage).sum();
+    let total_cpu: f32 = app
+        .network
+        .app_connections
+        .iter()
+        .map(|a| a.cpu_usage)
+        .sum();
     app.trend.total_cpu_history.push(total_cpu as f64);
     if app.trend.total_cpu_history.len() > config::CPU_HISTORY_MAX {
         app.trend.total_cpu_history.remove(0);
@@ -67,7 +72,8 @@ pub fn on_tick(app: &mut App) {
     process_ollama_fetch(app);
     process_agent_status(app);
     process_agent_history(app);
-    if (app.ui.current_nav_view == crate::app::NavView::Containers || app.ui.current_nav_view == crate::app::NavView::TrendGraphs)
+    if (app.ui.current_nav_view == crate::app::NavView::Containers
+        || app.ui.current_nav_view == crate::app::NavView::TrendGraphs)
         && !app.containers.containers_loaded_once
         && !app.containers.containers_loading
     {

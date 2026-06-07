@@ -224,10 +224,10 @@ fn render_process_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     let total_items = groups.len();
     let selected = app.libraries.selected_library_process_index;
-    
+
     let item_height = 4;
     let max_visible = (inner.height / item_height).max(1) as usize;
-    
+
     if max_visible > 0 && total_items > 0 {
         let half_visible = max_visible / 2;
         let mut start_idx = selected.saturating_sub(half_visible);
@@ -266,14 +266,18 @@ fn render_process_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
             };
 
             let name_style = if is_selected {
-                Style::default().fg(THEME.primary).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(THEME.primary)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(THEME.text_main)
             };
 
             let threat_count = risk_map.get(pname.as_str()).copied().unwrap_or(0);
             let threat_style = if threat_count > 0 {
-                Style::default().fg(THEME.danger).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(THEME.danger)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(THEME.text_dim)
             };
@@ -291,7 +295,10 @@ fn render_process_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
                 ]),
                 Line::from(vec![
                     Span::raw(" "),
-                    Span::styled(format!(" 󰉋 {} libs ", pcount), Style::default().fg(THEME.text_dim)),
+                    Span::styled(
+                        format!(" 󰉋 {} libs ", pcount),
+                        Style::default().fg(THEME.text_dim),
+                    ),
                     Span::styled("│", Style::default().fg(THEME.secondary)),
                     Span::styled(format!(" 󰈸 {}", threat_count), threat_style),
                 ]),

@@ -1,41 +1,39 @@
 use super::constants::{
-    AGENT_TYPE_SELECTOR_HEIGHT, AGENT_TYPE_SELECTOR_WIDTH, COMPLETED_DETAIL_RESERVED_ROWS,
-    ELAPSED_TIME_DECIMAL_DIVISOR, FAILED_STATUS_MAX_CHARS, FRAME_COUNT_MS,
-    MD_HR_CHAR, MD_SCROLL_DOWN_INDICATOR_PREFIX, MD_SCROLL_DOWN_INDICATOR_SUFFIX,
-    NETWORK_SELECTOR_CHECKED, NETWORK_SELECTOR_HEIGHT_DIVISOR, NETWORK_SELECTOR_RESERVED_ROWS,
-    NETWORK_SELECTOR_UNCHECKED, NETWORK_SELECTOR_WIDTH_DIVISOR,
-    PROCESS_SELECTOR_CHECKED, PROCESS_SELECTOR_HEIGHT_DIVISOR,
-    PROCESS_SELECTOR_RESERVED_ROWS, PROCESS_SELECTOR_UNCHECKED, PROCESS_SELECTOR_WIDTH_DIVISOR,
-    PROGRESS_BAR_EMPTY, PROGRESS_BAR_FULL, PROGRESS_BAR_TOTAL,
-    RUNNING_DETAIL_RESERVED_ROWS, RUNNING_ETA_BASE_SECS, RUNNING_PROGRESS_DIVISOR,
+    AGENT_TYPE_SELECTOR_HEIGHT, AGENT_TYPE_SELECTOR_WIDTH, ELAPSED_TIME_DECIMAL_DIVISOR,
+    FAILED_STATUS_MAX_CHARS, FRAME_COUNT_MS, MD_SCROLL_DOWN_INDICATOR_PREFIX,
+    MD_SCROLL_DOWN_INDICATOR_SUFFIX, NETWORK_SELECTOR_CHECKED, NETWORK_SELECTOR_HEIGHT_DIVISOR,
+    NETWORK_SELECTOR_RESERVED_ROWS, NETWORK_SELECTOR_UNCHECKED, NETWORK_SELECTOR_WIDTH_DIVISOR,
+    PROCESS_SELECTOR_CHECKED, PROCESS_SELECTOR_HEIGHT_DIVISOR, PROCESS_SELECTOR_RESERVED_ROWS,
+    PROCESS_SELECTOR_UNCHECKED, PROCESS_SELECTOR_WIDTH_DIVISOR, PROGRESS_BAR_EMPTY,
+    PROGRESS_BAR_FULL, PROGRESS_BAR_TOTAL, RUNNING_ETA_BASE_SECS, RUNNING_PROGRESS_DIVISOR,
     RUNNING_PROGRESS_MAX, RUNNING_PROGRESS_MIN_INITIAL, RUNNING_PROGRESS_MIN_WITH_MSG,
     RUNNING_PROGRESS_TIME_DIVISOR, SCROLL_INDICATOR_BOTH, SCROLL_INDICATOR_DOWN,
     SCROLL_INDICATOR_UP, SELECTED_ROW_INDICATOR, SELECTOR_HINT_TEXT, SELECTOR_TOGGLE_HINT,
     UNSELECTED_ROW_INDICATOR,
 };
 use super::icons::{
-    action_cancel_icon, cursor_for_frame, key_hint, ICON_ACTION_COLLAPSE, ICON_ACTION_EXPAND,
-    ICON_ACTION_EXPORT_JSON, ICON_ACTION_EXPORT_MD, ICON_ACTION_FILTER, ICON_ACTION_RETRY,
-    ICON_ACTIONS_TITLE, ICON_AGENTS_TITLE, ICON_CLEAR, ICON_DETAIL_TITLE, ICON_LAUNCH, ICON_PARALLEL, ICON_PROVIDER,
-    STATUS_DONE, STATUS_FAILED, STATUS_IDLE, STATUS_QUEUED,
+    action_cancel_icon, cursor_for_frame, key_hint, ICON_ACTIONS_TITLE, ICON_ACTION_COLLAPSE,
+    ICON_ACTION_EXPAND, ICON_ACTION_EXPORT_JSON, ICON_ACTION_EXPORT_MD, ICON_ACTION_FILTER,
+    ICON_ACTION_RETRY, ICON_AGENTS_TITLE, ICON_CLEAR, ICON_DETAIL_TITLE, ICON_LAUNCH,
+    ICON_PARALLEL, ICON_PROVIDER, STATUS_DONE, STATUS_FAILED, STATUS_IDLE, STATUS_QUEUED,
 };
 use super::markdown;
 use super::widgets::{action_button, phase_for_frame, spinner_for_frame, status_badge};
 use crate::app::agents::constants::NO_PROCESS_NAME_PLACEHOLDER;
 use crate::app::agents::mission::all_missions;
 use crate::app::types::{AgentMission, AgentStatus, NavView};
+use crate::app::ui::theme::THEME;
 use crate::app::{App, SidebarFocus};
 use crate::config;
 use crate::tr;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
+use ratatui::Frame;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout},
     widgets::{Block, BorderType, Borders, Clear, List, ListItem, ListState, Paragraph},
 };
-use ratatui::Frame;
-use crate::app::ui::theme::THEME;
 
 pub fn render_agents_view(f: &mut Frame, app: &App, area: Rect) {
     let columns = Layout::default()
@@ -66,9 +64,9 @@ pub fn matching_agent_indices(app: &App) -> Vec<usize> {
             let provider_match = agent.provider.label().to_lowercase().contains(&q);
             let model_match = agent.model.to_lowercase().contains(&q);
             let report_match = match &agent.status {
-                AgentStatus::Running(t)
-                | AgentStatus::Completed(t)
-                | AgentStatus::Failed(t) => t.to_lowercase().contains(&q),
+                AgentStatus::Running(t) | AgentStatus::Completed(t) | AgentStatus::Failed(t) => {
+                    t.to_lowercase().contains(&q)
+                }
                 _ => false,
             };
             if target_match || provider_match || model_match || report_match {
@@ -81,11 +79,15 @@ pub fn matching_agent_indices(app: &App) -> Vec<usize> {
 }
 
 fn render_left(f: &mut Frame, app: &App, area: Rect) {
-    let is_focused = app.ui.sidebar_focus == SidebarFocus::Left
-        && app.ui.current_nav_view == NavView::Agents;
+    let is_focused =
+        app.ui.sidebar_focus == SidebarFocus::Left && app.ui.current_nav_view == NavView::Agents;
     let block = focused_block(
         is_focused,
-        format!(" {} {} ", ICON_AGENTS_TITLE, tr!(app.ui.translator, "agents.report_history")),
+        format!(
+            " {} {} ",
+            ICON_AGENTS_TITLE,
+            tr!(app.ui.translator, "agents.report_history")
+        ),
     );
 
     f.render_widget(block.clone(), area);
@@ -104,7 +106,10 @@ fn render_left(f: &mut Frame, app: &App, area: Rect) {
 
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Min(0), Constraint::Length(config::SCROLLBAR_WIDTH)])
+        .constraints([
+            Constraint::Min(0),
+            Constraint::Length(config::SCROLLBAR_WIDTH),
+        ])
         .split(inner);
     let list_area = chunks[0];
     let scrollbar_area = chunks[1];
@@ -136,18 +141,13 @@ fn render_left(f: &mut Frame, app: &App, area: Rect) {
     }
 
     if total > visible_max {
-        crate::app::ui::widgets::render_scrollbar(
-            f,
-            scrollbar_area,
-            total,
-            scroll,
-        );
+        crate::app::ui::widgets::render_scrollbar(f, scrollbar_area, total, scroll);
     }
 }
 
 fn render_center(f: &mut Frame, app: &App, area: Rect) {
-    let is_focused = app.ui.sidebar_focus == SidebarFocus::Center
-        && app.ui.current_nav_view == NavView::Agents;
+    let is_focused =
+        app.ui.sidebar_focus == SidebarFocus::Center && app.ui.current_nav_view == NavView::Agents;
     let title = format!(
         " {} {}  ·  {}  ·  {} {} ",
         ICON_DETAIL_TITLE,
@@ -185,7 +185,10 @@ fn render_center(f: &mut Frame, app: &App, area: Rect) {
 
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Min(0), Constraint::Length(config::SCROLLBAR_WIDTH)])
+        .constraints([
+            Constraint::Min(0),
+            Constraint::Length(config::SCROLLBAR_WIDTH),
+        ])
         .split(inner);
     let content_area = chunks[0];
     let scrollbar_area = chunks[1];
@@ -211,27 +214,38 @@ fn render_center(f: &mut Frame, app: &App, area: Rect) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(THEME.secondary));
-    f.render_widget(Paragraph::new(header_lines).block(header_block), header_area);
+    f.render_widget(
+        Paragraph::new(header_lines).block(header_block),
+        header_area,
+    );
 
     let actions_block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(THEME.secondary));
-    let actions_content = vec![actions_line(app, agent, actions_area.width.saturating_sub(2))];
-    f.render_widget(Paragraph::new(actions_content).block(actions_block), actions_area);
+    let actions_content = vec![actions_line(
+        app,
+        agent,
+        actions_area.width.saturating_sub(2),
+    )];
+    f.render_widget(
+        Paragraph::new(actions_content).block(actions_block),
+        actions_area,
+    );
 
     let report_total = match &agent.status {
         AgentStatus::Running(msg) | AgentStatus::Completed(msg) | AgentStatus::Failed(msg) => {
             if msg.trim().is_empty() {
                 None
             } else {
-                let md_lines = filtered_md_lines(app, msg, report_area.width.saturating_sub(2) as usize);
+                let md_lines =
+                    filtered_md_lines(app, msg, report_area.width.saturating_sub(2) as usize);
                 Some(md_lines.len())
             }
         }
         _ => None,
     };
-    
+
     let (report_total, report_visible) = match report_total {
         Some(total) => {
             let reserved = match &agent.status {
@@ -248,12 +262,23 @@ fn render_center(f: &mut Frame, app: &App, area: Rect) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(THEME.secondary))
-        .title(format!(" {} ", tr!(app.ui.translator, "agents.report_detail")))
+        .title(format!(
+            " {} ",
+            tr!(app.ui.translator, "agents.report_detail")
+        ))
         .title_style(Style::default().fg(THEME.text_dim));
 
     let mut report_lines: Vec<Line> = Vec::new();
-    append_report_lines(&mut report_lines, app, agent, report_block.inner(report_area));
-    f.render_widget(Paragraph::new(report_lines).block(report_block), report_area);
+    append_report_lines(
+        &mut report_lines,
+        app,
+        agent,
+        report_block.inner(report_area),
+    );
+    f.render_widget(
+        Paragraph::new(report_lines).block(report_block),
+        report_area,
+    );
 
     if report_total > report_visible {
         let mut scrollbar_rect = scrollbar_area;
@@ -273,8 +298,8 @@ fn render_center(f: &mut Frame, app: &App, area: Rect) {
 }
 
 fn render_right(f: &mut Frame, app: &App, area: Rect) {
-    let is_focused = app.ui.sidebar_focus == SidebarFocus::Right
-        && app.ui.current_nav_view == NavView::Agents;
+    let is_focused =
+        app.ui.sidebar_focus == SidebarFocus::Right && app.ui.current_nav_view == NavView::Agents;
     let title = format!(
         " {} {} ",
         ICON_ACTIONS_TITLE,
@@ -287,7 +312,10 @@ fn render_right(f: &mut Frame, app: &App, area: Rect) {
     let items = build_action_items(app);
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Min(0), Constraint::Length(config::SCROLLBAR_WIDTH)])
+        .constraints([
+            Constraint::Min(0),
+            Constraint::Length(config::SCROLLBAR_WIDTH),
+        ])
         .split(inner);
     let list_area = chunks[0];
     let scrollbar_area = chunks[1];
@@ -408,10 +436,7 @@ fn action_item_view(item: &ActionItem, is_selected: bool) -> ListItem<'static> {
         ]),
         Line::from(vec![
             Span::raw("   "),
-            Span::styled(
-                key_hint(&item.key),
-                Style::default().fg(THEME.text_dim),
-            ),
+            Span::styled(key_hint(&item.key), Style::default().fg(THEME.text_dim)),
         ]),
     ])
 }
@@ -453,7 +478,11 @@ fn status_line(app: &App, agent: &crate::app::types::AgentInstance) -> Line<'sta
     ])
 }
 
-fn actions_line(app: &App, agent: &crate::app::types::AgentInstance, inner_width: u16) -> Line<'static> {
+fn actions_line(
+    app: &App,
+    agent: &crate::app::types::AgentInstance,
+    inner_width: u16,
+) -> Line<'static> {
     let mut button_spans = Vec::new();
     match &agent.status {
         AgentStatus::Running(_) | AgentStatus::Queued => {
@@ -578,10 +607,7 @@ fn append_metadata_lines(
 
 fn label_value_line(label: String, value: String) -> Line<'static> {
     Line::from(vec![
-        Span::styled(
-            format!(" {}: ", label),
-            Style::default().fg(THEME.text_dim),
-        ),
+        Span::styled(format!(" {}: ", label), Style::default().fg(THEME.text_dim)),
         Span::styled(value, Style::default().fg(THEME.text_main)),
     ])
 }
@@ -669,12 +695,7 @@ fn push_running_state(
     }
 }
 
-fn push_completed_state(
-    lines: &mut Vec<Line<'static>>,
-    app: &App,
-    msg: &str,
-    inner: Rect,
-) {
+fn push_completed_state(lines: &mut Vec<Line<'static>>, app: &App, msg: &str, inner: Rect) {
     let scroll = app.agents.agent_detail_scroll;
     let md_lines = filtered_md_lines(app, msg, inner.width as usize);
     let available = inner.height as usize;
@@ -978,7 +999,7 @@ pub fn render_provider_modal(f: &mut Frame, app: &App) {
     use super::constants::{
         PROVIDER_MODAL_API_KEY_MASK_CHAR, PROVIDER_MODAL_API_KEY_MAX_MASK,
         PROVIDER_MODAL_FOCUS_API_KEY, PROVIDER_MODAL_FOCUS_CANCEL, PROVIDER_MODAL_FOCUS_FETCH,
-        PROVIDER_MODAL_FOCUS_MODEL_INPUT, PROVIDER_MODAL_FOCUS_MODELS,
+        PROVIDER_MODAL_FOCUS_MODELS, PROVIDER_MODAL_FOCUS_MODEL_INPUT,
         PROVIDER_MODAL_FOCUS_PROVIDER, PROVIDER_MODAL_FOCUS_SAVE, PROVIDER_MODAL_FOCUS_URL,
         PROVIDER_MODAL_HEIGHT_DIVISOR, PROVIDER_MODAL_HEIGHT_MIN, PROVIDER_MODAL_HEIGHT_NUMERATOR,
         PROVIDER_MODAL_MODEL_LIST_RESERVED_ROWS, PROVIDER_MODAL_WIDTH_DIVISOR,
@@ -1033,7 +1054,10 @@ pub fn render_provider_modal(f: &mut Frame, app: &App) {
             Style::default().fg(THEME.text_main),
         ),
         Span::styled(
-            format!("  ({})", tr!(app.ui.translator, "agents.provider_cycle_hint")),
+            format!(
+                "  ({})",
+                tr!(app.ui.translator, "agents.provider_cycle_hint")
+            ),
             Style::default().fg(THEME.text_dim),
         ),
     ]));
@@ -1074,8 +1098,12 @@ pub fn render_provider_modal(f: &mut Frame, app: &App) {
     let masked_key = if app.agents.agent_api_key_input.is_empty() {
         String::new()
     } else {
-        PROVIDER_MODAL_API_KEY_MASK_CHAR
-            .repeat(app.agents.agent_api_key_input.len().min(PROVIDER_MODAL_API_KEY_MAX_MASK))
+        PROVIDER_MODAL_API_KEY_MASK_CHAR.repeat(
+            app.agents
+                .agent_api_key_input
+                .len()
+                .min(PROVIDER_MODAL_API_KEY_MAX_MASK),
+        )
     };
     lines.push(Line::from(vec![
         Span::styled(
@@ -1105,8 +1133,8 @@ pub fn render_provider_modal(f: &mut Frame, app: &App) {
         ),
     ]));
 
-    let visible_models: usize = (popup_area.height as usize)
-        .saturating_sub(PROVIDER_MODAL_MODEL_LIST_RESERVED_ROWS);
+    let visible_models: usize =
+        (popup_area.height as usize).saturating_sub(PROVIDER_MODAL_MODEL_LIST_RESERVED_ROWS);
     for (i, model) in app.agents.ollama_models.iter().enumerate() {
         if i >= visible_models {
             break;
@@ -1363,10 +1391,7 @@ pub fn render_process_selector(f: &mut Frame, app: &App) {
     let visible = (popup_area.height as usize)
         .saturating_sub(PROCESS_SELECTOR_RESERVED_ROWS)
         .min(total);
-    let cursor_idx = app
-        .agents
-        .selected_model_index
-        .min(total.saturating_sub(1));
+    let cursor_idx = app.agents.selected_model_index.min(total.saturating_sub(1));
     let scroll_offset = scroll_offset_for(cursor_idx, visible);
 
     let mut lines: Vec<Line> = Vec::new();
@@ -1479,10 +1504,7 @@ pub fn render_network_selector(f: &mut Frame, app: &App) {
     let visible = (popup_area.height as usize)
         .saturating_sub(NETWORK_SELECTOR_RESERVED_ROWS)
         .min(total);
-    let cursor_idx = app
-        .agents
-        .selected_model_index
-        .min(total.saturating_sub(1));
+    let cursor_idx = app.agents.selected_model_index.min(total.saturating_sub(1));
     let scroll_offset = scroll_offset_for(cursor_idx, visible);
 
     let mut lines: Vec<Line> = Vec::new();

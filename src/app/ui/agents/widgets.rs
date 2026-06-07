@@ -12,12 +12,7 @@ pub fn spinner_for_frame(frame_count: u64) -> &'static str {
     frames[(frame_count as usize) % frames.len()]
 }
 
-pub fn action_button(
-    icon: &str,
-    label: String,
-    key: &str,
-    color: Color,
-) -> Vec<Span<'static>> {
+pub fn action_button(icon: &str, label: String, key: &str, color: Color) -> Vec<Span<'static>> {
     vec![
         Span::raw(ACTION_BTN_PADDING),
         Span::styled(

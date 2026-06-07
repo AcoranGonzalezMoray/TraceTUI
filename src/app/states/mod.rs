@@ -470,7 +470,6 @@ impl TrendState {
     }
 }
 
-
 pub struct AgentState {
     pub agents: Vec<crate::app::types::AgentInstance>,
     pub provider: crate::app::types::AgentProvider,
@@ -513,7 +512,8 @@ pub struct AgentState {
 
 impl AgentState {
     pub fn new() -> Self {
-        let ollama = crate::config::load_ollama_config();
+        let mut ollama = crate::config::load_ollama_config();
+        ollama.provider = ollama.provider.enabled_or_default();
         let url = ollama.api_url.clone();
         let api_key = ollama.api_key.clone();
         let models = ollama.models.clone();

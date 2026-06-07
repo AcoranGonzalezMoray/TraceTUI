@@ -56,10 +56,10 @@ pub fn render_left_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let scrollbar_area = chunks[1];
     let total_items = filtered_apps.len();
     let selected = app.network.selected_app_index;
-    
+
     let item_height = 4;
     let max_visible = (list_area.height / item_height) as usize;
-    
+
     if max_visible > 0 && total_items > 0 {
         let half_visible = max_visible / 2;
         let mut start_idx = selected.saturating_sub(half_visible);

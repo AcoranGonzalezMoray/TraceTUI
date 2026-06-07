@@ -2,8 +2,8 @@ use crate::app::ui::agents::constants::{
     MD_BOLD_DELIMITER, MD_BOLD_FALLBACK, MD_BULLET_CHAR, MD_BULLET_DASH, MD_BULLET_STAR,
     MD_CODE_BLOCK_CLOSE, MD_CODE_BLOCK_OPEN, MD_CODE_DELIMITER, MD_CODE_LINE_PREFIX,
     MD_COLLAPSE_MARKER, MD_H1_PREFIX, MD_H2_PREFIX, MD_H3_PREFIX, MD_HR_CHAR, MD_HR_LINE,
-    MD_HR_MAX_WIDTH, MD_HR_STAR, MD_HR_UNDER, MD_HR_WIDTH_REDUCTION, MD_INLINE_CODE_FALLBACK,
-    MD_INLINE_PADDING, MD_INDENT_PADDING, MD_NUMERIC_PADDING, MD_TABLE_INNER_SEP,
+    MD_HR_MAX_WIDTH, MD_HR_STAR, MD_HR_UNDER, MD_HR_WIDTH_REDUCTION, MD_INDENT_PADDING,
+    MD_INLINE_CODE_FALLBACK, MD_INLINE_PADDING, MD_NUMERIC_PADDING, MD_TABLE_INNER_SEP,
     MD_TABLE_SEP_MAX_WIDTH, MD_TRUNCATION_SUFFIX, MIN_WRAP_WIDTH,
 };
 use crate::app::ui::theme::THEME;
@@ -236,7 +236,11 @@ fn handle_code_fence(
         return None;
     }
     let next = !in_code_block;
-    let content = if next { MD_CODE_BLOCK_OPEN } else { MD_CODE_BLOCK_CLOSE };
+    let content = if next {
+        MD_CODE_BLOCK_OPEN
+    } else {
+        MD_CODE_BLOCK_CLOSE
+    };
     lines.push(Line::from(Span::styled(
         content,
         Style::default().fg(THEME.success),
@@ -245,7 +249,10 @@ fn handle_code_fence(
 }
 
 fn emit_code_line(lines: &mut Vec<Line<'static>>, line: &str, width: usize) {
-    for wrapped in wrap(line, width.saturating_sub(MD_INDENT_PADDING).max(MIN_WRAP_WIDTH)) {
+    for wrapped in wrap(
+        line,
+        width.saturating_sub(MD_INDENT_PADDING).max(MIN_WRAP_WIDTH),
+    ) {
         lines.push(Line::from(Span::styled(
             format!("{}{} ", MD_CODE_LINE_PREFIX, wrapped),
             Style::default().fg(THEME.success),
@@ -345,10 +352,7 @@ fn handle_table_row(
     true
 }
 
-fn flush_pending_header(
-    lines: &mut Vec<Line<'static>>,
-    pending_header_row: &mut Option<String>,
-) {
+fn flush_pending_header(lines: &mut Vec<Line<'static>>, pending_header_row: &mut Option<String>) {
     if let Some(header) = pending_header_row.take() {
         for row in render_table_row(&header, false) {
             lines.push(row);
@@ -364,8 +368,14 @@ fn handle_unordered_list(lines: &mut Vec<Line<'static>>, line: &str, width: usiz
     } else {
         return false;
     };
-    for wrapped in wrap(content, width.saturating_sub(MD_INDENT_PADDING).max(MIN_WRAP_WIDTH)) {
-        let mut spans = vec![Span::styled(MD_BULLET_CHAR, Style::default().fg(THEME.primary))];
+    for wrapped in wrap(
+        content,
+        width.saturating_sub(MD_INDENT_PADDING).max(MIN_WRAP_WIDTH),
+    ) {
+        let mut spans = vec![Span::styled(
+            MD_BULLET_CHAR,
+            Style::default().fg(THEME.primary),
+        )];
         spans.extend(parse_inline(&wrapped));
         lines.push(Line::from(spans));
     }
@@ -387,7 +397,10 @@ fn handle_ordered_list(lines: &mut Vec<Line<'static>>, line: &str, width: usize)
     }
     let num = &line[..dot_pos + 1];
     let content = &line[dot_pos + 1..].trim_start();
-    for wrapped in wrap(content, width.saturating_sub(MD_NUMERIC_PADDING).max(MIN_WRAP_WIDTH)) {
+    for wrapped in wrap(
+        content,
+        width.saturating_sub(MD_NUMERIC_PADDING).max(MIN_WRAP_WIDTH),
+    ) {
         let mut spans = vec![Span::styled(
             format!(" {} ", num),
             Style::default().fg(THEME.primary),
@@ -399,7 +412,10 @@ fn handle_ordered_list(lines: &mut Vec<Line<'static>>, line: &str, width: usize)
 }
 
 fn emit_paragraph(lines: &mut Vec<Line<'static>>, line: &str, width: usize) {
-    for wrapped in wrap(line, width.saturating_sub(MD_INLINE_PADDING).max(MIN_WRAP_WIDTH)) {
+    for wrapped in wrap(
+        line,
+        width.saturating_sub(MD_INLINE_PADDING).max(MIN_WRAP_WIDTH),
+    ) {
         lines.push(Line::from(parse_inline(&wrapped)));
     }
 }

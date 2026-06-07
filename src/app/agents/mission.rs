@@ -79,20 +79,6 @@ impl AgentMission {
         }
     }
 
-    pub fn slug(self) -> &'static str {
-        match self {
-            Self::ProcessAnalysis => "process_analysis",
-            Self::NetworkAnalysis => "network_analysis",
-            Self::DnsAnalysis => "dns_analysis",
-            Self::FileAnalyzer => "file_analyzer",
-            Self::PortScanner => "port_scanner",
-            Self::LogAnalyzer => "log_analyzer",
-            Self::MemoryAnalyzer => "memory_analyzer",
-            Self::VulnerabilityCheck => "vulnerability_check",
-            Self::ThreatIntel => "threat_intel",
-        }
-    }
-
     pub fn data_kind(self) -> MissionDataKind {
         match self {
             Self::ProcessAnalysis

@@ -8,7 +8,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{
         Block, BorderType, Borders, Cell, Clear, Gauge, List, ListItem, ListState, Paragraph, Row,
-        Table, TableState, Wrap,
+        Table, Wrap,
     },
 };
 
@@ -109,10 +109,10 @@ fn render_container_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     let total_items = app.containers.containers.len();
     let selected = app.containers.selected_container_index;
-    
+
     let item_height = 4;
     let max_visible = (table_area.height / item_height).max(1) as usize;
-    
+
     if max_visible > 0 && total_items > 0 {
         let half_visible = max_visible / 2;
         let mut start_idx = selected.saturating_sub(half_visible);
@@ -151,16 +151,22 @@ fn render_container_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
             };
 
             let name_style = if is_selected {
-                Style::default().fg(THEME.primary).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(THEME.primary)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(THEME.text_main)
             };
 
             let (badge, badge_color) = state_badge_styled(app, container);
-            
+
             let cpu_dot = match container.cpu_percent {
-                Some(c) if c >= 75.0 => Span::styled("\u{25cf} ", Style::default().fg(THEME.danger)),
-                Some(c) if c >= 40.0 => Span::styled("\u{25cf} ", Style::default().fg(THEME.warning)),
+                Some(c) if c >= 75.0 => {
+                    Span::styled("\u{25cf} ", Style::default().fg(THEME.danger))
+                }
+                Some(c) if c >= 40.0 => {
+                    Span::styled("\u{25cf} ", Style::default().fg(THEME.warning))
+                }
                 Some(_) => Span::styled("\u{25cf} ", Style::default().fg(THEME.success)),
                 None => Span::styled("\u{25cb} ", Style::default().fg(THEME.text_dim)),
             };
@@ -173,9 +179,18 @@ fn render_container_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
                 ]),
                 Line::from(vec![
                     Span::styled("   ", Style::default()),
-                    Span::styled(format!("󰡨 {:<18}", truncate_str(&container.image, 18)), Style::default().fg(THEME.text_dim)),
+                    Span::styled(
+                        format!("󰡨 {:<18}", truncate_str(&container.image, 18)),
+                        Style::default().fg(THEME.text_dim),
+                    ),
                     Span::styled(" │ ", Style::default().fg(THEME.secondary)),
-                    Span::styled(format!(" {} ", badge), Style::default().fg(THEME.background).bg(badge_color).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        format!(" {} ", badge),
+                        Style::default()
+                            .fg(THEME.background)
+                            .bg(badge_color)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                 ]),
             ];
 
@@ -485,10 +500,36 @@ fn render_log_hint(f: &mut ratatui::Frame, app: &App, area: Rect) {
         tr!(app.ui.translator, "containers.logs_modal_hint")
     };
 
+    let lines = vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  \u{f022} ", Style::default().fg(THEME.secondary)),
+            Span::styled(
+                tr!(app.ui.translator, "containers.action_logs"),
+                Style::default()
+                    .fg(THEME.text_main)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("  [ V ]", Style::default().fg(THEME.text_dim)),
+        ]),
+        Line::from(vec![
+            Span::styled("  \u{e795} ", Style::default().fg(THEME.success)),
+            Span::styled(
+                tr!(app.ui.translator, "containers.action_console"),
+                Style::default()
+                    .fg(THEME.text_main)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("  [ C ]", Style::default().fg(THEME.text_dim)),
+        ]),
+        Line::from(""),
+        Line::from(Span::styled(text, Style::default().fg(THEME.text_dim))),
+    ];
+
     f.render_widget(
-        Paragraph::new(text)
+        Paragraph::new(lines)
             .alignment(Alignment::Center)
-            .style(Style::default().fg(THEME.text_dim))
+            .wrap(Wrap { trim: true })
             .block(block),
         area,
     );
@@ -1358,7 +1399,7 @@ fn action_item<'a>(
     selected: bool,
 ) -> ListItem<'a> {
     let prefix = if selected { " \u{258e}" } else { "  " };
-    let name_style = if selected {
+    let card_style = if selected {
         Style::default()
             .fg(THEME.background)
             .bg(THEME.primary)
@@ -1366,16 +1407,22 @@ fn action_item<'a>(
     } else {
         Style::default().fg(THEME.text_main)
     };
+    let key_style = if selected {
+        Style::default()
+            .fg(THEME.background)
+            .bg(THEME.primary)
+            .add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(THEME.text_dim)
+    };
     ListItem::new(vec![
         Line::from(vec![
             Span::styled(prefix, Style::default().fg(THEME.primary)),
             Span::styled(format!(" {} ", icon), Style::default().fg(icon_color)),
-            Span::styled(lbl, name_style),
+            Span::styled(format!("{:<18}", lbl), card_style),
+            Span::styled(format!(" [ {} ] ", key), key_style),
         ]),
-        Line::from(vec![
-            Span::raw("    "),
-            Span::styled(format!("[ {} ]", key), Style::default().fg(THEME.text_dim)),
-        ]),
+        Line::from(""),
     ])
 }
 

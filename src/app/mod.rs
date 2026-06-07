@@ -1,5 +1,6 @@
 pub mod agents;
 pub mod containers;
+pub mod feature_flags;
 pub mod firewall_service;
 pub mod grouping;
 pub mod installation;

@@ -8,9 +8,6 @@ pub const RUNNING_PROGRESS_MAX: usize = 95;
 pub const RUNNING_PROGRESS_DIVISOR: usize = 10;
 pub const RUNNING_PROGRESS_TIME_DIVISOR: u64 = 4;
 pub const RUNNING_ETA_BASE_SECS: usize = 180;
-pub const RUNNING_DETAIL_RESERVED_ROWS: usize = 12;
-pub const COMPLETED_DETAIL_RESERVED_ROWS: usize = 10;
-
 pub const STATUS_ICON_CANCEL: &str = "⏹";
 pub const STATUS_ICON_CURSOR: &str = "█";
 pub const STATUS_ICON_CURSOR_BLANK: &str = " ";

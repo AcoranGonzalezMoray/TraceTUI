@@ -14,10 +14,7 @@ pub fn save_report(
     model: &str,
 ) -> Option<String> {
     let dir = history_dir()?;
-    let clean_target: String = target
-        .chars()
-        .map(|c| sanitize_target_char(c))
-        .collect();
+    let clean_target: String = target.chars().map(sanitize_target_char).collect();
     let timestamp = chrono::Local::now().format(HISTORY_TIMESTAMP_FORMAT);
     let filename = format!(
         "{}_{}_{}.{}",
@@ -61,7 +58,7 @@ pub fn load_all() -> Vec<AgentInstance> {
         .into_iter()
         .flatten()
         .filter_map(|e| e.ok())
-        .filter(|e| is_markdown_entry(e))
+        .filter(is_markdown_entry)
         .collect();
     entries.sort_by_key(|e| e.file_name());
 
@@ -135,7 +132,11 @@ fn parse_metadata(raw: &str) -> (AgentProvider, String, String) {
             .skip(1)
             .collect::<Vec<_>>()
             .join(HISTORY_META_NEWLINE);
-        (provider_label_from_string(provider_label), model.to_string(), content)
+        (
+            provider_label_from_string(provider_label),
+            model.to_string(),
+            content,
+        )
     } else {
         (AgentProvider::Ollama, String::new(), raw.to_string())
     }

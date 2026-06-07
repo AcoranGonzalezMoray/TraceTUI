@@ -92,10 +92,10 @@ fn render_disk_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     let total_items = app.storage.disks.len();
     let selected = app.storage.selected_disk_index;
-    
+
     let item_height = 4;
     let max_visible = (inner.height / item_height).max(1) as usize;
-    
+
     if max_visible > 0 && total_items > 0 {
         let half_visible = max_visible / 2;
         let mut start_idx = selected.saturating_sub(half_visible);
@@ -134,7 +134,9 @@ fn render_disk_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
             };
 
             let name_style = if is_selected {
-                Style::default().fg(THEME.primary).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(THEME.primary)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(THEME.text_main)
             };
@@ -145,7 +147,11 @@ fn render_disk_list(f: &mut ratatui::Frame, app: &App, area: Rect) {
             let bar: String = std::iter::repeat_n('■', filled.min(bar_len))
                 .chain(std::iter::repeat_n('▱', bar_len.saturating_sub(filled)))
                 .collect();
-            let bar_color = if pct > 85.0 { THEME.danger } else { THEME.success };
+            let bar_color = if pct > 85.0 {
+                THEME.danger
+            } else {
+                THEME.success
+            };
 
             let content = vec![
                 Line::from(vec![
@@ -341,14 +347,22 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
         " {}",
         tr!(app.ui.translator, "storage.sort_label", sort_label)
     );
-    let path_str = format!(
-        " 📁 {} {}",
-        app.storage.current_directory.to_string_lossy(),
-        sort_str
-    );
-    let header_path = Paragraph::new(path_str)
-        .style(Style::default().fg(THEME.background).bg(THEME.primary))
-        .alignment(Alignment::Left);
+    let path_str = format!(" {} ", app.storage.current_directory.to_string_lossy());
+    let header_path = Paragraph::new(Line::from(vec![
+        Span::styled(
+            " 󰉋 ",
+            Style::default().fg(THEME.background).bg(THEME.primary),
+        ),
+        Span::styled(
+            path_str,
+            Style::default().fg(THEME.background).bg(THEME.primary),
+        ),
+        Span::styled(
+            sort_str,
+            Style::default().fg(THEME.background).bg(THEME.primary),
+        ),
+    ]))
+    .alignment(Alignment::Left);
 
     if inner.height > 2 {
         f.render_widget(header_path, Rect::new(inner.x, inner.y, inner.width, 1));
@@ -416,10 +430,15 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let scroll_start = current_scroll;
     let scroll_end = (scroll_start + visible_rows).min(total_items);
 
+    let table_area = rest.inner(ratatui::layout::Margin {
+        vertical: 0,
+        horizontal: 1,
+    });
+
     let widths = [
-        Constraint::Fill(1),
-        Constraint::Length(11),
-        Constraint::Length(18),
+        Constraint::Min(20),
+        Constraint::Length(12),
+        Constraint::Length(19),
     ];
 
     let header_row = Row::new(vec![
@@ -490,7 +509,7 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
         )
         .highlight_symbol(" ");
 
-    f.render_stateful_widget(table, rest, &mut table_state);
+    f.render_stateful_widget(table, table_area, &mut table_state);
 
     let scrollbar = Scrollbar::default()
         .orientation(ScrollbarOrientation::VerticalRight)
@@ -504,7 +523,7 @@ fn render_file_browser(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     f.render_stateful_widget(
         scrollbar,
-        rest.inner(ratatui::layout::Margin {
+        table_area.inner(ratatui::layout::Margin {
             vertical: 2,
             horizontal: 0,
         }),

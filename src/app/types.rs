@@ -48,6 +48,32 @@ impl AgentProvider {
             Self::LlamaCpp => Self::Ollama,
         }
     }
+
+    pub fn first_enabled() -> Self {
+        [Self::Ollama, Self::OpenAI, Self::Anthropic, Self::LlamaCpp]
+            .into_iter()
+            .find(|provider| crate::app::feature_flags::agent_provider_enabled(*provider))
+            .unwrap_or(Self::Ollama)
+    }
+
+    pub fn enabled_or_default(self) -> Self {
+        if crate::app::feature_flags::agent_provider_enabled(self) {
+            self
+        } else {
+            Self::first_enabled()
+        }
+    }
+
+    pub fn next_enabled(&self) -> Self {
+        let mut provider = self.next();
+        for _ in 0..4 {
+            if crate::app::feature_flags::agent_provider_enabled(provider) {
+                return provider;
+            }
+            provider = provider.next();
+        }
+        Self::first_enabled()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -63,6 +89,7 @@ pub enum AgentMission {
     ThreatIntel,
 }
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum AgentStatus {
     Idle,
     Queued,

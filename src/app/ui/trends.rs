@@ -263,7 +263,11 @@ fn render_process_activity(f: &mut ratatui::Frame, app: &App, area: Rect) {
 
     let header = Row::new(vec![
         Cell::from(Span::styled(
-            format!("{:<width$}", tr!(app.ui.translator, "trends.process_header"), width = name_w),
+            format!(
+                "{:<width$}",
+                tr!(app.ui.translator, "trends.process_header"),
+                width = name_w
+            ),
             Style::default()
                 .fg(THEME.secondary)
                 .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
@@ -405,19 +409,13 @@ fn render_conn_summary(f: &mut ratatui::Frame, app: &App, area: Rect) {
             format!("  {} ", tr!(app.ui.translator, "center.conn_foreign")),
             Style::default().fg(THEME.text_dim),
         ),
-        Span::styled(
-            format!("{}", foreign),
-            Style::default().fg(THEME.warning),
-        ),
+        Span::styled(format!("{}", foreign), Style::default().fg(THEME.warning)),
         Span::raw("  "),
         Span::styled(
             tr!(app.ui.translator, "center.conn_local"),
             Style::default().fg(THEME.text_dim),
         ),
-        Span::styled(
-            format!(" {}", local),
-            Style::default().fg(THEME.success),
-        ),
+        Span::styled(format!(" {}", local), Style::default().fg(THEME.success)),
     ]));
     lines.push(Line::from(""));
 
@@ -431,8 +429,10 @@ fn render_conn_summary(f: &mut ratatui::Frame, app: &App, area: Rect) {
             proto_spans.push(Span::raw("  "));
         }
         proto_spans.push(Span::styled(
-            format!("{}", proto),
-            Style::default().fg(THEME.secondary).add_modifier(Modifier::BOLD),
+            proto.to_string(),
+            Style::default()
+                .fg(THEME.secondary)
+                .add_modifier(Modifier::BOLD),
         ));
         proto_spans.push(Span::styled(
             format!(" {}", count),
@@ -766,7 +766,6 @@ fn render_bottom_row(f: &mut ratatui::Frame, app: &App, area: Rect) {
     render_country_dist(f, app, cols[1]);
     render_containers_panel(f, app, cols[2]);
 }
-
 
 fn render_protocol_dist(f: &mut ratatui::Frame, app: &App, area: Rect) {
     let mut counts: std::collections::HashMap<String, u64> = std::collections::HashMap::new();

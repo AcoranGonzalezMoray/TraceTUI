@@ -2,7 +2,7 @@ use crate::app::ui::theme::THEME;
 use crate::app::{App, NavView, SidebarFocus};
 use crate::tr;
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::Rect,
     style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Paragraph},
@@ -89,25 +89,40 @@ pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
             tr!(app.ui.translator, "nav.agents"),
         ),
     ];
-    let num_items = nav_items.len();
-    let available = inner_area.height as usize;
-    let item_height: u16 = if available >= num_items * 3 { 3 } else { 1 };
-    let mut constraints = Vec::new();
-
-    constraints.push(Constraint::Fill(1));
-    for _ in 0..num_items {
-        constraints.push(Constraint::Length(item_height));
-        constraints.push(Constraint::Fill(1));
-    }
-
-    let item_chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints(constraints)
-        .split(inner_area);
+    let num_items = nav_items.len() as u16;
+    let item_height: u16 = if inner_area.height >= num_items.saturating_mul(3) {
+        3
+    } else {
+        1
+    };
+    let used_height = item_height.saturating_mul(num_items);
+    let gap_count = num_items.saturating_sub(1);
+    let available_gap = inner_area.height.saturating_sub(used_height);
+    let gap_height = available_gap.checked_div(gap_count).unwrap_or(0);
+    let remainder = if gap_count > 0 {
+        available_gap % gap_count
+    } else {
+        0
+    };
+    let top_padding = remainder / 2;
 
     for (i, (view, icon, name)) in nav_items.into_iter().enumerate() {
         let is_selected = app.ui.current_nav_view == view;
-        let area = item_chunks[i * 2 + 1];
+        let y = inner_area.y
+            + top_padding
+            + (i as u16).saturating_mul(item_height.saturating_add(gap_height))
+            + (i as u16).min(remainder % gap_count.max(1));
+        let area = Rect {
+            x: inner_area.x,
+            y,
+            width: inner_area.width,
+            height: item_height.min(
+                inner_area
+                    .y
+                    .saturating_add(inner_area.height)
+                    .saturating_sub(y),
+            ),
+        };
 
         if area.height == 0 {
             continue;
@@ -132,7 +147,6 @@ pub fn render_nav_sidebar(f: &mut ratatui::Frame, app: &App, area: Rect) {
                 .border_type(BorderType::Rounded)
                 .border_style(Style::default().fg(THEME.background)) // Mantener estructura
         };
-
 
         let content = if app.ui.nav_sidebar_expanded {
             Paragraph::new(Line::from(vec![

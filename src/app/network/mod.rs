@@ -212,7 +212,7 @@ impl NetworkAnalyzer {
         let protocol = parts[0].to_string();
         let local_addr = parts[1];
         let foreign_addr = parts[2];
-        
+
         let (state, pid_str) = if parts.len() >= 5 {
             (parts[3].to_string(), parts[4])
         } else {
@@ -225,9 +225,13 @@ impl NetworkAnalyzer {
         } else {
             (foreign_addr, "0")
         };
-        
+
         let local_port = local_port_str.parse().ok()?;
-        let foreign_port = if foreign_port_str == "*" { 0 } else { foreign_port_str.parse().ok()? };
+        let foreign_port = if foreign_port_str == "*" {
+            0
+        } else {
+            foreign_port_str.parse().ok()?
+        };
         let pid = pid_str.parse().ok()?;
 
         Some(NetworkConnection {

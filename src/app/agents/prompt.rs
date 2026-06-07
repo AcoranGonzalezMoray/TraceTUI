@@ -1,6 +1,6 @@
 use crate::app::agents::mission::{
-    missing_dependency_context_placeholder, missing_process_name_placeholder, serialize_connections,
-    serialize_processes,
+    missing_dependency_context_placeholder, missing_process_name_placeholder,
+    serialize_connections, serialize_processes,
 };
 use crate::app::network::NetworkConnection;
 use crate::app::process::ProcessInfo;
@@ -42,14 +42,8 @@ pub struct PromptInput<'a> {
 }
 
 pub fn build(input: PromptInput<'_>) -> Result<String, String> {
-    let has_processes = input
-        .processes
-        .map(|p| !p.is_empty())
-        .unwrap_or(false);
-    let has_networks = input
-        .networks
-        .map(|(n, _)| !n.is_empty())
-        .unwrap_or(false);
+    let has_processes = input.processes.map(|p| !p.is_empty()).unwrap_or(false);
+    let has_networks = input.networks.map(|(n, _)| !n.is_empty()).unwrap_or(false);
 
     input
         .mission
@@ -62,7 +56,10 @@ pub fn build(input: PromptInput<'_>) -> Result<String, String> {
         .unwrap_or_else(|| "[]".to_string());
     let (net_text, process_name) = match input.networks {
         Some((connections, name)) => (serialize_connections(connections), name.to_string()),
-        None => ("[]".to_string(), missing_process_name_placeholder().to_string()),
+        None => (
+            "[]".to_string(),
+            missing_process_name_placeholder().to_string(),
+        ),
     };
 
     let dependency_context = input
