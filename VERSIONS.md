@@ -1,5 +1,8 @@
 # UNRELEASED
 
+
+# RELEASED
+
 ## 2026-06-07  V2.1.0
 ✨: **AI Agent System** — New Agents view (6th nav section) with AI-powered analysis via Ollama
 
@@ -26,9 +29,6 @@
 ✨: **Mouse Support** — Click on nav sidebar items to switch views, scroll support in agent type selector
 
 🎨: **UI Polish** — Improved nav sidebar with space-evenly distribution, consistent selected-item styling (rounded borders), faster provider modal sizing
-
-
-# RELEASED
 
 ## 2026-05-29  V2.0.1
 🐛: Fixed export functionality on Linux and kill process action on Windows/Linux
