@@ -30,11 +30,20 @@ function initMobileMenu() {
 
 function initNavbarScroll() {
     var navbar = document.getElementById('navbar');
-    if (navbar) {
-        window.addEventListener('scroll', function () {
-            navbar.classList.toggle('scrolled', window.scrollY > 50);
-        });
-    }
+    if (!navbar) return;
+    var lastScroll = 0;
+    window.addEventListener('scroll', function () {
+        var w = window.innerWidth;
+        var isLaptop = w > 768 && w < 2000;
+        var currentScroll = window.scrollY;
+        navbar.classList.toggle('scrolled', currentScroll > 50);
+        if (isLaptop && currentScroll > 100) {
+            navbar.classList.toggle('hidden', currentScroll > lastScroll);
+        } else {
+            navbar.classList.remove('hidden');
+        }
+        lastScroll = currentScroll;
+    });
 }
 
 function initSmoothScroll() {
